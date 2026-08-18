@@ -24,6 +24,14 @@
             <h2 class="text-xl font-semibold">Farm Management System</h2>
         </header>
         <main class="flex-grow p-6">
+            <?php
+            require_once __DIR__ . '/../../src/Helpers/SessionHelper.php';
+            $success = SessionHelper::getFlash('success');
+            if ($success): ?>
+                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+                    <?php echo $success; ?>
+                </div>
+            <?php endif; ?>
             <?php echo $content; ?>
         </main>
         <footer class="bg-gray-800 text-white text-center p-4">
