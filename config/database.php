@@ -1,9 +1,22 @@
 <?php
-$host = 'localhost';
-$db   = 'farm_system';
-$user = 'postgres'; // Assuming default user
-$pass = 'password'; // User should update this
-$port = '5432';
+function getEnvVar($key, $default = null) {
+    static $env = null;
+    if ($env === null) {
+        $path = __DIR__ . '/../.env';
+        if (file_exists($path)) {
+            $env = parse_ini_file($path);
+        } else {
+            $env = [];
+        }
+    }
+    return $env[$key] ?? $default;
+}
+
+$host = getEnvVar('DB_HOST', 'localhost');
+$db   = getEnvVar('DB_NAME', 'farm_system');
+$user = getEnvVar('DB_USER', 'postgres');
+$pass = getEnvVar('DB_PASS', 'password');
+$port = getEnvVar('DB_PORT', '5432');
 
 $dsn = "pgsql:host=$host;port=$port;dbname=$db;";
 $options = [
@@ -15,6 +28,6 @@ $options = [
 try {
      $pdo = new PDO($dsn, $user, $pass, $options);
 } catch (\PDOException $e) {
-     $pdo = null;
+     die("Database connection failed: " . $e->getMessage());
 }
 ?>
