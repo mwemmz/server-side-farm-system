@@ -1,11 +1,11 @@
 <?php
 $host = 'localhost';
 $db   = 'farm_system';
-$user = 'root';
-$pass = '';
-$charset = 'utf8mb4';
+$user = 'postgres'; // Assuming default user
+$pass = 'password'; // User should update this
+$port = '5432';
 
-$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+$dsn = "pgsql:host=$host;port=$port;dbname=$db;";
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -15,8 +15,6 @@ $options = [
 try {
      $pdo = new PDO($dsn, $user, $pass, $options);
 } catch (\PDOException $e) {
-     // For smoke test, we might want to fail gracefully
-     // throw new \PDOException($e->getMessage(), (int)$e->getCode());
      $pdo = null;
 }
 ?>
