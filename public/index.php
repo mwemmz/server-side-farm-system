@@ -2,8 +2,17 @@
 session_start();
 require_once __DIR__ . '/../config/database.php';
 
-$module = $_GET['module'] ?? 'Farm';
+$module = $_GET['module'] ?? 'Dashboard';
 $action = $_GET['action'] ?? 'index';
+
+if ($module === 'Dashboard') {
+    $viewFile = __DIR__ . "/views/dashboard.php";
+    ob_start();
+    require $viewFile;
+    $content = ob_get_clean();
+    require __DIR__ . "/views/layout.php";
+    exit;
+}
 
 $controllerFile = __DIR__ . "/../src/Modules/{$module}/{$module}Controller.php";
 $viewFile = __DIR__ . "/views/" . strtolower($module) . ".php";

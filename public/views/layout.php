@@ -6,22 +6,29 @@
     <title>FFMS - Intelligent Farm Management System</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col">
-    <nav class="bg-green-700 text-white p-4 shadow-md">
-        <div class="container mx-auto flex justify-between">
-            <a href="index.php" class="text-xl font-bold">FFMS</a>
-            <div class="space-x-4">
-                <a href="index.php?module=Farm" class="hover:text-green-200">Farms</a>
-                <a href="index.php?module=Crop" class="hover:text-green-200">Crops</a>
-                <!-- Add more links -->
-            </div>
-        </div>
-    </nav>
-    <main class="flex-grow container mx-auto p-6">
-        <?php echo $content; ?>
-    </main>
-    <footer class="bg-gray-800 text-white text-center p-4 mt-auto">
-        &copy; 2026 Intelligent Farm Management System
-    </footer>
+<body class="bg-gray-100 min-h-screen flex">
+    <aside class="w-64 bg-green-800 text-white p-4">
+        <h1 class="text-xl font-bold mb-6">FFMS</h1>
+        <nav class="space-y-2">
+            <a href="index.php?module=Dashboard" class="block hover:text-green-200">Dashboard</a>
+            <?php
+            $modules = ['Analytics', 'Crop', 'Equipment', 'Farm', 'Field', 'Finance', 'Harvest', 'Inventory', 'Irrigation', 'Labour', 'Livestock', 'Market', 'Notifications', 'Pest', 'Procurement', 'Reports', 'Sales', 'Security', 'Storage', 'Supplier', 'Weather'];
+            foreach ($modules as $mod) {
+                echo "<a href='index.php?module={$mod}' class='block hover:text-green-200'>{$mod}</a>";
+            }
+            ?>
+        </nav>
+    </aside>
+    <div class="flex-grow flex flex-col">
+        <header class="bg-white shadow-sm p-4">
+            <h2 class="text-xl font-semibold">Farm Management System</h2>
+        </header>
+        <main class="flex-grow p-6">
+            <?php echo $content; ?>
+        </main>
+        <footer class="bg-gray-800 text-white text-center p-4">
+            &copy; 2026 Intelligent Farm Management System
+        </footer>
+    </div>
 </body>
 </html>
