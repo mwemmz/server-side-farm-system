@@ -12,15 +12,15 @@ $totalInventory = $analyticsModel->getTotalInventoryCount();
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
             <div class="text-sm font-medium text-gray-500 uppercase tracking-wider">Total Costs</div>
-            <div class="mt-2 text-3xl font-bold text-red-600">$<?php echo number_format($totalCost, 2); ?></div>
+            <div class="mt-2 text-3xl font-bold text-red-600">$<?php echo number_format($totalCost ?? 0, 2); ?></div>
         </div>
         <div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
             <div class="text-sm font-medium text-gray-500 uppercase tracking-wider">Total Sales</div>
-            <div class="mt-2 text-3xl font-bold text-green-600">$<?php echo number_format($totalSales, 2); ?></div>
+            <div class="mt-2 text-3xl font-bold text-green-600">$<?php echo number_format($totalSales ?? 0, 2); ?></div>
         </div>
         <div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
             <div class="text-sm font-medium text-gray-500 uppercase tracking-wider">Inventory Items</div>
-            <div class="mt-2 text-3xl font-bold text-blue-600"><?php echo number_format($totalInventory); ?></div>
+            <div class="mt-2 text-3xl font-bold text-blue-600"><?php echo number_format($totalInventory ?? 0); ?></div>
         </div>
     </div>
 </div>
