@@ -2,6 +2,9 @@
 session_start();
 require_once __DIR__ . '/../config/database.php';
 
+// Run migrations automatically
+require_once __DIR__ . '/../db/migrate.php';
+
 $module = $_GET['module'] ?? 'Dashboard';
 $action = $_GET['action'] ?? 'index';
 
