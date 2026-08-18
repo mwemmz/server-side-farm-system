@@ -1,14 +1,12 @@
-﻿<!DOCTYPE html>
-<html>
-<head><title>Pest Management</title></head>
-<body>
-    <h1>Pest Management</h1>
-    <?php if (isset($data)): ?>
-        <ul>
+﻿<h1 class="text-3xl font-bold mb-6 text-green-800">Pest Records</h1>
+<div class="bg-white p-6 rounded-lg shadow">
+    <?php if (isset($data) && !empty($data)): ?>
+        <ul class="list-disc pl-6">
             <?php foreach ($data as $item): ?>
-                <li>Pest: <?php echo htmlspecialchars($item['pest_name']); ?>, Date: <?php echo htmlspecialchars($item['detected_date']); ?>, Action: <?php echo htmlspecialchars($item['action_taken']); ?></li>
+                <li class="mb-2"><?php echo htmlspecialchars($item['pest_name']); ?>: <?php echo htmlspecialchars($item['action_taken']); ?></li>
             <?php endforeach; ?>
         </ul>
+    <?php else: ?>
+        <p>No pest records found.</p>
     <?php endif; ?>
-</body>
-</html>
+</div>

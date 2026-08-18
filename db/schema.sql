@@ -133,6 +133,14 @@ CREATE TABLE IF NOT EXISTS weather_records (
 );
 
 -- System
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS notifications (
     id SERIAL PRIMARY KEY,
     message TEXT,

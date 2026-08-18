@@ -1,14 +1,12 @@
-﻿<!DOCTYPE html>
-<html>
-<head><title>Storage Management</title></head>
-<body>
-    <h1>Storage Management</h1>
-    <?php if (isset($data)): ?>
-        <ul>
+﻿<h1 class="text-3xl font-bold mb-6 text-green-800">Storage Records</h1>
+<div class="bg-white p-6 rounded-lg shadow">
+    <?php if (isset($data) && !empty($data)): ?>
+        <ul class="list-disc pl-6">
             <?php foreach ($data as $item): ?>
-                <li>Name: <?php echo htmlspecialchars($item['name']); ?>, Capacity: <?php echo htmlspecialchars($item['capacity']); ?>, Stock: <?php echo htmlspecialchars($item['current_stock']); ?></li>
+                <li class="mb-2"><?php echo htmlspecialchars($item['name']); ?>: <?php echo htmlspecialchars($item['current_stock']); ?> / <?php echo htmlspecialchars($item['capacity']); ?></li>
             <?php endforeach; ?>
         </ul>
+    <?php else: ?>
+        <p>No storage records found.</p>
     <?php endif; ?>
-</body>
-</html>
+</div>

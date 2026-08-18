@@ -1,14 +1,12 @@
-﻿<!DOCTYPE html>
-<html>
-<head><title>Sales Management</title></head>
-<body>
-    <h1>Sales Management</h1>
-    <?php if (isset($data)): ?>
-        <ul>
+﻿<h1 class="text-3xl font-bold mb-6 text-green-800">Sales Records</h1>
+<div class="bg-white p-6 rounded-lg shadow">
+    <?php if (isset($data) && !empty($data)): ?>
+        <ul class="list-disc pl-6">
             <?php foreach ($data as $item): ?>
-                <li>Customer: <?php echo htmlspecialchars($item['customer_name']); ?>, Amount: <?php echo htmlspecialchars($item['amount']); ?>, Date: <?php echo htmlspecialchars($item['sale_date']); ?></li>
+                <li class="mb-2"><?php echo htmlspecialchars($item['customer_name']); ?>: <?php echo htmlspecialchars($item['amount']); ?> on <?php echo htmlspecialchars($item['sale_date']); ?></li>
             <?php endforeach; ?>
         </ul>
+    <?php else: ?>
+        <p>No sales records found.</p>
     <?php endif; ?>
-</body>
-</html>
+</div>

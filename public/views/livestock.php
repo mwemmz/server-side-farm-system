@@ -1,14 +1,12 @@
-﻿<!DOCTYPE html>
-<html>
-<head><title>Livestock Management</title></head>
-<body>
-    <h1>Livestock Management</h1>
-    <?php if (isset($data)): ?>
-        <ul>
+﻿<h1 class="text-3xl font-bold mb-6 text-green-800">Livestock Management</h1>
+<div class="bg-white p-6 rounded-lg shadow">
+    <?php if (isset($data) && !empty($data)): ?>
+        <ul class="list-disc pl-6">
             <?php foreach ($data as $item): ?>
-                <li>Type: <?php echo htmlspecialchars($item['type']); ?>, Breed: <?php echo htmlspecialchars($item['breed']); ?>, DOB: <?php echo htmlspecialchars($item['dob']); ?></li>
+                <li class="mb-2">Type: <?php echo htmlspecialchars($item['type']); ?>, Breed: <?php echo htmlspecialchars($item['breed']); ?></li>
             <?php endforeach; ?>
         </ul>
+    <?php else: ?>
+        <p>No livestock recorded.</p>
     <?php endif; ?>
-</body>
-</html>
+</div>

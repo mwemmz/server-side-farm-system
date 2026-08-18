@@ -1,14 +1,12 @@
-﻿<!DOCTYPE html>
-<html>
-<head><title>Inventory Management</title></head>
-<body>
-    <h1>Inventory Management</h1>
-    <?php if (isset($data)): ?>
-        <ul>
+﻿<h1 class="text-3xl font-bold mb-6 text-green-800">Inventory Management</h1>
+<div class="bg-white p-6 rounded-lg shadow">
+    <?php if (isset($data) && !empty($data)): ?>
+        <ul class="list-disc pl-6">
             <?php foreach ($data as $item): ?>
-                <li>Name: <?php echo htmlspecialchars($item['name']); ?>, Quantity: <?php echo htmlspecialchars($item['quantity']); ?> <?php echo htmlspecialchars($item['unit']); ?></li>
+                <li class="mb-2"><?php echo htmlspecialchars($item['name']); ?>: <?php echo htmlspecialchars($item['quantity']); ?> <?php echo htmlspecialchars($item['unit']); ?></li>
             <?php endforeach; ?>
         </ul>
+    <?php else: ?>
+        <p>Inventory is empty.</p>
     <?php endif; ?>
-</body>
-</html>
+</div>

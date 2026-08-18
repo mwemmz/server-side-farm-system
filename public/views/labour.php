@@ -1,14 +1,12 @@
-﻿<!DOCTYPE html>
-<html>
-<head><title>Labour Management</title></head>
-<body>
-    <h1>Labour Management</h1>
-    <?php if (isset($data)): ?>
-        <ul>
+﻿<h1 class="text-3xl font-bold mb-6 text-green-800">Labour Management</h1>
+<div class="bg-white p-6 rounded-lg shadow">
+    <?php if (isset($data) && !empty($data)): ?>
+        <ul class="list-disc pl-6">
             <?php foreach ($data as $item): ?>
-                <li>Name: <?php echo htmlspecialchars($item['name']); ?>, Role: <?php echo htmlspecialchars($item['role']); ?>, Date: <?php echo htmlspecialchars($item['attendance_date']); ?></li>
+                <li class="mb-2">Name: <?php echo htmlspecialchars($item['name']); ?>, Role: <?php echo htmlspecialchars($item['role']); ?></li>
             <?php endforeach; ?>
         </ul>
+    <?php else: ?>
+        <p>No labour records found.</p>
     <?php endif; ?>
-</body>
-</html>
+</div>

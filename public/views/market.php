@@ -1,14 +1,12 @@
-﻿<!DOCTYPE html>
-<html>
-<head><title>Market Management</title></head>
-<body>
-    <h1>Market Management</h1>
-    <?php if (isset($data)): ?>
-        <ul>
+﻿<h1 class="text-3xl font-bold mb-6 text-green-800">Market Data</h1>
+<div class="bg-white p-6 rounded-lg shadow">
+    <?php if (isset($data) && !empty($data)): ?>
+        <ul class="list-disc pl-6">
             <?php foreach ($data as $item): ?>
-                <li>Crop: <?php echo htmlspecialchars($item['crop_name']); ?>, Price: <?php echo htmlspecialchars($item['price']); ?>, Date: <?php echo htmlspecialchars($item['market_date']); ?></li>
+                <li class="mb-2"><?php echo htmlspecialchars($item['crop_name']); ?>: <?php echo htmlspecialchars($item['price']); ?> on <?php echo htmlspecialchars($item['market_date']); ?></li>
             <?php endforeach; ?>
         </ul>
+    <?php else: ?>
+        <p>No market data available.</p>
     <?php endif; ?>
-</body>
-</html>
+</div>

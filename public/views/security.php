@@ -1,14 +1,12 @@
-﻿<!DOCTYPE html>
-<html>
-<head><title>Security Management</title></head>
-<body>
-    <h1>Security Management</h1>
-    <?php if (isset($data)): ?>
-        <ul>
-            <?php foreach ($data as $item): ?>
-                <li>User: <?php echo htmlspecialchars($item['user_id']); ?>, Action: <?php echo htmlspecialchars($item['action']); ?>, Time: <?php echo htmlspecialchars($item['log_time']); ?></li>
+﻿<h1 class="text-3xl font-bold mb-6 text-green-800">Security Logs</h1>
+<div class="bg-white p-6 rounded-lg shadow">
+    <?php if (isset($data) && !empty($data)): ?>
+        <ul class="list-disc pl-6">
+            <?php foreach ($data as $log): ?>
+                <li class="mb-2"><?php echo htmlspecialchars($log['action']); ?> at <?php echo htmlspecialchars($log['log_time']); ?></li>
             <?php endforeach; ?>
         </ul>
+    <?php else: ?>
+        <p>No security logs found.</p>
     <?php endif; ?>
-</body>
-</html>
+</div>

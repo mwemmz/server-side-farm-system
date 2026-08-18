@@ -1,14 +1,12 @@
-﻿<!DOCTYPE html>
-<html>
-<head><title>Harvest Management</title></head>
-<body>
-    <h1>Harvest Management</h1>
-    <?php if (isset($data)): ?>
-        <ul>
+﻿<h1 class="text-3xl font-bold mb-6 text-green-800">Harvest Management</h1>
+<div class="bg-white p-6 rounded-lg shadow">
+    <?php if (isset($data) && !empty($data)): ?>
+        <ul class="list-disc pl-6">
             <?php foreach ($data as $item): ?>
-                <li>Crop ID: <?php echo htmlspecialchars($item['crop_id']); ?>, Date: <?php echo htmlspecialchars($item['harvest_date']); ?>, Quantity: <?php echo htmlspecialchars($item['quantity']); ?>, Quality: <?php echo htmlspecialchars($item['quality']); ?></li>
+                <li class="mb-2">Quantity: <?php echo htmlspecialchars($item['quantity']); ?>, Quality: <?php echo htmlspecialchars($item['quality']); ?></li>
             <?php endforeach; ?>
         </ul>
+    <?php else: ?>
+        <p>No harvest records yet.</p>
     <?php endif; ?>
-</body>
-</html>
+</div>
