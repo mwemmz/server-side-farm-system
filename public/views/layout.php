@@ -18,7 +18,7 @@
         <div class="p-4 mb-4">
             <h1 class="text-2xl font-bold tracking-tight text-slate-800 dark:text-white">FFMS</h1>
         </div>
-        <nav class="space-y-1">
+        <nav class="flex flex-col space-y-1">
             <?php
             $currentModule = $_GET['module'] ?? 'Dashboard';
             $modules = ['Dashboard', 'Analytics', 'Crop', 'Equipment', 'Farm', 'Field', 'Finance', 'Harvest', 'Inventory', 'Irrigation', 'Labour', 'Livestock', 'Market', 'Notifications', 'Pest', 'Procurement', 'Reports', 'Sales', 'Security', 'Storage', 'Supplier', 'Weather'];
