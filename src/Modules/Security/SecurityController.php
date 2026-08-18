@@ -8,6 +8,7 @@ class SecurityController {
             $user = $this->model->getUserByUsername($_POST['username']);
             if ($user && password_verify($_POST['password'], $user['password_hash'])) {
                 $_SESSION['user_id'] = $user['id'];
+                $_SESSION['role'] = $user['role'];
                 header('Location: index.php?module=Farm');
                 exit;
             }

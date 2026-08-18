@@ -5,6 +5,11 @@ require_once __DIR__ . '/../config/database.php';
 $module = $_GET['module'] ?? 'Dashboard';
 $action = $_GET['action'] ?? 'index';
 
+// Simple RBAC check
+if ($module === 'Finance' && ($_SESSION['role'] ?? 'worker') !== 'admin') {
+    die("Access Denied: Only admins can access the Finance module.");
+}
+
 if ($module === 'Dashboard') {
     $viewFile = __DIR__ . "/views/dashboard.php";
     ob_start();
