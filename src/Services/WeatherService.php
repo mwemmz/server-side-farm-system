@@ -27,7 +27,7 @@ class WeatherService {
         $url = "https://api.open-meteo.com/v1/forecast"
             . "?latitude=" . urlencode((string)$lat)
             . "&longitude=" . urlencode((string)$lon)
-            . "&current_weather=true"
+            . "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation"
             . "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode"
             . "&timezone=auto"
             . "&forecast_days=7";
@@ -54,13 +54,13 @@ class WeatherService {
     public function getCurrentSummary($lat, $lon) {
         try {
             $f = $this->getForecast($lat, $lon);
-            $current = $f['current_weather'] ?? [];
+            $current = $f['current'] ?? $f['current_weather'] ?? [];
             $daily   = $f['daily'] ?? [];
             return [
-                'temperature' => $current['temperature'] ?? null,
-                'windspeed'   => $current['windspeed'] ?? null,
-                'weathercode' => $current['weathercode'] ?? null,
-                'humidity'    => $f['current_weather_humidity'] ?? null,
+                'temperature' => $current['temperature_2m'] ?? $current['temperature'] ?? null,
+                'windspeed'   => $current['wind_speed_10m'] ?? $current['windspeed'] ?? null,
+                'weathercode' => $current['weather_code'] ?? $current['weathercode'] ?? null,
+                'humidity'    => $current['relative_humidity_2m'] ?? null,
                 'high_today'  => $daily['temperature_2m_max'][0] ?? null,
                 'low_today'   => $daily['temperature_2m_min'][0] ?? null,
                 'precip'      => $daily['precipitation_sum'][0] ?? null,
