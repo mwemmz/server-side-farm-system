@@ -12,3 +12,8 @@ function getEnvVar($key, $default = null) {
     }
     return $env[$key] ?? $default;
 }
+
+/** Format an amount in Zambian Kwacha (ZMW). */
+function money($amount) {
+    return 'K' . number_format((float) ($amount ?? 0), 2);
+}

@@ -1,6 +1,7 @@
 ﻿<?php
 require_once __DIR__ . '/../../src/Helpers/FormHelper.php';
 require_once __DIR__ . '/../../src/Helpers/SessionHelper.php';
+require_once __DIR__ . '/../../config/env.php';
 
 $successMessage = SessionHelper::getFlash('success');
 $errors = $data['errors'] ?? [];
@@ -21,7 +22,7 @@ $records = $data['records'] ?? ($data ?? []);
     <?php
     $fields = [
         ['name' => 'customer_name', 'label' => 'Customer Name', 'value' => $formData['customer_name'] ?? ''],
-        ['name' => 'amount', 'label' => 'Amount', 'value' => $formData['amount'] ?? ''],
+        ['name' => 'amount', 'label' => 'Amount (K)', 'value' => $formData['amount'] ?? ''],
         ['name' => 'sale_date', 'label' => 'Sale Date', 'type' => 'date', 'value' => $formData['sale_date'] ?? '']
     ];
     echo FormHelper::generateForm($fields, '/index.php?module=Sales&action=add', 'POST', $errors);
@@ -33,7 +34,7 @@ $records = $data['records'] ?? ($data ?? []);
     <?php if (isset($records) && !empty($records)): ?>
         <ul class="list-disc pl-6">
             <?php foreach ($records as $record): ?>
-                <li class="mb-2"><?php echo htmlspecialchars($record['customer_name']); ?>: <?php echo htmlspecialchars($record['amount']); ?> on <?php echo htmlspecialchars($record['sale_date']); ?></li>
+                <li class="mb-2"><?php echo htmlspecialchars($record['customer_name']); ?>: <?php echo money($record['amount']); ?> on <?php echo htmlspecialchars($record['sale_date']); ?></li>
             <?php endforeach; ?>
         </ul>
     <?php else: ?>

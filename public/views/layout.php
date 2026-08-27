@@ -83,12 +83,17 @@
         <!-- User footer -->
         <div class="px-4 py-4 border-t border-white/10 shrink-0">
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-green-600 to-emerald-700 flex items-center justify-center text-sm font-bold text-white shrink-0">A</div>
+                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-green-600 to-emerald-700 flex items-center justify-center text-sm font-bold text-white shrink-0"><?php echo strtoupper(substr($_SESSION['username'] ?? 'A', 0, 1)); ?></div>
                 <div class="min-w-0">
-                    <div class="text-sm font-semibold text-slate-200 truncate">Administrator</div>
-                    <div class="text-[11px] text-slate-500 truncate">admin@ffms.com</div>
+                    <div class="text-sm font-semibold text-slate-200 truncate capitalize"><?php echo htmlspecialchars($_SESSION['username'] ?? 'Administrator'); ?></div>
+                    <div class="text-[11px] text-slate-500 truncate"><?php echo htmlspecialchars(ucfirst($_SESSION['role'] ?? 'user')); ?></div>
                 </div>
             </div>
+            <a href="index.php?module=Security&action=logout"
+               class="mt-3 w-full flex items-center justify-center gap-2 rounded-xl bg-white/5 border border-white/10 text-xs font-semibold text-slate-300 hover:bg-white/10 hover:text-white transition-colors py-2">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                Sign out
+            </a>
         </div>
     </aside>
 
@@ -115,7 +120,7 @@
                 <button id="theme-toggle-desktop" class="p-2 rounded-full bg-white/10 hover:bg-white/20 transition">
                     <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
                 </button>
-                <div class="text-[11px] text-slate-400 font-medium">Administrator</div>
+                <div class="text-[11px] text-slate-400 font-medium capitalize"><?php echo htmlspecialchars(ucfirst($_SESSION['role'] ?? 'user')); ?></div>
             </div>
         </header>
 

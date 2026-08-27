@@ -5,14 +5,15 @@ class SecurityController {
     public function __construct($pdo) { $this->model = new SecurityModel($pdo); }
     public function login() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $user = $this->model->getUserByUsername($_POST['username']);
-            if ($user && password_verify($_POST['password'], $user['password_hash'])) {
+            $user = $this->model->getUserByUsername($_POST['username'] ?? '');
+            if ($user && password_verify($_POST['password'] ?? '', $user['password_hash'])) {
                 $_SESSION['user_id'] = $user['id'];
+                $_SESSION['username'] = $user['username'];
                 $_SESSION['role'] = $user['role'];
-                header('Location: index.php?module=Farm');
+                header('Location: index.php?module=Dashboard');
                 exit;
             }
-            return ['error' => 'Invalid credentials'];
+            return ['error' => 'Invalid username or password'];
         }
         return [];
     }

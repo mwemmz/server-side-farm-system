@@ -63,7 +63,7 @@ function weatherIcon($code) {
             <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0">
                     <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Costs</div>
-                    <div class="mt-1.5 text-xl md:text-2xl font-extrabold text-slate-900 tabular-nums">$<span class="counter" data-target="<?php echo $totalCost; ?>">0</span></div>
+                    <div class="mt-1.5 text-xl md:text-2xl font-extrabold text-slate-900 tabular-nums">K<span class="counter" data-target="<?php echo $totalCost; ?>">0</span></div>
                     <div class="mt-1 text-[11px] text-slate-400">Procurement expenses</div>
                 </div>
                 <div class="shrink-0 w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
@@ -77,7 +77,7 @@ function weatherIcon($code) {
             <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0">
                     <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Sales</div>
-                    <div class="mt-1.5 text-xl md:text-2xl font-extrabold text-slate-900 tabular-nums">$<span class="counter" data-target="<?php echo $totalSales; ?>">0</span></div>
+                    <div class="mt-1.5 text-xl md:text-2xl font-extrabold text-slate-900 tabular-nums">K<span class="counter" data-target="<?php echo $totalSales; ?>">0</span></div>
                     <div class="mt-1 text-[11px] text-slate-400">Revenue generated</div>
                 </div>
                 <div class="shrink-0 w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">

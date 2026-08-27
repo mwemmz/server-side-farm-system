@@ -10,6 +10,9 @@ try {
     // Incremental migrations for existing tables
     $pdo->exec("ALTER TABLE farms ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION DEFAULT -15.3875");
     $pdo->exec("ALTER TABLE farms ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION DEFAULT 28.3228");
+
+    // Seed default admin + mock data (idempotent)
+    require_once __DIR__ . '/seed.php';
 } catch (PDOException $e) {
     // Log the error, but don't block the application if it's already set up
     error_log("Migration failed: " . $e->getMessage());
