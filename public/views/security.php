@@ -1,4 +1,4 @@
-﻿<h1 class="text-3xl font-bold mb-6 text-green-800">Security Logs</h1>
+<h1 class="text-3xl font-bold mb-6 text-green-800">Security Logs</h1>
 <div class="bg-white p-6 rounded-lg shadow">
     <?php if (isset($data) && !empty($data)): ?>
         <ul class="list-disc pl-6">

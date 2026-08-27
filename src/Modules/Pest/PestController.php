@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/PestModel.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../../src/Helpers/FormHelper.php';
 $systems = $data['systems'] ?? $data;
 $errors = $data['errors'] ?? [];

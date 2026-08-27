@@ -1,4 +1,4 @@
-﻿<h1 class="text-3xl font-bold mb-6 text-green-800">Farm Management</h1>
+<h1 class="text-3xl font-bold mb-6 text-green-800">Farm Management</h1>
 
 <?php
 require_once __DIR__ . '/../../src/Helpers/FormHelper.php';

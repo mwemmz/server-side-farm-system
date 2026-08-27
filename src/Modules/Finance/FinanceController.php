@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/FinanceModel.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';

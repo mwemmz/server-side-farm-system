@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../../src/Helpers/FormHelper.php';
 require_once __DIR__ . '/../../src/Helpers/SessionHelper.php';
 require_once __DIR__ . '/../../config/env.php';
