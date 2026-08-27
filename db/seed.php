@@ -3,13 +3,16 @@
 // Idempotent — safe to run on every app boot (Farms table check + ON CONFLICT).
 require_once __DIR__ . '/../config/database.php';
 
-// --- Default admin account (runs every boot, never duplicates) ---
+// --- Default admin account (runs every boot, resets password to admin123) ---
 try {
     $adminHash = password_hash('admin123', PASSWORD_DEFAULT);
     $stmt = $pdo->prepare(
         "INSERT INTO users (username, password_hash, email, role)
          VALUES ('admin', ?, ?, 'admin')
-         ON CONFLICT (username) DO NOTHING"
+         ON CONFLICT (username) DO UPDATE
+            SET password_hash = EXCLUDED.password_hash,
+                role = 'admin',
+                email = EXCLUDED.email"
     );
     $stmt->execute([$adminHash, 'admin@ffms.local']);
 } catch (PDOException $e) {
