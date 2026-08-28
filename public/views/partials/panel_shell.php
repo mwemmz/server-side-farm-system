@@ -11,17 +11,27 @@
  */
 $panelEntities = isset($panelEntities) ? $panelEntities : [];
 $panelFarmId   = isset($panelFarmId)   ? $panelFarmId   : null;
+
+// Allow a farm/asset filter from the URL (?farm_id=, ?asset=) so markers on the
+// farm map can deep-link straight into the relevant module scoped to that asset.
+$wantedFarmId = isset($_GET['farm_id']) ? (int) $_GET['farm_id'] : 0;
+if ($wantedFarmId) $panelFarmId = $wantedFarmId;
+$wantedAssetId = isset($_GET['asset']) ? (int) $_GET['asset'] : 0;
+
 $firstId       = null;
 $selectorOptions = '';
 foreach ($panelEntities as $eid => $elabel) {
-    $selectorOptions .= '<option value="' . (int) $eid . '"' . ($firstId === null ? ' selected' : '') . '>'
+    $isSel = ($wantedAssetId && $wantedAssetId === (int) $eid)
+        || (!$wantedAssetId && $firstId === null);
+    $selectorOptions .= '<option value="' . (int) $eid . '"' . ($isSel ? ' selected' : '') . '>'
         . htmlspecialchars($elabel) . '</option>';
     if ($firstId === null) $firstId = (int) $eid;
 }
+$startingId = ($wantedAssetId && array_key_exists($wantedAssetId, $panelEntities)) ? $wantedAssetId : ($firstId ?: 0);
 $cfg = [
     'module'  => $panelModule,
     'pollMs'  => 5000,
-    'entity'  => ['id' => ($firstId ?: 0)],
+    'entity'  => ['id' => $startingId],
     'farmId'  => $panelFarmId,
 ];
 ?>
