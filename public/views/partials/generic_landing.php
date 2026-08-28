@@ -8,8 +8,7 @@
  * Expected: $module (current module name), $data (index() record list), and the
  * app's $pdo / $config globals are in scope.
  */
-require_once __DIR__ . '/../../config/env.php';
-ini_set('display_errors', '1'); error_reporting(E_ALL); // TEMP DIAGNOSTIC
+require_once __DIR__ . '/../../../config/env.php';
 $recs = $data ?? [];
 $m    = isset($module) ? $module : ($_GET['module'] ?? 'Module');
 
