@@ -11,6 +11,12 @@ try {
     $pdo->exec("ALTER TABLE farms ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION DEFAULT -15.3875");
     $pdo->exec("ALTER TABLE farms ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION DEFAULT 28.3228");
 
+    // Phase 5 Intelligence-layer schema (idempotent)
+    $intelSchema = file_get_contents(__DIR__ . '/intelligence_schema.sql');
+    if ($intelSchema !== false) {
+        $pdo->exec($intelSchema);
+    }
+
     // Seed default admin + mock data (idempotent)
     require_once __DIR__ . '/seed.php';
 } catch (PDOException $e) {

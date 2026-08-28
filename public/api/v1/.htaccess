@@ -1,0 +1,7 @@
+# Route all /api/v1 requests to the front controller.
+RewriteEngine On
+
+# Only apply when the request is not for a real file/directory.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
