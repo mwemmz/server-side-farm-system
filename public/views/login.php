@@ -80,6 +80,41 @@
             </button>
         </form>
 
+        <!-- About / insight -->
+        <div class="mt-8 pt-6 border-t border-white/10">
+            <h3 class="text-sm font-bold text-white mb-3">What is FFMS?</h3>
+            <p class="text-[13px] leading-relaxed text-slate-300">
+                An intelligent farm management system that replaces scattered paper records,
+                spreadsheets and guesswork with one place to run your entire agribusiness —
+                from crops and livestock to inventory, procurement, sales and finance.
+            </p>
+            <p class="text-[13px] leading-relaxed text-slate-300 mt-3">
+                It helps solve the problems that quietly drain smallholder and commercial farms:
+                <span class="text-slate-100">never knowing what stock is running low</span>,
+                <span class="text-slate-100">irrigating by guesswork instead of rainfall data</span>,
+                <span class="text-slate-100">selling on gut feel instead of market trends</span>, and
+                <span class="text-slate-100">poor visibility of costs and revenue</span>.
+            </p>
+            <div class="mt-4 grid grid-cols-2 gap-2">
+                <div class="rounded-lg bg-white/5 border border-white/10 px-3 py-2.5">
+                    <div class="text-[15px] font-extrabold text-green-400">Real-time</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">Live inventory balances &amp; low-stock alerts</div>
+                </div>
+                <div class="rounded-lg bg-white/5 border border-white/10 px-3 py-2.5">
+                    <div class="text-[15px] font-extrabold text-green-400">Data-driven</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">Weather-driven irrigation &amp; yield prediction</div>
+                </div>
+                <div class="rounded-lg bg-white/5 border border-white/10 px-3 py-2.5">
+                    <div class="text-[15px] font-extrabold text-green-400">Smarter sales</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">Sell-now vs wait market recommendations</div>
+                </div>
+                <div class="rounded-lg bg-white/5 border border-white/10 px-3 py-2.5">
+                    <div class="text-[15px] font-extrabold text-green-400">Controlled</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">Harvest → finance approval workflow &amp; audit trail</div>
+                </div>
+            </div>
+        </div>
+
         <div class="mt-6 text-center text-[11px] text-slate-500">
             Default test account: <span class="text-slate-300 font-semibold">admin</span> / <span class="text-slate-300 font-semibold">admin123</span>
         </div>
