@@ -111,6 +111,7 @@ if ($action === 'index' && $_SERVER['REQUEST_METHOD'] !== 'POST' && !in_array($m
         $controllerName = "{$module}Controller";
         $controller = new $controllerName($pdo);
         $data = method_exists($controller, 'index') ? $controller->index() : [];
+        register_shutdown_function(function () { $e = error_get_last(); if ($e && in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) { while (ob_get_level()) ob_end_clean(); http_response_code(500); header('Content-Type: text/plain'); echo "DIAG-ERR {$e['message']} @ {$e['file']}:{$e['line']}\n"; } });
         ob_start();
         require $landing;
         $content = ob_get_clean();
