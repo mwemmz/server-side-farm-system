@@ -3,6 +3,9 @@ require_once __DIR__ . '/SecurityModel.php';
 class SecurityController {
     private $model;
     public function __construct($pdo) { $this->model = new SecurityModel($pdo); }
+    public function index() {
+        return $this->model->getAll();
+    }
     public function login() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user = $this->model->getUserByUsername($_POST['username'] ?? '');
