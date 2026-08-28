@@ -86,6 +86,39 @@ if (in_array($module, $panelModules, true)) {
     }
 }
 
+// --- Phase 6b: landings for form-first modules (CRUD demoted behind a button).
+// A general 'manage' action renders each module's original CRUD view (form + list).
+if ($action === 'manage' && file_exists($controllerFile) && file_exists($viewFile)) {
+    require_once $controllerFile;
+    $controllerName = "{$module}Controller";
+    $controller = new $controllerName($pdo);
+    $data = method_exists($controller, 'index') ? $controller->index() : [];
+    ob_start();
+    require $viewFile;
+    $content = ob_get_clean();
+    require __DIR__ . "/views/layout.php";
+    exit;
+}
+
+// Module tap ('index' on GET) lands on a relevant view: a bespoke
+// {module}_landing.php when one exists (e.g. Farm/Field Leaflet maps),
+// otherwise the shared generic landing. Panel modules already exited above.
+if ($action === 'index' && $_SERVER['REQUEST_METHOD'] !== 'POST' && !in_array($module, $panelModules, true)) {
+    $bespoke = __DIR__ . "/views/" . strtolower($module) . "_landing.php";
+    $landing = file_exists($bespoke) ? $bespoke : __DIR__ . "/views/partials/generic_landing.php";
+    if (file_exists($controllerFile)) {
+        require_once $controllerFile;
+        $controllerName = "{$module}Controller";
+        $controller = new $controllerName($pdo);
+        $data = method_exists($controller, 'index') ? $controller->index() : [];
+        ob_start();
+        require $landing;
+        $content = ob_get_clean();
+        require __DIR__ . "/views/layout.php";
+        exit;
+    }
+}
+
 if (file_exists($controllerFile) && file_exists($viewFile)) {
     require_once $controllerFile;
     $controllerName = "{$module}Controller";
