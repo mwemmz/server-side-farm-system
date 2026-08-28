@@ -180,6 +180,36 @@ if ($segments[0] === 'financials' && ($segments[1] ?? null) === 'panel') {
     return api_ok((new FinancialPanelService($pdo))->panel($_GET['farm_id'] ?? null));
 }
 
+// ---- AI/BI: Insights recommendations ----
+if ($segments[0] === 'insights' && ($segments[1] ?? null) === 'recommendations') {
+    require_once __DIR__ . '/../../../src/Intelligence/InsightsEngine.php';
+    $engine = new InsightsEngine($pdo);
+    $module = $_GET['module'] ?? null;
+    return api_ok([
+        'recommendations' => $engine->all($module),
+        'stats'           => $engine->stats(),
+    ]);
+}
+
+// ---- AI/BI: Assistant ----
+if ($segments[0] === 'assistant' && ($segments[1] ?? null) === 'chat') {
+    require_once __DIR__ . '/../../../src/Intelligence/Assistant.php';
+    if ($method !== 'post') api_err('Method not allowed', 405);
+    $body = api_body();
+    $question = $body['message'] ?? '';
+    return api_ok((new Assistant($pdo))->answer($question));
+}
+
+if ($segments[0] === 'assistant' && ($segments[1] ?? null) === 'summary') {
+    require_once __DIR__ . '/../../../src/Intelligence/InsightsEngine.php';
+    $engine = new InsightsEngine($pdo);
+    return api_ok([
+        'stats'  => $engine->stats(),
+        'top'    => $engine->prioritized(5),
+        'tip'    => 'Try POST /api/v1/assistant/chat with {"message":"What should I do this week?"}',
+    ]);
+}
+
 api_err('Route not found', 404);
 
 // The token endpoint is defined as a function for clarity.

@@ -37,6 +37,14 @@ $cfg = [
 ?>
 <h1 class="text-2xl sm:text-3xl font-bold mb-6 text-green-800"><?php echo htmlspecialchars($panelTitle); ?></h1>
 
+<?php
+// Contextual AI recommendation cards (data-driven) for this panel's module.
+require_once __DIR__ . '/../../../src/Intelligence/InsightsEngine.php';
+$engine = new InsightsEngine($pdo);
+$ctxModule = $panelModule;
+require __DIR__ . '/recommendation_cards.php';
+?>
+
 <script type="application/json" id="ff-panel-config"><?php echo json_encode($cfg); ?></script>
 
 <?php if ($selectorOptions): ?>

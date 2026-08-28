@@ -157,6 +157,46 @@ function weatherIcon($code) {
             <canvas id="costSalesChart" height="200"></canvas>
         </div>
     </div>
+
+    <!-- AI Insights feed -->
+    <?php
+    require_once __DIR__ . '/../../src/Intelligence/InsightsEngine.php';
+    $insightsEngine = new InsightsEngine($pdo);
+    $insightRecs   = $insightsEngine->prioritized(4);
+    $insightStats  = $insightsEngine->stats();
+    $insBadge = ['high' => 'bg-red-100 text-red-700', 'medium' => 'bg-amber-100 text-amber-700', 'low' => 'bg-slate-100 text-slate-600'];
+    ?>
+    <div class="glass-card card-glow p-5 md:p-6">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+                <span class="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500"></span>
+                <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider">AI Recommendations</h3>
+                <?php $hi = $insightStats['by_priority']['high'] ?? 0; if ($hi): ?>
+                    <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-700"><?php echo $hi; ?> high</span>
+                <?php endif; ?>
+            </div>
+            <a href="index.php?module=Insights" class="text-xs font-bold text-green-700 hover:text-green-800">Open Insights feed →</a>
+        </div>
+        <?php if (!$insightRecs): ?>
+            <p class="text-sm text-slate-500">No recommendations right now — everything looks on track.</p>
+        <?php else: ?>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <?php foreach ($insightRecs as $r): ?>
+                    <?php $b = $insBadge[$r['priority']] ?? $insBadge['low']; ?>
+                    <a href="<?php echo htmlspecialchars($r['link']); ?>" class="flex items-start gap-3 rounded-xl border border-slate-100 bg-white/60 p-3 hover:bg-white hover:shadow-sm transition group">
+                        <span class="mt-1 w-2 h-2 rounded-full <?php echo $r['priority'] === 'high' ? 'bg-red-500' : ($r['priority'] === 'medium' ? 'bg-amber-500' : 'bg-slate-400'); ?> shrink-0"></span>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-sm font-bold text-slate-800"><?php echo htmlspecialchars($r['title']); ?></span>
+                                <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full <?php echo $b; ?> shrink-0"><?php echo $r['priority']; ?></span>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-0.5"><?php echo htmlspecialchars($r['message']); ?></p>
+                        </div>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
 </div>
 
 <script>

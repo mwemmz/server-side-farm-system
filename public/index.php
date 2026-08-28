@@ -45,6 +45,45 @@ if ($module === 'Finance' && !in_array($role, $financeOnly, true)) {
 $module = $_GET['module'] ?? 'Dashboard';
 $action = $_GET['action'] ?? 'index';
 
+// --- AI/BI (Insights + Assistant): JSON actions + the Insights feed page ---
+require_once __DIR__ . '/../src/Intelligence/InsightsEngine.php';
+require_once __DIR__ . '/../src/Intelligence/Assistant.php';
+$insightsEngine = new InsightsEngine($pdo);
+
+if ($module === 'Insights') {
+    if ($action === 'recommendations_json') {
+        header('Content-Type: application/json; charset=UTF-8');
+        $filter = $_GET['module_filter'] ?? null;
+        $json = ['success' => true, 'data' => [
+            'recommendations' => $insightsEngine->all($filter),
+            'stats'           => $insightsEngine->stats(),
+        ]];
+        echo json_encode($json);
+        exit;
+    }
+    if ($action === 'chat') {
+        header('Content-Type: application/json; charset=UTF-8');
+        $assistant = new Assistant($pdo);
+        $question = $_POST['message'] ?? ($_GET['message'] ?? '');
+        $reply = $assistant->answer($question);
+        echo json_encode(['success' => true, 'data' => $reply]);
+        exit;
+    }
+
+    // Feed page.
+    $viewFile = __DIR__ . "/views/insights_landing.php";
+    if (file_exists($viewFile)) {
+        $engine = $insightsEngine;
+        $recs   = $engine->all();
+        $stats  = $engine->stats();
+        ob_start();
+        require $viewFile;
+        $content = ob_get_clean();
+        require __DIR__ . "/views/layout.php";
+        exit;
+    }
+}
+
 if ($module === 'Dashboard') {
     $viewFile = __DIR__ . "/views/dashboard.php";
     ob_start();

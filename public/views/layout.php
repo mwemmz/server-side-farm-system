@@ -60,6 +60,7 @@
                 'Supplier' => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/>',
                 'Storage' => '<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
                 'Analytics' => '<line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/>',
+                'Insights' => '<path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5.76.76 1.23 1.52 1.41 2.5"/>',
                 'Notifications' => '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
                 'Reports' => '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/>',
                 'Security' => '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
@@ -255,6 +256,142 @@
             document.querySelectorAll('.mobile-nav-link').forEach(link => link.addEventListener('click', closeDrawer));
             window.addEventListener('resize', () => { if (window.innerWidth >= 768) closeDrawer(); });
         }
+    </script>
+
+    <!-- ============ Floating AI Assistant chat widget ============ -->
+    <div id="ff-chat-root" class="fixed bottom-5 right-5 z-[100]">
+        <!-- Launcher -->
+        <button id="ff-chat-fab" aria-label="Open AI assistant"
+                class="flex items-center gap-2 pl-3 pr-4 py-3 rounded-full bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-xl shadow-emerald-900/40 hover:shadow-emerald-700/50 hover:scale-[1.03] transition-all">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+            <span class="text-sm font-bold hidden sm:inline">AI Assistant</span>
+        </button>
+
+        <!-- Window -->
+        <div id="ff-chat-window" class="hidden fixed bottom-24 right-4 sm:right-5 w-[calc(100vw-2rem)] sm:w-96 max-h-[75vh] flex-col rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
+            <!-- Header -->
+            <div class="flex items-center justify-between px-4 py-3 bg-slate-950 text-white">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    </div>
+                    <div>
+                        <div class="text-sm font-bold leading-none">AI Assistant</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">Over your farm data</div>
+                    </div>
+                </div>
+                <button id="ff-chat-close" aria-label="Close chat" class="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition">
+                    <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+            </div>
+            <!-- Messages -->
+            <div id="ff-chat-msgs" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50 min-h-[16rem] max-h-[52vh]">
+                <div class="flex gap-2 items-end">
+                    <div class="max-w-[85%] rounded-2xl rounded-bl-sm bg-white border border-slate-200 px-3 py-2 text-sm text-slate-700 shadow-sm">
+                        Hi! I can query your farm data. Try <em>"What should I do this week?"</em> or <em>"How much did I spend on fertilizer this season?"</em>
+                    </div>
+                </div>
+            </div>
+            <!-- Suggestions -->
+            <div id="ff-chat-chips" class="px-3 pb-2 flex flex-wrap gap-1.5">
+                <button class="ff-chip text-[11px] px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 transition">What should I do this week?</button>
+                <button class="ff-chip text-[11px] px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 transition">Is it a good time to sell?</button>
+                <button class="ff-chip text-[11px] px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 transition">What's low in stock?</button>
+            </div>
+            <!-- Input -->
+            <div class="border-t border-slate-200 p-3 bg-white">
+                <form id="ff-chat-form" class="flex gap-2">
+                    <input id="ff-chat-input" type="text" autocomplete="off" placeholder="Ask about your farm…"
+                           class="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500/40">
+                    <button type="submit" class="shrink-0 px-3 py-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-bold hover:opacity-90 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const fab = document.getElementById('ff-chat-fab');
+            const win = document.getElementById('ff-chat-window');
+            const closeBtn = document.getElementById('ff-chat-close');
+            const msgs = document.getElementById('ff-chat-msgs');
+            const form = document.getElementById('ff-chat-form');
+            const input = document.getElementById('ff-chat-input');
+
+            function esc(s) {
+                return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+
+            function appendBot(text, cards) {
+                let html = '<div class="flex gap-2 items-end"><div class="max-w-[85%] rounded-2xl rounded-bl-sm bg-white border border-slate-200 px-3 py-2 text-sm text-slate-700 shadow-sm whitespace-pre-wrap">' + esc(text);
+                if (cards && cards.length) {
+                    html += '<div class="mt-2 space-y-1.5">';
+                    cards.forEach(c => {
+                        html += '<a href="' + esc(c.link || '#') + '" class="ff-card-link block rounded-lg border border-green-100 bg-green-50/60 px-2.5 py-1.5 hover:bg-green-50 transition">'
+                            + '<div class="text-xs font-bold text-green-800">' + esc(c.title || '') + '</div>'
+                            + '<div class="text-[11px] text-slate-600 mt-0.5">' + esc(c.body || '') + '</div></a>';
+                    });
+                    html += '</div>';
+                }
+                html += '</div></div>';
+                msgs.insertAdjacentHTML('beforeend', html);
+                msgs.scrollTop = msgs.scrollHeight;
+            }
+
+            function appendUser(text) {
+                msgs.insertAdjacentHTML('beforeend',
+                    '<div class="flex justify-end"><div class="max-w-[85%] rounded-2xl rounded-br-sm bg-green-600 text-white px-3 py-2 text-sm shadow-sm">' + esc(text) + '</div></div>');
+                msgs.scrollTop = msgs.scrollHeight;
+            }
+
+            async function send(q) {
+                if (!q.trim()) return;
+                appendUser(q.trim().replace(/\n/g, ' '));
+                input.value = '';
+                const typing = '<div class="flex gap-2 items-end"><div class="px-3 py-2 rounded-2xl rounded-bl-sm bg-white border border-slate-200 text-sm text-slate-400 shadow-sm">typing…</div></div>';
+                msgs.insertAdjacentHTML('beforeend', typing);
+                msgs.scrollTop = msgs.scrollHeight;
+                try {
+                    const fd = new FormData();
+                    fd.append('message', q);
+                    const res = await fetch('index.php?module=Insights&action=chat', { method: 'POST', body: fd });
+                    const json = await res.json();
+                    const typingEl = msgs.querySelector('.typing-row') || msgs.lastElementChild;
+                    typingEl.remove();
+                    const d = (json && json.data) || {};
+                    appendBot(d.text || 'Sorry, something went wrong.', d.cards || []);
+                } catch (e) {
+                    msgs.lastElementChild.remove();
+                    appendBot('Could not reach the assistant. Please try again.');
+                }
+                window.scrollTo(0, document.body.scrollHeight);
+            }
+
+            if (fab) {
+                fab.addEventListener('click', () => {
+                    win.classList.remove('hidden');
+                    win.classList.add('flex');
+                    fab.classList.add('hidden');
+                    input.focus();
+                });
+            }
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    win.classList.add('hidden');
+                    win.classList.remove('flex');
+                    fab.classList.remove('hidden');
+                });
+            }
+            if (form) {
+                form.addEventListener('submit', (e) => { e.preventDefault(); send(input.value); });
+            }
+            document.querySelectorAll('.ff-chip').forEach(btn => {
+                btn.addEventListener('click', () => send(btn.textContent));
+            });
+            document.querySelectorAll('#ff-chat-root .ff-card-link').forEach(a => a.addEventListener('click', () => {}));
+        })();
     </script>
 </body>
 </html>

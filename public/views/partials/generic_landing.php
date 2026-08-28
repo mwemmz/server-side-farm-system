@@ -187,6 +187,17 @@ foreach ($summaries as $s) {
 <h1 class="text-2xl sm:text-3xl font-bold mb-1 text-green-800"><?php echo esc($title); ?></h1>
 <?php if ($subtitle): ?><p class="text-sm text-slate-500 mb-5"><?php echo esc($subtitle); ?></p><?php endif; ?>
 
+<?php
+// Contextual AI recommendation cards (data-driven) — only render for modules
+// that have live recommendations, so other landings ignore this silently.
+if (in_array($m, ['Inventory', 'Pest', 'Sales', 'Crop', 'Harvest', 'Market', 'Procurement', 'Supplier'], true)) {
+    require_once __DIR__ . '/../../../src/Intelligence/InsightsEngine.php';
+    $engine    = new InsightsEngine($pdo);
+    $ctxModule = $m;
+    require __DIR__ . '/recommendation_cards.php';
+}
+?>
+
 <div class="flex items-center justify-between mb-4">
     <a href="<?php echo esc($addLink); ?>" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-bold shadow-lg hover:shadow-emerald-700/40 transition-shadow">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
