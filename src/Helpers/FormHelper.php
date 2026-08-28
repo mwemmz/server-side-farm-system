@@ -10,14 +10,21 @@ class FormHelper {
             $value = $field['value'] ?? '';
             
             $html .= "<div class='flex flex-col gap-2'>";
-            $html .= "<label for='$name' class='text-sm font-semibold text-gray-700'>$label</label>";
-            $html .= "<input type='$type' name='$name' id='$name' value='" . htmlspecialchars($value) . "' autocomplete='off' class='w-full px-4 py-2.5 text-slate-800 bg-white/70 border rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:bg-white transition duration-150 placeholder:text-slate-400 " . (isset($errors[$name]) ? 'border-red-400' : 'border-slate-200') . "'>";
+            $html .= "<label for='$name' class='text-sm font-semibold text-slate-700'>$label</label>";
+            $base = "class='w-full px-4 py-2.5 text-slate-800 bg-white/70 border rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:bg-white transition duration-150 placeholder:text-slate-400 " . (isset($errors[$name]) ? 'border-red-400' : 'border-slate-200') . "'";
+            if ($type === 'textarea') {
+                // Content is placed inside the textarea, so echo the decoded value directly
+                $content = htmlspecialchars_decode($value);
+                $html .= "<textarea name='$name' id='$name' rows='3' $base>" . htmlspecialchars($content) . "</textarea>";
+            } else {
+                $html .= "<input type='$type' name='$name' id='$name' value='" . htmlspecialchars($value) . "' autocomplete='off' $base>";
+            }
             if (isset($errors[$name])) {
                 $html .= "<span class='text-red-600 text-xs font-medium'>{$errors[$name]}</span>";
             }
             $html .= "</div>";
         }
-        $html .= "<button type='submit' class='w-full bg-green-700 hover:bg-green-800 text-white font-bold py-2 px-4 rounded-lg transition duration-150'>Submit</button>";
+        $html .= "<button type='submit' class='w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-2.5 px-4 rounded-lg shadow-lg shadow-green-900/30 transition duration-150'>Submit</button>";
         $html .= "</form>";
         return $html;
     }
