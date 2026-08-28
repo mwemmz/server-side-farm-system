@@ -73,15 +73,14 @@ class JwtHelper {
 
     /** Extract the Bearer token from the Authorization header. @return string|null */
     public static function tokenFromHeader() {
-        if (!isset($_SERVER['HTTP_AUTHORIZATION'])) {
-            // Fallback for servers that don't expose HTTP_AUTHORIZATION
-            if (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
-                $header = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
-            } else {
-                return null;
-            }
-        } else {
+        if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
             $header = $_SERVER['HTTP_AUTHORIZATION'];
+        } elseif (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+            $header = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+        } elseif (isset($_SERVER['REDIRECT_REDIRECT_HTTP_AUTHORIZATION'])) {
+            $header = $_SERVER['REDIRECT_REDIRECT_HTTP_AUTHORIZATION'];
+        } else {
+            return null;
         }
         if (preg_match('/Bearer\s+(.+)/i', $header, $m)) {
             return trim($m[1]);

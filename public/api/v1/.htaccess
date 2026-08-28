@@ -1,6 +1,11 @@
 # Route all /api/v1 requests to the front controller.
 RewriteEngine On
 
+# Apache (by default) strips the Authorization header before PHP sees it.
+# Promote it back into the environment so PHP can read it as HTTP_AUTHORIZATION.
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
 # Only apply when the request is not for a real file/directory.
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
