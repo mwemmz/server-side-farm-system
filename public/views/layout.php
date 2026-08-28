@@ -100,15 +100,75 @@
     <!-- Main content area -->
     <div class="flex-1 flex flex-col min-w-0">
         <!-- Mobile top bar -->
-        <header class="md:hidden sticky top-0 z-30 bg-slate-950/90 backdrop-blur-lg text-white flex items-center justify-between px-4 py-3 shadow-lg border-b border-white/10">
+        <header class="md:hidden sticky top-0 z-40 bg-slate-950/90 backdrop-blur-lg text-white flex items-center justify-between px-3 sm:px-4 py-3 shadow-lg border-b border-white/10">
             <div class="flex items-center gap-2 font-extrabold tracking-tight">
+                <button id="mobile-menu-btn" aria-label="Open menu" aria-controls="mobile-drawer"
+                        class="p-2 -ml-1 rounded-lg bg-white/10 hover:bg-white/20 transition">
+                    <svg class="w-5 h-5 text-slate-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" x2="21" y1="6" y2="6"/><line x1="3" x2="21" y1="12" y2="12"/><line x1="3" x2="21" y1="18" y2="18"/></svg>
+                </button>
                 <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 FFMS
             </div>
-            <button id="theme-toggle" class="p-2 rounded-full bg-white/10 hover:bg-white/20 transition">
-                <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            </button>
+            <div class="flex items-center gap-2">
+                <button id="theme-toggle" class="p-2 rounded-full bg-white/10 hover:bg-white/20 transition">
+                    <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                </button>
+            </div>
         </header>
+
+        <!-- Mobile slide-in drawer -->
+        <div id="mobile-drawer" class="md:hidden fixed inset-0 z-50 hidden" aria-hidden="true">
+            <!-- Backdrop -->
+            <div id="mobile-drawer-backdrop" class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
+            <!-- Panel -->
+            <div id="mobile-drawer-panel" class="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-slate-950 text-slate-200 flex flex-col shadow-2xl -translate-x-full transition-transform duration-300 ease-out">
+                <!-- Brand + close -->
+                <div class="px-4 py-4 flex items-center justify-between border-b border-white/10">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </div>
+                        <div>
+                            <div class="text-base font-extrabold text-white leading-none">FFMS</div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">Farm Management</div>
+                        </div>
+                    </div>
+                    <button id="mobile-menu-close" aria-label="Close menu" class="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition">
+                        <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                </div>
+                <!-- Links -->
+                <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+                    <?php
+                    foreach ($modules as $mod => $iconPath) {
+                        $isActive = ($currentModule === $mod);
+                        $activeClass = $isActive
+                            ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white'
+                            : 'text-slate-400 hover:bg-white/5 hover:text-white';
+                        echo "<a href='index.php?module={$mod}' class='mobile-nav-link flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 {$activeClass}'>
+                            <svg class='w-5 h-5 shrink-0' fill='none' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24'>{$iconPath}</svg>
+                            <span>{$mod}</span>
+                        </a>";
+                    }
+                    ?>
+                </nav>
+                <!-- User footer -->
+                <div class="px-4 py-4 border-t border-white/10">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-green-600 to-emerald-700 flex items-center justify-center text-xs font-bold text-white shrink-0"><?php echo strtoupper(substr($_SESSION['username'] ?? 'A', 0, 1)); ?></div>
+                        <div class="min-w-0">
+                            <div class="text-sm font-semibold text-slate-200 truncate capitalize"><?php echo htmlspecialchars($_SESSION['username'] ?? 'Administrator'); ?></div>
+                            <div class="text-[11px] text-slate-500 truncate"><?php echo htmlspecialchars(ucfirst($_SESSION['role'] ?? 'user')); ?></div>
+                        </div>
+                    </div>
+                    <a href="index.php?module=Security&action=logout"
+                       class="mt-3 w-full flex items-center justify-center gap-2 rounded-xl bg-white/5 border border-white/10 text-xs font-semibold text-slate-300 hover:bg-white/10 hover:text-white transition-colors py-2">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                        Sign out
+                    </a>
+                </div>
+            </div>
+        </div>
 
         <!-- Top bar (desktop) -->
         <header class="hidden md:flex sticky top-0 z-30 bg-slate-950/80 backdrop-blur-xl text-white items-center justify-between px-8 py-3 shadow-lg border-b border-white/10">
@@ -124,7 +184,7 @@
             </div>
         </header>
 
-        <main class="flex-1 p-4 md:p-8 max-w-[1400px] w-full mx-auto relative">
+        <main class="flex-1 p-3 sm:p-4 md:p-8 max-w-[1400px] w-full mx-auto relative overflow-x-hidden">
             <!-- Decorative background blobs -->
             <div class="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden>
                 <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-green-400/15 blur-3xl animate-blob"></div>
@@ -162,6 +222,39 @@
                 localStorage.setItem('theme', body.classList.contains('dark') ? 'dark' : 'light');
             });
         });
+
+        // Mobile navigation drawer
+        const drawer = document.getElementById('mobile-drawer');
+        const panel = document.getElementById('mobile-drawer-panel');
+        const openBtn = document.getElementById('mobile-menu-btn');
+        const closeBtn = document.getElementById('mobile-menu-close');
+        const backdrop = document.getElementById('mobile-drawer-backdrop');
+
+        function openDrawer() {
+            drawer.classList.remove('hidden');
+            drawer.setAttribute('aria-hidden', 'false');
+            // force reflow then animate
+            requestAnimationFrame(() => panel.classList.remove('-translate-x-full'));
+            body.style.overflow = 'hidden';
+        }
+        function closeDrawer() {
+            panel.classList.add('-translate-x-full');
+            body.style.overflow = '';
+            setTimeout(() => {
+                drawer.classList.add('hidden');
+                drawer.setAttribute('aria-hidden', 'true');
+            }, 300);
+        }
+
+        if (openBtn && drawer) {
+            openBtn.addEventListener('click', openDrawer);
+            closeBtn.addEventListener('click', closeDrawer);
+            backdrop.addEventListener('click', closeDrawer);
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawer(); });
+            // Close on navigation + resize to desktop
+            document.querySelectorAll('.mobile-nav-link').forEach(link => link.addEventListener('click', closeDrawer));
+            window.addEventListener('resize', () => { if (window.innerWidth >= 768) closeDrawer(); });
+        }
     </script>
 </body>
 </html>

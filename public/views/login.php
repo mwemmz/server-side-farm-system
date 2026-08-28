@@ -34,14 +34,14 @@
         input:focus { outline: none; border-color: rgba(34, 197, 94, 0.6); box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15); }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
+<body class="min-h-screen flex items-start sm:items-center justify-center p-4 py-8 sm:p-4">
     <!-- Decorative blobs -->
     <div class="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
         <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-green-400/15 blur-3xl"></div>
         <div class="absolute bottom-0 -right-32 w-[28rem] h-[28rem] rounded-full bg-amber-400/10 blur-3xl"></div>
     </div>
 
-    <div class="glass-card rounded-3xl p-8 w-full max-w-md relative z-10 animate-fade-in-up">
+    <div class="glass-card rounded-3xl p-5 sm:p-8 w-full max-w-md relative z-10 animate-fade-in-up">
         <!-- Brand -->
         <div class="flex items-center gap-3 mb-8">
             <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-900/40">
@@ -95,7 +95,7 @@
                 <span class="text-slate-100">selling on gut feel instead of market trends</span>, and
                 <span class="text-slate-100">poor visibility of costs and revenue</span>.
             </p>
-            <div class="mt-4 grid grid-cols-2 gap-2">
+            <div class="mt-4 grid grid-cols-1 min-[400px]:grid-cols-2 gap-2">
                 <div class="rounded-lg bg-white/5 border border-white/10 px-3 py-2.5">
                     <div class="text-[15px] font-extrabold text-green-400">Real-time</div>
                     <div class="text-[11px] text-slate-400 mt-0.5">Live inventory balances &amp; low-stock alerts</div>
