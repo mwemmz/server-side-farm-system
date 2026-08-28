@@ -57,6 +57,35 @@ if ($module === 'Dashboard') {
 $controllerFile = __DIR__ . "/../src/Modules/{$module}/{$module}Controller.php";
 $viewFile = __DIR__ . "/views/" . strtolower($module) . ".php";
 
+// --- Phase 6: Control-panel modules (live dashboards) ---
+$panelModules = ['Irrigation', 'Storage', 'Equipment', 'Livestock', 'Weather', 'Finance'];
+if (in_array($module, $panelModules, true)) {
+    // Live polling JSON endpoint (session-authenticated).
+    if ($action === 'panel_json' || $action === 'panel_act') {
+        require_once __DIR__ . '/../src/Intelligence/Panels/PanelJsonGateway.php';
+        PanelJsonGateway::dispatch($pdo, $module, $_GET);
+        exit;
+    }
+
+    // Module landing (tap) -> panel view, unless an explicit CRUD action is requested.
+    $isCrudAction = in_array($action, ['add', 'edit', 'delete', 'manage'], true)
+        || ($_SERVER['REQUEST_METHOD'] === 'POST');
+    $panelView = __DIR__ . "/views/" . strtolower($module) . "_panel.php";
+
+    if (!$isCrudAction && file_exists($panelView)) {
+        require_once $controllerFile;
+        $controllerName = "{$module}Controller";
+        $controller = new $controllerName($pdo);
+        $data = $controller->index();
+
+        ob_start();
+        require $panelView;
+        $content = ob_get_clean();
+        require __DIR__ . "/views/layout.php";
+        exit;
+    }
+}
+
 if (file_exists($controllerFile) && file_exists($viewFile)) {
     require_once $controllerFile;
     $controllerName = "{$module}Controller";

@@ -17,6 +17,12 @@ try {
         $pdo->exec($intelSchema);
     }
 
+    // Phase 6 Control-panel schema (idempotent)
+    $panelSchema = file_get_contents(__DIR__ . '/panels_schema.sql');
+    if ($panelSchema !== false) {
+        $pdo->exec($panelSchema);
+    }
+
     // Seed default admin + mock data (idempotent)
     require_once __DIR__ . '/seed.php';
 } catch (PDOException $e) {
