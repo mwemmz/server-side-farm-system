@@ -8,7 +8,7 @@ $formData = $data['data'] ?? [];
 $crops = $data['crops'] ?? ($data ?? []); // Handle both cases for index and add
 ?>
 
-<h1 class="text-3xl font-bold mb-6 text-green-800">Crop Management</h1>
+<h1 class="text-2xl sm:text-3xl font-bold mb-6 text-green-800">Crop Management</h1>
 
 <?php if ($successMessage): ?>
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
@@ -16,7 +16,7 @@ $crops = $data['crops'] ?? ($data ?? []); // Handle both cases for index and add
     </div>
 <?php endif; ?>
 
-<div class="bg-white p-6 rounded-lg shadow mb-6">
+<div class="glass-card p-4 sm:p-6 mb-6">
     <h2 class="text-xl font-semibold mb-4">Add New Crop</h2>
     <?php
     $fields = [
@@ -30,12 +30,12 @@ $crops = $data['crops'] ?? ($data ?? []); // Handle both cases for index and add
     ?>
 </div>
 
-<div class="bg-white p-6 rounded-lg shadow">
+<div class="glass-card p-4 sm:p-6">
     <h2 class="text-xl font-semibold mb-4">Existing Crops</h2>
     <?php if (isset($crops) && !empty($crops)): ?>
-        <ul class="list-disc pl-6">
+        <ul class="space-y-2.5">
             <?php foreach ($crops as $crop): ?>
-                <li class="mb-2"><?php echo htmlspecialchars($crop['name']); ?> - <?php echo htmlspecialchars($crop['variety']); ?></li>
+                <li class="bg-white/50 border border-white/60 rounded-xl px-3.5 sm:px-4 py-3 text-sm text-slate-700 shadow-sm"><?php echo htmlspecialchars($crop['name']); ?> - <?php echo htmlspecialchars($crop['variety']); ?></li>
             <?php endforeach; ?>
         </ul>
     <?php else: ?>

@@ -11,7 +11,7 @@ class FormHelper {
             
             $html .= "<div class='flex flex-col gap-2'>";
             $html .= "<label for='$name' class='text-sm font-semibold text-gray-700'>$label</label>";
-            $html .= "<input type='$type' name='$name' id='$name' value='" . htmlspecialchars($value) . "' class='w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-150 " . (isset($errors[$name]) ? 'border-red-500' : 'border-gray-300') . "'>";
+            $html .= "<input type='$type' name='$name' id='$name' value='" . htmlspecialchars($value) . "' autocomplete='off' class='w-full px-4 py-2.5 text-slate-800 bg-white/70 border rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:bg-white transition duration-150 placeholder:text-slate-400 " . (isset($errors[$name]) ? 'border-red-400' : 'border-slate-200') . "'>";
             if (isset($errors[$name])) {
                 $html .= "<span class='text-red-600 text-xs font-medium'>{$errors[$name]}</span>";
             }

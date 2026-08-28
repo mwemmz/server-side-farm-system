@@ -16,7 +16,7 @@ $records = $data['records'] ?? ($data ?? []);
     </div>
 <?php endif; ?>
 
-<div class="bg-white p-6 rounded-lg shadow mb-6">
+<div class="glass-card p-4 sm:p-6 mb-6">
     <h2 class="text-xl font-semibold mb-4">Add New Pest Record</h2>
     <?php
     $fields = [
@@ -29,12 +29,12 @@ $records = $data['records'] ?? ($data ?? []);
     ?>
 </div>
 
-<div class="bg-white p-6 rounded-lg shadow">
+<div class="glass-card p-4 sm:p-6">
     <h2 class="text-xl font-semibold mb-4">Existing Records</h2>
     <?php if (isset($records) && !empty($records)): ?>
-        <ul class="list-disc pl-6">
+        <ul class="space-y-2.5">
             <?php foreach ($records as $record): ?>
-                <li class="mb-2"><?php echo htmlspecialchars($record['pest_name']); ?> - <?php echo htmlspecialchars($record['detected_date']); ?></li>
+                <li class="bg-white/50 border border-white/60 rounded-xl px-3.5 sm:px-4 py-3 text-sm text-slate-700 shadow-sm"><?php echo htmlspecialchars($record['pest_name']); ?> - <?php echo htmlspecialchars($record['detected_date']); ?></li>
             <?php endforeach; ?>
         </ul>
     <?php else: ?>
