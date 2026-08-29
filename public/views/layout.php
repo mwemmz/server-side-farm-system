@@ -42,6 +42,7 @@
         <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             <?php
             $currentModule = $_GET['module'] ?? 'Dashboard';
+            $currentView   = $_GET['view'] ?? '';
             $modules = [
                 'Dashboard' => '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
                 'Farm' => '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
@@ -61,19 +62,30 @@
                 'Storage' => '<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
                 'Analytics' => '<line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/>',
                 'Insights' => '<path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5.76.76 1.23 1.52 1.41 2.5"/>',
+                'Market Analysis' => '<path d="M3 3v18h18"/><path d="M7 15l3-3 3 2 4-6"/>',
                 'Notifications' => '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
                 'Reports' => '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/>',
                 'Security' => '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
                 'Procurement' => '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
                 'Sales' => '<line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/>',
             ];
+            // Resolve where each sidebar item links (Market Analysis is hosted
+            // under the Insights predictive-analytics view) and if it's active.
+            $navHref = []; $navActive = [];
             foreach ($modules as $mod => $iconPath) {
-                $isActive = ($currentModule === $mod);
+                $isMarket = ($mod === 'Market Analysis');
+                $navHref[$mod]   = $isMarket ? 'index.php?module=Insights&amp;view=market' : 'index.php?module=' . urlencode($mod);
+                $navActive[$mod] = $isMarket
+                    ? ($currentModule === 'Insights' && $currentView === 'market')
+                    : ($currentModule === $mod);
+            }
+            foreach ($modules as $mod => $iconPath) {
+                $isActive = $navActive[$mod];
                 $activeClass = $isActive
                     ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg shadow-green-900/40'
                     : 'text-slate-400 hover:bg-white/5 hover:text-white';
                 $dot = $isActive ? '<span class="ml-auto h-1.5 w-1.5 rounded-full bg-white/80"></span>' : '';
-                echo "<a href='index.php?module={$mod}' class='group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 {$activeClass}'>
+                echo "<a href='{$navHref[$mod]}' class='group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 {$activeClass}'>
                     <svg class='w-5 h-5 shrink-0 transition-transform duration-200 group-hover:scale-110' fill='none' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24'>{$iconPath}</svg>
                     <span>{$mod}</span>
                     {$dot}
@@ -142,11 +154,11 @@
                 <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
                     <?php
                     foreach ($modules as $mod => $iconPath) {
-                        $isActive = ($currentModule === $mod);
+                        $isActive = $navActive[$mod];
                         $activeClass = $isActive
                             ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white'
                             : 'text-slate-400 hover:bg-white/5 hover:text-white';
-                        echo "<a href='index.php?module={$mod}' class='mobile-nav-link flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 {$activeClass}'>
+                        echo "<a href='{$navHref[$mod]}' class='mobile-nav-link flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 {$activeClass}'>
                             <svg class='w-5 h-5 shrink-0' fill='none' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24'>{$iconPath}</svg>
                             <span>{$mod}</span>
                         </a>";

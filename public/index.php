@@ -48,7 +48,9 @@ $action = $_GET['action'] ?? 'index';
 // --- AI/BI (Insights + Assistant): JSON actions + the Insights feed page ---
 require_once __DIR__ . '/../src/Intelligence/InsightsEngine.php';
 require_once __DIR__ . '/../src/Intelligence/Assistant.php';
+require_once __DIR__ . '/../src/Intelligence/MarketAnalysis.php';
 $insightsEngine = new InsightsEngine($pdo);
+$marketAnalysis = new MarketAnalysis($pdo);
 
 if ($module === 'Insights') {
     if ($action === 'recommendations_json') {
@@ -114,6 +116,37 @@ if ($module === 'Insights') {
         }
         echo json_encode(['success' => true, 'data' => $hist]);
         exit;
+    }
+
+    // Market Analysis & Price Prediction (Predictive Analytics expansion).
+    if ($action === 'market_json') {
+        header('Content-Type: application/json; charset=UTF-8');
+        $crop  = $_GET['crop'] ?? 'Tomato';
+        $plant = max(1, min(12, (int) ($_GET['plant_month'] ?? 2)));
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'crops'      => $marketAnalysis->crops(),
+                'crop'       => ucfirst((string) $crop),
+                'plant_month'=> $plant,
+                'history'    => $marketAnalysis->priceHistory($crop, 2),
+                'report'     => $marketAnalysis->decisionReport($crop, $plant),
+            ],
+        ]);
+        exit;
+    }
+
+    // Market Analysis landing page (interactive "what to plant" tool).
+    if (($_GET['view'] ?? '') === 'market') {
+        $viewFile = __DIR__ . "/views/market_analysis.php";
+        if (file_exists($viewFile)) {
+            $data = [];
+            ob_start();
+            require $viewFile;
+            $content = ob_get_clean();
+            require __DIR__ . "/views/layout.php";
+            exit;
+        }
     }
 
     // Feed page.
