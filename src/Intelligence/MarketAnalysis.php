@@ -47,7 +47,7 @@ class MarketAnalysis {
     // anchor for the recommendation. Falls back to ~62% of the 2-year mean
     // price when no anchor is known for a crop.
     private $breakEven = [
-        'tomato' => 3.4, 'maize' => 2.4, 'soybeans' => 5.0, 'wheat' => 3.2,
+        'tomato' => 2.9, 'maize' => 2.4, 'soybeans' => 5.0, 'wheat' => 3.2,
         'groundnut' => 9.0, 'rice' => 3.4, 'cabbage' => 2.0, 'onion' => 3.0,
         'sunflower' => 4.2, 'beans' => 6.0, 'pepper' => 6.5, 'potato' => 3.6,
     ];
@@ -240,8 +240,8 @@ class MarketAnalysis {
         $vol = $season['volatility'] / 100; // fraction
         $coverage = count($hist);
         $dataConf = min(1.0, $coverage / 24);           // 24 months = full 2yr
-        $band = 0.14 + $vol * 0.5 * (1.0 + (1 - $dataConf)); // widen when data is thin
-        $band = min(0.55, $band);
+        $band = 0.10 + $vol * 0.35 * (1.0 + (1 - $dataConf)); // widen when data is thin
+        $band = min(0.35, $band);
         $low  = round(max(0.01, $projected * (1 - $band)), 2);
         $high = round($projected * (1 + $band), 2);
         $confidence = (int) round(min(95, 38 + $coverage * 2.4) * max(0.5, $dataConf));
@@ -337,7 +337,7 @@ class MarketAnalysis {
         // Recommendation. Profitable needs the whole band comfortably above
         // break-even; marginal if the upside can at least cover costs.
         $low = $pred['low']; $high = $pred['high'];
-        if ($low >= $be * 1.12)        { $verdict = 'profitable';   $verdictLabel = 'Profitable';   $color = 'green'; }
+        if ($low >= $be * 1.10)        { $verdict = 'profitable';   $verdictLabel = 'Profitable';   $color = 'green'; }
         elseif ($high >= $be * 1.05)   { $verdict = 'marginal';     $verdictLabel = 'Marginal';     $color = 'amber'; }
         else                           { $verdict = 'not_recommended'; $verdictLabel = 'Not recommended'; $color = 'red'; }
 
