@@ -73,10 +73,14 @@ class HrService {
         $st = $this->pdo->prepare("DELETE FROM employees WHERE id = ?"); return $st->execute([$id]);
     }
     public function seedLeaveBalances($empId) {
-        $types = ['annual', 'sick', 'maternity', 'paternity', 'unpaid'];
-        foreach ($types as $t) {
-            $st = $this->pdo->prepare("INSERT INTO leave_balances (employee_id, leave_type) VALUES (?, ?) ON CONFLICT DO NOTHING");
-            $st->execute([$empId, $t]);
+        // Leave entitlements per the Employment Code Act (annual/sick in working
+        // days; maternity 14 weeks; paternity 10 days paid).
+        $defaults = ['annual' => 24, 'sick' => 26, 'maternity' => 98, 'paternity' => 10, 'unpaid' => 0];
+        foreach ($defaults as $t => $total) {
+            $st = $this->pdo->prepare(
+                "INSERT INTO leave_balances (employee_id, leave_type, total_days, used_days)
+                 VALUES (?, ?, ?, 0) ON CONFLICT (employee_id, leave_type) DO NOTHING");
+            $st->execute([$empId, $t, $total]);
         }
     }
 
