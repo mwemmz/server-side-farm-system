@@ -200,6 +200,19 @@ if ($segments[0] === 'assistant' && ($segments[1] ?? null) === 'chat') {
     return api_ok((new Assistant($pdo))->answer($question));
 }
 
+if (($segments[0] ?? null) === 'assistant' && ($segments[1] ?? null) === 'sessions') {
+    require_once __DIR__ . '/../../../src/Intelligence/ChatMemory.php';
+    return api_ok((new ChatMemory($pdo))->sessions($payload['sub'] ?? 0));
+}
+
+if (($segments[0] ?? null) === 'assistant' && ($segments[1] ?? null) === 'history') {
+    require_once __DIR__ . '/../../../src/Intelligence/ChatMemory.php';
+    if (!isset($_GET['session_id'])) api_err('session_id required', 400);
+    $hist = (new ChatMemory($pdo))->history((int) $_GET['session_id'], $payload['sub'] ?? 0);
+    if (!$hist) api_err('Session not found', 404);
+    return api_ok($hist);
+}
+
 if ($segments[0] === 'assistant' && ($segments[1] ?? null) === 'summary') {
     require_once __DIR__ . '/../../../src/Intelligence/InsightsEngine.php';
     $engine = new InsightsEngine($pdo);

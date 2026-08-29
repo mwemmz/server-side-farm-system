@@ -280,19 +280,38 @@
                         <div class="text-[10px] text-slate-400 mt-0.5">Over your farm data</div>
                     </div>
                 </div>
-                <button id="ff-chat-close" aria-label="Close chat" class="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition">
-                    <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                </button>
-            </div>
-            <!-- Messages -->
-            <div id="ff-chat-msgs" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50 min-h-[16rem] max-h-[52vh]">
-                <div class="flex gap-2 items-end">
-                    <div class="max-w-[85%] rounded-2xl rounded-bl-sm bg-white border border-slate-200 px-3 py-2 text-sm text-slate-700 shadow-sm">
-                        Hi! I can query your farm data. Try <em>"What should I do this week?"</em> or <em>"How much did I spend on fertilizer this season?"</em>
-                    </div>
+                <div class="flex items-center gap-1.5">
+                    <button id="ff-chat-new" title="New chat" class="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition">
+                        <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                    </button>
+                    <button id="ff-chat-close" aria-label="Close chat" class="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition">
+                        <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
                 </div>
             </div>
-            <!-- Suggestions -->
+            <!-- Tabs: Chat | Memory -->
+            <div class="flex items-stretch border-b border-slate-200 bg-slate-50/80">
+                <button data-ff-tab="chat" class="ff-tab flex-1 py-2 px-3 text-xs font-bold uppercase tracking-wide text-green-700 border-b-2 border-green-600 bg-white">Chat</button>
+                <button data-ff-tab="memory" class="ff-tab flex-1 py-2 px-3 text-xs font-bold uppercase tracking-wide text-slate-500 border-b-2 border-transparent hover:bg-slate-100">Memory</button>
+            </div>
+            <!-- Chat + Memory panes -->
+            <div id="ff-chat-body" class="relative">
+                <!-- Chat pane -->
+                <div id="ff-chat-msgs" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50 min-h-[16rem] max-h-[46vh]">
+                    <div class="flex gap-2 items-end">
+                        <div class="max-w-[85%] rounded-2xl rounded-bl-sm bg-white border border-slate-200 px-3 py-2 text-sm text-slate-700 shadow-sm">
+                            Hi! I can query your farm data. Try <em>"What should I do this week?"</em> or <em>"How much did I spend on fertilizer this season?"</em>
+                        </div>
+                    </div>
+                </div>
+                <!-- Memory pane (prior conversations) -->
+                <div id="ff-chat-memory" class="hidden absolute inset-0 bg-slate-50 overflow-y-auto p-3 flex flex-col gap-2">
+                    <div class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">Previous conversations</div>
+                    <div id="ff-memory-list" class="space-y-1.5"></div>
+                    <div class="mt-auto pt-2"><button id="ff-memory-empty" class="w-full text-center text-xs font-semibold text-slate-500 border border-dashed border-slate-300 rounded-lg py-2 hover:bg-slate-100 transition">Start a new chat</button></div>
+                </div>
+            </div>
+            <!-- Suggestions (chat tab only) -->
             <div id="ff-chat-chips" class="px-3 pb-2 flex flex-wrap gap-1.5">
                 <button class="ff-chip text-[11px] px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 transition">What should I do this week?</button>
                 <button class="ff-chip text-[11px] px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 transition">Is it a good time to sell?</button>
@@ -316,12 +335,23 @@
             const fab = document.getElementById('ff-chat-fab');
             const win = document.getElementById('ff-chat-window');
             const closeBtn = document.getElementById('ff-chat-close');
+            const newBtn = document.getElementById('ff-chat-new');
             const msgs = document.getElementById('ff-chat-msgs');
+            const memPane = document.getElementById('ff-chat-memory');
+            const memList = document.getElementById('ff-memory-list');
             const form = document.getElementById('ff-chat-form');
             const input = document.getElementById('ff-chat-input');
 
+            let sessionId = 0;
+
             function esc(s) {
-                return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+
+            function fmtDate(iso) {
+                if (!iso) return '';
+                const d = new Date(iso.replace(' ', 'T'));
+                return isNaN(d) ? '' : d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
             }
 
             function appendBot(text, cards) {
@@ -329,7 +359,7 @@
                 if (cards && cards.length) {
                     html += '<div class="mt-2 space-y-1.5">';
                     cards.forEach(c => {
-                        html += '<a href="' + esc(c.link || '#') + '" class="ff-card-link block rounded-lg border border-green-100 bg-green-50/60 px-2.5 py-1.5 hover:bg-green-50 transition">'
+                        html += '<a href="' + esc(c.link || '#') + '" class="block rounded-lg border border-green-100 bg-green-50/60 px-2.5 py-1.5 hover:bg-green-50 transition">'
                             + '<div class="text-xs font-bold text-green-800">' + esc(c.title || '') + '</div>'
                             + '<div class="text-[11px] text-slate-600 mt-0.5">' + esc(c.body || '') + '</div></a>';
                     });
@@ -346,27 +376,108 @@
                 msgs.scrollTop = msgs.scrollHeight;
             }
 
+            function clearMessages() {
+                msgs.innerHTML = '';
+            }
+
+            function loadHistory(sid) {
+                return fetch('index.php?module=Insights&action=chat_history&session_id=' + sid)
+                    .then(r => r.json())
+                    .then(j => {
+                        if (!j.success || !j.data) return;
+                        clearMessages();
+                        (j.data.messages || []).forEach(m => {
+                            if (m.role === 'user') appendUser(m.text);
+                            else appendBot(m.text, m.cards || []);
+                        });
+                        if (!msgs.innerHTML.trim()) {
+                            msgs.insertAdjacentHTML('beforeend',
+                                '<div class="flex gap-2 items-end"><div class="max-w-[85%] rounded-2xl rounded-bl-sm bg-white border border-slate-200 px-3 py-2 text-sm text-slate-700 shadow-sm">This conversation is empty — ask something below.</div></div>');
+                        }
+                    });
+            }
+
+            function startNewChat() {
+                sessionId = 0;
+                clearMessages();
+                msgs.insertAdjacentHTML('beforeend',
+                    '<div class="flex gap-2 items-end"><div class="max-w-[85%] rounded-2xl rounded-bl-sm bg-white border border-slate-200 px-3 py-2 text-sm text-slate-700 shadow-sm">Hi! Ask me about your farm.</div></div>');
+            }
+
+            function switchTab(name) {
+                document.querySelectorAll('.ff-tab').forEach(t => {
+                    const active = t.getAttribute('data-ff-tab') === name;
+                    t.classList.toggle('text-green-700', active);
+                    t.classList.toggle('border-green-600', active);
+                    t.classList.toggle('text-slate-500', !active);
+                    t.classList.toggle('bg-white', active);
+                    t.classList.toggle('border-transparent', !active);
+                });
+                if (name === 'memory') {
+                    msgs.classList.add('hidden');
+                    memPane.classList.remove('hidden');
+                    memPane.classList.add('flex');
+                    loadSessions();
+                } else {
+                    memPane.classList.add('hidden');
+                    memPane.classList.remove('flex');
+                    msgs.classList.remove('hidden');
+                }
+            }
+
+            function loadSessions() {
+                fetch('index.php?module=Insights&action=chat_sessions')
+                    .then(r => r.json())
+                    .then(j => {
+                        const list = (j.data && j.data.sessions) || [];
+                        memList.innerHTML = '';
+                        if (!list.length) {
+                            memList.innerHTML = '<div class="text-center text-xs text-slate-400 py-6">No saved conversations yet.</div>';
+                            return;
+                        }
+                        list.forEach(s => {
+                            const item = document.createElement('button');
+                            item.type = 'button';
+                            item.className = 'w-full text-left rounded-lg border border-slate-200 bg-white p-2.5 hover:border-green-300 hover:bg-green-50/50 transition';
+                            item.innerHTML =
+                                '<div class="flex items-center justify-between gap-2">' +
+                                '<span class="text-xs font-bold text-slate-700 truncate">' + esc(s.title || 'New chat') + '</span>' +
+                                '<span class="shrink-0 text-[10px] text-slate-400">' + (s.message_count || 0) + ' msgs</span></div>' +
+                                '<div class="text-[11px] text-slate-500 mt-0.5 truncate">' + esc(s.last_message || 'No replies yet') + '</div>' +
+                                '<div class="text-[10px] text-slate-400 mt-0.5">' + fmtDate(s.updated_at) + '</div>';
+                            item.addEventListener('click', () => {
+                                sessionId = Number(s.id);
+                                switchTab('chat');
+                                loadHistory(sessionId);
+                            });
+                            memList.appendChild(item);
+                        });
+                    });
+            }
+
             async function send(q) {
                 if (!q.trim()) return;
                 appendUser(q.trim().replace(/\n/g, ' '));
                 input.value = '';
-                const typing = '<div class="flex gap-2 items-end"><div class="px-3 py-2 rounded-2xl rounded-bl-sm bg-white border border-slate-200 text-sm text-slate-400 shadow-sm">typing…</div></div>';
-                msgs.insertAdjacentHTML('beforeend', typing);
+                const typing = document.createElement('div');
+                typing.className = 'flex gap-2 items-end';
+                typing.innerHTML = '<div class="px-3 py-2 rounded-2xl rounded-bl-sm bg-white border border-slate-200 text-sm text-slate-400 shadow-sm">typing…</div>';
+                msgs.appendChild(typing);
                 msgs.scrollTop = msgs.scrollHeight;
                 try {
                     const fd = new FormData();
                     fd.append('message', q);
+                    if (sessionId) fd.append('session_id', sessionId);
                     const res = await fetch('index.php?module=Insights&action=chat', { method: 'POST', body: fd });
                     const json = await res.json();
-                    const typingEl = msgs.querySelector('.typing-row') || msgs.lastElementChild;
-                    typingEl.remove();
+                    typing.remove();
+                    if (json.session_id) sessionId = Number(json.session_id);
                     const d = (json && json.data) || {};
                     appendBot(d.text || 'Sorry, something went wrong.', d.cards || []);
                 } catch (e) {
-                    msgs.lastElementChild.remove();
+                    typing.remove();
                     appendBot('Could not reach the assistant. Please try again.');
                 }
-                window.scrollTo(0, document.body.scrollHeight);
             }
 
             if (fab) {
@@ -374,6 +485,7 @@
                     win.classList.remove('hidden');
                     win.classList.add('flex');
                     fab.classList.add('hidden');
+                    switchTab('chat');
                     input.focus();
                 });
             }
@@ -384,13 +496,13 @@
                     fab.classList.remove('hidden');
                 });
             }
-            if (form) {
-                form.addEventListener('submit', (e) => { e.preventDefault(); send(input.value); });
+            if (newBtn) newBtn.addEventListener('click', (e) => { e.stopPropagation(); startNewChat(); switchTab('chat'); });
+            if (document.getElementById('ff-memory-empty')) {
+                document.getElementById('ff-memory-empty').addEventListener('click', () => { startNewChat(); switchTab('chat'); });
             }
-            document.querySelectorAll('.ff-chip').forEach(btn => {
-                btn.addEventListener('click', () => send(btn.textContent));
-            });
-            document.querySelectorAll('#ff-chat-root .ff-card-link').forEach(a => a.addEventListener('click', () => {}));
+            document.querySelectorAll('.ff-tab').forEach(t => t.addEventListener('click', () => switchTab(t.getAttribute('data-ff-tab'))));
+            if (form) form.addEventListener('submit', (e) => { e.preventDefault(); send(input.value); });
+            document.querySelectorAll('.ff-chip').forEach(btn => btn.addEventListener('click', () => send(btn.textContent)));
         })();
     </script>
 </body>

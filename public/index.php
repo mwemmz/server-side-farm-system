@@ -63,10 +63,56 @@ if ($module === 'Insights') {
     }
     if ($action === 'chat') {
         header('Content-Type: application/json; charset=UTF-8');
+        require_once __DIR__ . '/../src/Intelligence/ChatMemory.php';
+        $memory   = new ChatMemory($pdo);
+        $userId   = (int) ($_SESSION['user_id'] ?? 0);
         $assistant = new Assistant($pdo);
         $question = $_POST['message'] ?? ($_GET['message'] ?? '');
+        $sessionId = (int) ($_POST['session_id'] ?? $_GET['session_id'] ?? 0);
+        if (trim($question) === '') {
+            // Still create a session so the front-end has an anchor.
+            if ($sessionId <= 0) $sessionId = $memory->createSession($userId);
+            echo json_encode(['success' => true, 'data' => [
+                'type' => 'error',
+                'text' => 'Ask me something about your farm…',
+                'cards' => [],
+            ], 'session_id' => $sessionId]);
+            exit;
+        }
+        if ($sessionId <= 0) {
+            $sessionId = $memory->createSession($userId, $memory->makeTitle($question));
+        } else {
+            $own = $memory->history($sessionId, $userId);
+            if (!$own) $sessionId = $memory->createSession($userId, $memory->makeTitle($question));
+        }
+        $memory->append($sessionId, $userId, 'user', $question);
         $reply = $assistant->answer($question);
-        echo json_encode(['success' => true, 'data' => $reply]);
+        $memory->append($sessionId, $userId, 'assistant', $reply['text'], $reply['cards'] ?? []);
+        echo json_encode(['success' => true, 'data' => $reply, 'session_id' => $sessionId]);
+        exit;
+    }
+
+    if ($action === 'chat_sessions') {
+        header('Content-Type: application/json; charset=UTF-8');
+        require_once __DIR__ . '/../src/Intelligence/ChatMemory.php';
+        $memory = new ChatMemory($pdo);
+        echo json_encode(['success' => true, 'data' => [
+            'sessions' => $memory->sessions((int) ($_SESSION['user_id'] ?? 0)),
+            'active'   => (int) ($_GET['session_id'] ?? 0),
+        ]]);
+        exit;
+    }
+
+    if ($action === 'chat_history') {
+        header('Content-Type: application/json; charset=UTF-8');
+        require_once __DIR__ . '/../src/Intelligence/ChatMemory.php';
+        $memory = new ChatMemory($pdo);
+        $hist = $memory->history((int) ($_GET['session_id'] ?? 0), (int) ($_SESSION['user_id'] ?? 0));
+        if (!$hist) {
+            echo json_encode(['success' => false, 'error' => 'Session not found']);
+            exit;
+        }
+        echo json_encode(['success' => true, 'data' => $hist]);
         exit;
     }
 
