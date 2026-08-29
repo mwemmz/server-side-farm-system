@@ -231,7 +231,8 @@ $months = [1=>'January','February','March','April','May','June','July','August',
         var html = '<div class="flex items-center gap-2">Expect market demand <b class="px-2 py-0.5 rounded-full ' +
             (dm.level === 'High' ? 'bg-emerald-100 text-emerald-800' : (dm.level === 'Low' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-800')) + '">' + esc(dm.level) + '</b></div>';
         html += '<div class="grid grid-cols-2 gap-2 text-xs">';
-        (dm.harvest_months || []).forEach(function (mm) {
+        var dmonths = Object.keys(dm.harvest_months || {}).map(function (k) { return dm.harvest_months[k]; });
+        dmonths.forEach(function (mm) {
             html += '<div class="bg-white/50 border border-white/60 rounded-lg px-3 py-2"><b>' + esc(mm.month) + '</b><div>Sales: ' + fm(mm.sales) + '</div><div>Buyers: ' + mm.buyers + '</div></div>';
         });
         html += '</div>';
