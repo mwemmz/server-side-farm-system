@@ -47,8 +47,8 @@ class MarketAnalysis {
     // anchor for the recommendation. Falls back to ~62% of the 2-year mean
     // price when no anchor is known for a crop.
     private $breakEven = [
-        'tomato' => 4.0, 'maize' => 2.4, 'soybeans' => 5.0, 'wheat' => 3.2,
-        'groundnut' => 9.0, 'rice' => 3.4, 'cabbage' => 2.2, 'onion' => 3.0,
+        'tomato' => 3.4, 'maize' => 2.4, 'soybeans' => 5.0, 'wheat' => 3.2,
+        'groundnut' => 9.0, 'rice' => 3.4, 'cabbage' => 2.0, 'onion' => 3.0,
         'sunflower' => 4.2, 'beans' => 6.0, 'pepper' => 6.5, 'potato' => 3.6,
     ];
 
@@ -222,8 +222,18 @@ class MarketAnalysis {
         $harvestDt = new DateTime(sprintf('%04d-%02d-01', (int)$now->format('Y'), $harvestStart));
         if ($harvestDt < $now) { $harvestDt->modify('+1 year'); }
         $monthsAhead = $now->diff($harvestDt)->m + $now->diff($harvestDt)->y * 12;
-        $projected = $base + $trend * max(0, $monthsAhead);
-        $projected = max(0.01, $projected);
+
+        // Apply the short-run trend, but keep it bounded and near the seasonal
+        // base so oscillating monthly data can't drive the forecast to absurd
+        // levels several months out. Trend may shift the estimate by up to ~25%.
+        if ($base > 0) {
+            $frac = $trend * max(0, $monthsAhead) / $base;
+            $cap = 0.25;
+            $projected = $base * (1 + max(-$cap, min($cap, $frac)));
+        } else {
+            $projected = $base;
+        }
+        $projected = max(0.3 * $base, max(0.01, $projected));
 
         // Confidence range from volatility + data coverage.
         $season = $this->seasonalAnalysis($crop, 2);
@@ -324,10 +334,11 @@ class MarketAnalysis {
             $risks[] = 'Very little market history for this crop is recorded — add market entries to sharpen the forecast.';
         }
 
-        // Recommendation.
+        // Recommendation. Profitable needs the whole band comfortably above
+        // break-even; marginal if the upside can at least cover costs.
         $low = $pred['low']; $high = $pred['high'];
-        if ($low >= $be * 1.18)        { $verdict = 'profitable';   $verdictLabel = 'Profitable';   $color = 'green'; }
-        elseif ($high >= $be * 1.0)    { $verdict = 'marginal';     $verdictLabel = 'Marginal';     $color = 'amber'; }
+        if ($low >= $be * 1.12)        { $verdict = 'profitable';   $verdictLabel = 'Profitable';   $color = 'green'; }
+        elseif ($high >= $be * 1.05)   { $verdict = 'marginal';     $verdictLabel = 'Marginal';     $color = 'amber'; }
         else                           { $verdict = 'not_recommended'; $verdictLabel = 'Not recommended'; $color = 'red'; }
 
         $reason = 'At your expected harvest price range of K' . $low . '–K' . $high . '/kg against an estimated cost-to-produce of around K' . $be . '/kg, planting ' . ucfirst($crop) . ' in ' . $this->monthNames[$plantMonth] .
