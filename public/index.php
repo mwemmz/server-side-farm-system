@@ -130,6 +130,78 @@ if ($module === 'Insights') {
     }
 }
 
+// --- Phase 8: Labour Management -> full HR module (admin/manager only) ---
+if ($module === 'Labour') {
+    $labourAdminRoles = ['admin', 'manager'];
+    if (!in_array($role, $labourAdminRoles, true)) {
+        die("Access Denied: Labour/HR management is restricted to admin and manager roles.");
+    }
+    require_once __DIR__ . '/../src/Modules/Labour/LabourController.php';
+    $labour = new LabourController($pdo);
+    $sub = $_GET['subsection'] ?? null;
+
+    // Live JSON: employee list (for the live-add table refresh) and live employee add.
+    if ($action === 'emp_json') {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['success' => true, 'data' => $labour->hrNew()->employees(isset($_GET['dept']) ? (int) $_GET['dept'] : null)]);
+        exit;
+    }
+    if ($action === 'emp_add') {
+        header('Content-Type: application/json; charset=UTF-8');
+        $name = trim($_POST['name'] ?? '');
+        if ($name === '') { echo json_encode(['success' => false, 'error' => 'Name is required.']); exit; }
+        $id = $labour->hrNew()->addEmployee($_POST);
+        echo json_encode($id ? ['success' => true, 'id' => $id] : ['success' => false, 'error' => 'Failed to add employee.']);
+        exit;
+    }
+
+    // POST add for any sub-section -> redirect back to its view.
+    if ($action === 'add' && $sub) {
+        $res = $labour->handleAdd($sub);
+        SessionHelper::setFlash($res === true ? 'success' : 'error', $res === true ? "Saved successfully." : (is_string($res) ? $res : "Failed."));
+        header('Location: index.php?module=Labour&subsection=' . urlencode($sub));
+        exit;
+    }
+
+    // Sub-actions (approve/reject leave, resolve grievance, mark payroll paid).
+    if (in_array($action, ['approve', 'reject', 'resolve', 'paid'], true) && $sub) {
+        $labour->handleAction($sub, $action);
+        header('Location: index.php?module=Labour&subsection=' . urlencode($sub));
+        exit;
+    }
+
+    // Sub-section view.
+    if ($sub) {
+        $subFile = __DIR__ . "/views/labour_{$sub}.php";
+        if (file_exists($subFile)) {
+            if (method_exists($labour, $sub . 'View')) {
+                $data = $labour->{$sub . 'View'}();
+            } else {
+                $data = [];
+            }
+            ob_start();
+            require $subFile;
+            $content = ob_get_clean();
+            require __DIR__ . "/views/layout.php";
+            exit;
+        }
+    }
+
+    // HR dashboard landing.
+    $viewFile = __DIR__ . "/views/labour_landing.php";
+    if (file_exists($viewFile)) {
+        $data = $labour->dashboardView();
+        $data['upcoming_leave'] = $labour->hrNew()->upcomingLeave(30);
+        $data['pending_leave'] = $labour->hrNew()->leaveRequests(true);
+        $data['recent_training'] = array_slice($labour->hrNew()->training(), 0, 5);
+        ob_start();
+        require $viewFile;
+        $content = ob_get_clean();
+        require __DIR__ . "/views/layout.php";
+        exit;
+    }
+}
+
 if ($module === 'Dashboard') {
     $viewFile = __DIR__ . "/views/dashboard.php";
     ob_start();
