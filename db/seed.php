@@ -19,6 +19,87 @@ try {
     error_log("Seed (admin) failed: " . $e->getMessage());
 }
 
+// --- Market Analysis: 2 years of historical price history (idempotent) -----
+// Runs every boot (BEFORE the mock-data early return) but only inserts once:
+// guarded by "is there already a market record older than ~13 months?".
+// This adds the 2-year window the Price Prediction module needs even on a DB
+// that is already seeded.
+try {
+    $hasHistory = (int) $pdo->query(
+        "SELECT COUNT(*) FROM market_data WHERE market_date < (CURRENT_DATE - INTERVAL '400 days')"
+    )->fetchColumn();
+    if ($hasHistory === 0) {
+        // Per-crop base price (ZMW/kg) + a 12-month seasonal factor.
+        // Zambian pattern: prices firm up in the hot/dry-short-supply months and
+        // soften at the main harvest gluts.
+        $crops = [
+            'Tomato'     => [6.00, [1.32, 1.25, 1.15, 0.78, 0.70, 0.72, 0.80, 0.95, 1.10, 1.18, 1.28, 1.34]],
+            'Maize'      => [3.50, [1.15, 1.18, 1.20, 1.12, 0.95, 0.82, 0.78, 0.82, 0.88, 0.95, 1.05, 1.10]],
+            'Soybeans'   => [7.20, [1.08, 1.10, 1.05, 0.98, 0.92, 0.88, 0.90, 0.95, 1.00, 1.05, 1.10, 1.08]],
+            'Groundnuts' => [12.00, [1.10, 1.15, 1.20, 1.05, 0.92, 0.85, 0.88, 0.95, 1.00, 1.05, 1.10, 1.12]],
+            'Wheat'      => [4.80, [1.02, 1.03, 1.05, 1.05, 1.04, 1.02, 1.00, 0.97, 0.95, 0.96, 0.98, 1.00]],
+            'Cabbage'    => [2.50, [1.30, 1.26, 1.10, 0.85, 0.78, 0.80, 0.90, 1.00, 1.10, 1.18, 1.26, 1.32]],
+            'Onion'      => [3.50, [1.18, 1.20, 1.12, 0.98, 0.90, 0.85, 0.88, 0.95, 1.02, 1.10, 1.16, 1.20]],
+            'Sunflower'  => [5.50, [1.05, 1.07, 1.10, 1.05, 0.98, 0.92, 0.90, 0.94, 1.00, 1.04, 1.06, 1.08]],
+        ];
+        $rows = [];
+        $start = new DateTime('2024-01-01');
+        $now = new DateTime('now');
+        $i = 0;
+        foreach ($crops as $crop => [$base, $factors]) {
+            $cursor = clone $start;
+            while ($cursor <= $now) {
+                $m = (int) $cursor->format('n');
+                $y = (int) $cursor->format('Y');
+                // Small upward drift (~4%/yr) + gentle month-to-month noise for realism.
+                $drift = 1.0 + 0.04 * ($y - 2024);
+                $price = round($base * $factors[$m - 1] * $drift * (1 + (($i % 7) - 3) / 140), 2);
+                $rows[] = "('" . $crop . "', " . $price . ", '" . $cursor->format('Y-m-15') . "')";
+                $i++;
+                $cursor->modify('+1 month');
+            }
+        }
+        foreach (array_chunk($rows, 300) as $chunk) {
+            $pdo->exec("INSERT INTO market_data (crop_name, price, market_date) VALUES " . implode(', ', $chunk));
+        }
+        error_log("FFMS: Market Analysis historical prices seeded (" . count($rows) . " rows).");
+    }
+} catch (PDOException $e) {
+    error_log("Seed (market prices) failed: " . $e->getMessage());
+}
+
+// --- Market Analysis: historical demand (sales) series (idempotent) --------
+// Runs every boot before the mock-data early return; guarded idempotently.
+try {
+    $hasOldSales = (int) $pdo->query(
+        "SELECT COUNT(*) FROM sales_records WHERE sale_date < (CURRENT_DATE - INTERVAL '300 days')"
+    )->fetchColumn();
+    if ($hasOldSales === 0) {
+        $rows = [];
+        $cursor = new DateTime('2024-01-01');
+        $now = new DateTime('now');
+        $i = 0;
+        // Monthly demand shape: higher buyer activity in May (post-harvest trade)
+        // and Nov–Dec (market-goer holidays), dips in Jan–Feb.
+        $shape = [0.7, 0.6, 0.8, 0.9, 1.5, 1.3, 1.2, 1.0, 1.1, 1.2, 1.4, 1.5];
+        $customers = ['Zambia National Millers', 'Africa Commodity Exchange', 'Local Market - Chisamba', 'Sunbird Trading', 'City Grocer Chain'];
+        while ($cursor <= $now) {
+            $m = (int) $cursor->format('n');
+            $y = (int) $cursor->format('Y');
+            $amount = round(80000 * $shape[$m - 1] * (1 + 0.10 * ($y - 2024)), 2);
+            $rows[] = "('" . $customers[$i % count($customers)] . "', " . $amount . ", '" . $cursor->format('Y-m-18') . "')";
+            $i++;
+            $cursor->modify('+1 month');
+        }
+        foreach (array_chunk($rows, 300) as $chunk) {
+            $pdo->exec("INSERT INTO sales_records (customer_name, amount, sale_date) VALUES " . implode(', ', $chunk));
+        }
+        error_log("FFMS: Market Analysis demand history seeded (" . count($rows) . " rows).");
+    }
+} catch (PDOException $e) {
+    error_log("Seed (market demand) failed: " . $e->getMessage());
+}
+
 // --- Mock data: only seed once, when the farms table is empty ---
 try {
     $farmCount = (int) $pdo->query("SELECT COUNT(*) FROM farms")->fetchColumn();
@@ -148,87 +229,8 @@ try {
         ('Maintenance due: Boom Sprayer 2000L.', FALSE),
         ('Harvest window expected soon for Kabwe Wheat.', FALSE)");
 
-    error_log("FFMS: Mock data seeded successfully.");
+        error_log("FFMS: Mock data seeded successfully.");
 } catch (PDOException $e) {
     error_log("Seed (mock data) failed: " . $e->getMessage());
-}
-
-// --- Market Analysis: 2 years of historical price history (idempotent) ----
-// Adds monthly market prices per crop so the Market Analysis / Price Prediction
-// module has a window >= 2 years to learn from. Runs every boot but only inserts
-// once: guarded by "is there already a market record older than ~13 months?".
-try {
-    $hasHistory = (int) $pdo->query(
-        "SELECT COUNT(*) FROM market_data WHERE market_date < (CURRENT_DATE - INTERVAL '400 days')"
-    )->fetchColumn();
-    if ($hasHistory === 0) {
-        // Per-crop base price (ZMW/kg) + a 12-month seasonal factor.
-        // Zambian pattern: prices firm up in the hot/dry-short-supply months and
-        // soften at the main harvest gluts.
-        $crops = [
-            'Tomato'     => [6.00, [1.32, 1.25, 1.15, 0.78, 0.70, 0.72, 0.80, 0.95, 1.10, 1.18, 1.28, 1.34]],
-            'Maize'      => [3.50, [1.15, 1.18, 1.20, 1.12, 0.95, 0.82, 0.78, 0.82, 0.88, 0.95, 1.05, 1.10]],
-            'Soybeans'   => [7.20, [1.08, 1.10, 1.05, 0.98, 0.92, 0.88, 0.90, 0.95, 1.00, 1.05, 1.10, 1.08]],
-            'Groundnuts' => [12.00, [1.10, 1.15, 1.20, 1.05, 0.92, 0.85, 0.88, 0.95, 1.00, 1.05, 1.10, 1.12]],
-            'Wheat'      => [4.80, [1.02, 1.03, 1.05, 1.05, 1.04, 1.02, 1.00, 0.97, 0.95, 0.96, 0.98, 1.00]],
-            'Cabbage'    => [2.50, [1.30, 1.26, 1.10, 0.85, 0.78, 0.80, 0.90, 1.00, 1.10, 1.18, 1.26, 1.32]],
-            'Onion'      => [3.50, [1.18, 1.20, 1.12, 0.98, 0.90, 0.85, 0.88, 0.95, 1.02, 1.10, 1.16, 1.20]],
-            'Sunflower'  => [5.50, [1.05, 1.07, 1.10, 1.05, 0.98, 0.92, 0.90, 0.94, 1.00, 1.04, 1.06, 1.08]],
-        ];
-        $rows = [];
-        $start = new DateTime('2024-01-01');
-        $now = new DateTime('now');
-        $i = 0;
-        foreach ($crops as $crop => [$base, $factors]) {
-            $cursor = clone $start;
-            while ($cursor <= $now) {
-                $m = (int) $cursor->format('n');
-                $y = (int) $cursor->format('Y');
-                // Small upward drift (~4%/yr) + gentle month-to-month noise for realism.
-                $drift = 1.0 + 0.04 * ($y - 2024);
-                $price = round($base * $factors[$m - 1] * $drift * (1 + (($i % 7) - 3) / 140), 2);
-                $rows[] = "('" . $crop . "', " . $price . ", '" . $cursor->format('Y-m-15') . "')";
-                $i++;
-                $cursor->modify('+1 month');
-            }
-        }
-        foreach (array_chunk($rows, 300) as $chunk) {
-            $pdo->exec("INSERT INTO market_data (crop_name, price, market_date) VALUES " . implode(', ', $chunk));
-        }
-        error_log("FFMS: Market Analysis historical prices seeded (" . count($rows) . " rows).");
-    }
-} catch (PDOException $e) {
-    error_log("Seed (market prices) failed: " . $e->getMessage());
-}
-
-// --- Market Analysis: historical demand (sales) series (idempotent) -------
-try {
-    $hasOldSales = (int) $pdo->query(
-        "SELECT COUNT(*) FROM sales_records WHERE sale_date < (CURRENT_DATE - INTERVAL '300 days')"
-    )->fetchColumn();
-    if ($hasOldSales === 0) {
-        $rows = [];
-        $cursor = new DateTime('2024-01-01');
-        $now = new DateTime('now');
-        $i = 0;
-        // Monthly demand shape: higher buyer activity in May (post-harvest trade)
-        // and Nov–Dec (market-goer holidays), dips in Jan–Feb.
-        $shape = [0.7, 0.6, 0.8, 0.9, 1.5, 1.3, 1.2, 1.0, 1.1, 1.2, 1.4, 1.5];
-        $customers = ['Zambia National Millers', 'Africa Commodity Exchange', 'Local Market - Chisamba', 'Sunbird Trading', 'City Grocer Chain'];
-        while ($cursor <= $now) {
-            $m = (int) $cursor->format('n');
-            $y = (int) $cursor->format('Y');
-            $amount = round(80000 * $shape[$m - 1] * (1 + 0.10 * ($y - 2024)), 2);
-            $rows[] = "('" . $customers[$i % count($customers)] . "', " . $amount . ", '" . $cursor->format('Y-m-18') . "')";
-            $i++;
-            $cursor->modify('+1 month');
-        }
-        foreach (array_chunk($rows, 300) as $chunk) {
-            $pdo->exec("INSERT INTO sales_records (customer_name, amount, sale_date) VALUES " . implode(', ', $chunk));
-        }
-        error_log("FFMS: Market Analysis demand history seeded (" . count($rows) . " rows).");
-    }
-} catch (PDOException $e) {
-    error_log("Seed (market demand) failed: " . $e->getMessage());
 }
 ?>
