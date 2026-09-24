@@ -34,6 +34,15 @@ CREATE TABLE IF NOT EXISTS livestock (
     dob DATE
 );
 
+CREATE TABLE IF NOT EXISTS vaccinations (
+    id SERIAL PRIMARY KEY,
+    livestock_id INT REFERENCES livestock(id),
+    vaccine_name VARCHAR(255) NOT NULL,
+    vaccination_date DATE NOT NULL,
+    next_due_date DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Operations
 CREATE TABLE IF NOT EXISTS irrigation_systems (
     id SERIAL PRIMARY KEY,

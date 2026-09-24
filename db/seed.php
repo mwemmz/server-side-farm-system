@@ -135,6 +135,13 @@ try {
         (3, 'Goats', 'Boer', '2023-01-15'),
         (1, 'Poultry', 'Ross 308 (Broilers)', '2026-07-01')");
 
+    // Vaccinations (linked to livestock rows 1-4 above)
+    $pdo->exec("INSERT INTO vaccinations (livestock_id, vaccine_name, vaccination_date, next_due_date) VALUES
+        (1, 'Anthrax Vaccine', '2026-03-10', '2027-03-10'),
+        (2, 'Lumpy Skin Disease Vaccine', '2026-02-15', '2027-02-15'),
+        (3, 'PPR Vaccine', '2026-04-01', '2026-10-01'),
+        (4, 'Newcastle Disease Vaccine', '2026-07-01', '2027-07-01')");
+
     // Irrigation
     $pdo->exec("INSERT INTO irrigation_systems (farm_id, type, status) VALUES
         (1, 'Drip', 'Operational'),
