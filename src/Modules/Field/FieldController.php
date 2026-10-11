@@ -14,13 +14,30 @@ class FieldController {
             $fields = ['farm_id', 'name', 'size', 'soil_type'];
             $errors = ValidationHelper::validateRequired($fields, $data);
 
+            if (!isset($errors['size'])) {
+                if (!is_numeric($data['size'])) {
+                    $errors['size'] = "Size must be a number.";
+                } elseif ((float) $data['size'] <= 0) {
+                    $errors['size'] = "Size must be greater than 0.";
+                }
+            }
+
             if (empty($errors)) {
-                if ($this->model->create($data)) {
-                    SessionHelper::setFlash('success', 'Field added successfully!');
-                    header('Location: /index.php?module=Field&action=index');
-                    exit;
-                } else {
+                $row = [
+                    'farm_id'   => (int) $data['farm_id'],
+                    'name'      => trim($data['name']),
+                    'size'      => $data['size'],
+                    'soil_type' => $data['soil_type'],
+                ];
+                try {
+                    if ($this->model->create($row)) {
+                        SessionHelper::setFlash('success', 'Field added successfully!');
+                        header('Location: index.php?module=Field&action=manage');
+                        exit;
+                    }
                     $errors['general'] = "Failed to add field.";
+                } catch (PDOException $e) {
+                    $errors['general'] = "Could not save field: the selected farm may no longer exist.";
                 }
             }
             return ['errors' => $errors, 'data' => $data, 'records' => $this->model->getAll()];

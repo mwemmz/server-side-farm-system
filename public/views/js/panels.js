@@ -218,22 +218,35 @@
 
   renderers.Finance = function (d) {
     var s = d.summary, cf = d.cashflow || [], te = d.top_expenses || [], ti = d.top_income || [];
+
+    function k(v) { var n = Number(v) || 0; return (n < 0 ? '-' : '') + 'K' + Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function sk(v) { var n = Number(v) || 0; return (n >= 0 ? '+' : '-') + 'K' + Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+    function moneyRow(title, income, expense, net, netColor) {
+      return '<div class="mb-5"><div class="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">' + escapeHtml(title) + '</div>' +
+        '<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">' +
+        metric('Income', k(income), '', 'green') +
+        metric('Expenses', k(expense), '', 'red') +
+        metric('Net', sk(net), '', netColor) +
+        '</div></div>';
+    }
+
     var cashRows = cf.map(function (m) {
       var n = Number(m.net);
       return '<div class="flex justify-between text-sm py-1.5 border-b border-white/40"><span class="text-slate-500">' + escapeHtml(String(m.month)) + '</span>' +
-        '<span class="font-semibold ' + (n >= 0 ? 'text-emerald-700' : 'text-red-700') + '">' + (n >= 0 ? '+' : '') + Number(n).toLocaleString() + '</span></div>';
+        '<span class="font-semibold ' + (n >= 0 ? 'text-emerald-700' : 'text-red-700') + '">' + sk(n) + '</span></div>';
     }).join('');
+
     function catRows(list) {
       return (list && list.length ? list.map(function (c) {
-        return '<li class="bg-white/50 border border-white/60 rounded-xl px-3.5 py-2.5 text-sm text-slate-700 shadow-sm flex justify-between"><span>' + escapeHtml(c.label) + '</span><span class="font-semibold text-slate-500">' + Number(c.amount).toLocaleString() + '</span></li>';
+        return '<li class="bg-white/50 border border-white/60 rounded-xl px-3.5 py-2.5 text-sm text-slate-700 shadow-sm flex justify-between"><span>' + escapeHtml(c.label) + '</span><span class="font-semibold text-slate-500">' + k(c.amount) + '</span></li>';
       }).join('') : '<p class="text-sm text-slate-500">No data</p>');
     }
-    return '<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">'
-      + metric('Income (month)', Number(s.month_income).toLocaleString(), 'ZMW', 'green')
-      + metric('Expenses (month)', Number(s.month_expense).toLocaleString(), 'ZMW', 'red')
-      + metric('Net (month)', (s.month_net >= 0 ? '+' : '') + Number(s.month_net).toLocaleString(), 'ZMW', s.month_net_color)
-      + '</div>'
-      + '<div class="glass-card p-4 sm:p-5 mb-5"><h3 class="text-sm font-bold text-slate-700 mb-3">Cash flow (year)</h3>' +
+
+    return moneyRow('This month', s.month_income, s.month_expense, s.month_net, s.month_net_color)
+      + moneyRow('Year to date', s.ytd_income, s.ytd_expense, s.ytd_net, s.ytd_net_color)
+      + moneyRow('All time', s.all_income, s.all_expense, s.all_net, s.all_net_color)
+      + '<div class="glass-card p-4 sm:p-5 mb-5"><h3 class="text-sm font-bold text-slate-700 mb-3">Cash flow (last 12 months)</h3>' +
       (cashRows ? '<div>' + cashRows + '</div>' : '<p class="text-sm text-slate-500">No cash flow data.</p>') + '</div>'
       + '<div class="grid grid-cols-1 md:grid-cols-2 gap-5">'
       + '<div class="glass-card p-4 sm:p-5"><h3 class="text-sm font-bold text-slate-700 mb-3">Top income sources</h3><ul class="space-y-2">' + catRows(ti) + '</ul></div>'

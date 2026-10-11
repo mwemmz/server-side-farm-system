@@ -15,12 +15,16 @@ class MarketController {
             $errors = ValidationHelper::validateRequired($fields, $data);
 
             if (empty($errors)) {
-                if ($this->model->create($data)) {
-                    SessionHelper::setFlash('success', 'Market data added successfully!');
-                    header('Location: /index.php?module=Market&action=index');
-                    exit;
-                } else {
+                $row = array_intersect_key($data, array_flip(['crop_name', 'price', 'market_date']));
+                try {
+                    if ($this->model->create($row)) {
+                        SessionHelper::setFlash('success', 'Market data added successfully!');
+                        header('Location: index.php?module=Market&action=manage');
+                        exit;
+                    }
                     $errors['general'] = "Failed to add market data.";
+                } catch (PDOException $e) {
+                    $errors['general'] = "Could not save market data. Please try again.";
                 }
             }
             return ['errors' => $errors, 'data' => $data, 'records' => $this->model->getAll()];

@@ -17,16 +17,26 @@ class CropController {
     public function add() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = $_POST;
-            $fields = ['farm_id', 'name', 'variety', 'planting_date', 'expected_harvest_date'];
+            $fields = ['farm_id', 'name', 'planting_date'];
             $errors = ValidationHelper::validateRequired($fields, $data);
 
+            $variety = isset($data['variety']) && trim($data['variety']) !== '' ? trim($data['variety']) : null;
+            $harvest = isset($data['expected_harvest_date']) && trim($data['expected_harvest_date']) !== '' ? trim($data['expected_harvest_date']) : null;
+
+            if ($harvest !== null && !isset($errors['planting_date']) && $harvest < $data['planting_date']) {
+                $errors['expected_harvest_date'] = "Harvest date cannot be earlier than the planting date.";
+            }
+
             if (empty($errors)) {
-                if ($this->model->createCrop($data['farm_id'], $data['name'], $data['variety'], $data['planting_date'], $data['expected_harvest_date'])) {
-                    SessionHelper::setFlash('success', 'Crop added successfully!');
-                    header('Location: /index.php?module=Crop&action=index');
-                    exit;
-                } else {
+                try {
+                    if ($this->model->createCrop((int) $data['farm_id'], trim($data['name']), $variety, $data['planting_date'], $harvest)) {
+                        SessionHelper::setFlash('success', 'Crop added successfully!');
+                        header('Location: index.php?module=Crop&action=manage');
+                        exit;
+                    }
                     $errors['general'] = "Failed to add crop.";
+                } catch (PDOException $e) {
+                    $errors['general'] = "Could not save crop: the selected farm may no longer exist.";
                 }
             }
             return ['errors' => $errors, 'data' => $data, 'crops' => $this->model->getAllCrops()];

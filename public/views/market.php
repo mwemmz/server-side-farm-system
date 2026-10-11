@@ -13,7 +13,7 @@ $records = $data['records'] ?? ($data ?? []);
 
 <?php if ($successMessage): ?>
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
-        <?php echo $successMessage; ?>
+        <?php echo htmlspecialchars($successMessage); ?>
     </div>
 <?php endif; ?>
 
@@ -21,9 +21,9 @@ $records = $data['records'] ?? ($data ?? []);
     <h2 class="text-xl font-semibold mb-4">Add New Market Entry</h2>
     <?php
     $fields = [
-        ['name' => 'crop_name', 'label' => 'Crop Name', 'value' => $formData['crop_name'] ?? ''],
-        ['name' => 'price', 'label' => 'Price (K per kg)', 'value' => $formData['price'] ?? ''],
-        ['name' => 'market_date', 'label' => 'Market Date', 'type' => 'date', 'value' => $formData['market_date'] ?? '']
+        ['name' => 'crop_name', 'label' => 'Crop Name', 'type' => 'select', 'options' => ['Maize' => 'Maize', 'Soybeans' => 'Soybeans', 'Wheat' => 'Wheat', 'Groundnuts' => 'Groundnuts', 'Tomato' => 'Tomato'], 'placeholder' => 'Select a crop…', 'value' => $formData['crop_name'] ?? ''],
+        ['name' => 'price', 'label' => 'Price (K per kg)', 'type' => 'number', 'step' => '0.01', 'min' => '0.01', 'value' => $formData['price'] ?? ''],
+        ['name' => 'market_date', 'label' => 'Market Date', 'type' => 'date', 'value' => $formData['market_date'] ?? date('Y-m-d')]
     ];
     echo FormHelper::generateForm($fields, '/index.php?module=Market&action=add', 'POST', $errors);
     ?>

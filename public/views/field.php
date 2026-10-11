@@ -12,7 +12,7 @@ $records = $data['records'] ?? ($data ?? []);
 
 <?php if ($successMessage): ?>
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
-        <?php echo $successMessage; ?>
+        <?php echo htmlspecialchars($successMessage); ?>
     </div>
 <?php endif; ?>
 
@@ -20,10 +20,10 @@ $records = $data['records'] ?? ($data ?? []);
     <h2 class="text-xl font-semibold mb-4">Add New Field</h2>
     <?php
     $fields = [
-        ['name' => 'farm_id', 'label' => 'Farm ID', 'value' => $formData['farm_id'] ?? ''],
+        ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'select', 'options' => FormHelper::farmOptions($pdo), 'placeholder' => 'Select a farm…', 'value' => $formData['farm_id'] ?? ($_GET['farm_id'] ?? '')],
         ['name' => 'name', 'label' => 'Name', 'value' => $formData['name'] ?? ''],
-        ['name' => 'size', 'label' => 'Size', 'value' => $formData['size'] ?? ''],
-        ['name' => 'soil_type', 'label' => 'Soil Type', 'value' => $formData['soil_type'] ?? '']
+        ['name' => 'size', 'label' => 'Size (hectares)', 'type' => 'number', 'step' => '0.01', 'min' => '0.01', 'value' => $formData['size'] ?? ''],
+        ['name' => 'soil_type', 'label' => 'Soil Type', 'type' => 'select', 'options' => ['Loam' => 'Loam', 'Clay' => 'Clay', 'Sandy' => 'Sandy', 'Silty' => 'Silty', 'Chalky' => 'Chalky', 'Peat' => 'Peat'], 'placeholder' => 'Select a soil type…', 'value' => $formData['soil_type'] ?? '']
     ];
     echo FormHelper::generateForm($fields, '/index.php?module=Field&action=add', 'POST', $errors);
     ?>

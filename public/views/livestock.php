@@ -13,7 +13,7 @@ $vaccAnimals = $data['vaccAnimals'] ?? $animals;
 
 <?php if ($successMessage): ?>
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
-        <?php echo $successMessage; ?>
+        <?php echo htmlspecialchars($successMessage); ?>
     </div>
 <?php endif; ?>
 
@@ -21,10 +21,10 @@ $vaccAnimals = $data['vaccAnimals'] ?? $animals;
     <h2 class="text-xl font-semibold mb-4">Add Livestock</h2>
     <?php
     $fields = [
-        ['name' => 'farm_id', 'label' => 'Farm ID', 'value' => $formData['farm_id'] ?? ''],
-        ['name' => 'type', 'label' => 'Type', 'value' => $formData['type'] ?? ''],
+        ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'select', 'options' => FormHelper::farmOptions($pdo), 'placeholder' => 'Select a farm…', 'value' => $formData['farm_id'] ?? ''],
+        ['name' => 'type', 'label' => 'Type', 'type' => 'select', 'options' => ['Cattle' => 'Cattle', 'Goats' => 'Goats', 'Sheep' => 'Sheep', 'Pigs' => 'Pigs', 'Poultry' => 'Poultry', 'Other' => 'Other'], 'placeholder' => 'Select a type…', 'value' => $formData['type'] ?? ''],
         ['name' => 'breed', 'label' => 'Breed', 'value' => $formData['breed'] ?? ''],
-        ['name' => 'dob', 'label' => 'Date of Birth', 'type' => 'date', 'value' => $formData['dob'] ?? '']
+        ['name' => 'dob', 'label' => 'Date of Birth', 'type' => 'date', 'max' => date('Y-m-d'), 'value' => $formData['dob'] ?? '']
     ];
     echo FormHelper::generateForm($fields, 'index.php?module=Livestock&action=add', 'POST', $errors);
     ?>

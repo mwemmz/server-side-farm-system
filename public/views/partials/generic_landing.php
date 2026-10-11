@@ -93,7 +93,7 @@ switch ($m) {
     case 'Market':
         $title = 'Market Prices'; $subtitle = 'Current crop prices to guide selling decisions.';
         $latest = []; $total = 0.0;
-        foreach ($recs as $md) { $total += (float) ($md['price'] ?? 0); $latest[$md['crop_name']] = $md['price']; }
+        foreach ($recs as $md) { $total += (float) ($md['price'] ?? 0); if (!isset($latest[$md['crop_name']])) $latest[$md['crop_name']] = $md['price']; }
         $avg = count($recs) ? ($total / count($recs)) : 0;
         $summaries = [['Latest prices', count($latest), 'green'], ['Avg price', 'K' . number_format($avg, 2), 'slate']];
         foreach ($recs as $md) {

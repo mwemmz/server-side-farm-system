@@ -19,9 +19,9 @@ if ($farmRow && $farmRow['latitude'] !== null && $farmRow['longitude'] !== null)
 
 $weather = [];
 try {
-    $weatherService = new WeatherService();
+    $weatherService = new WeatherService($pdo);
     $weather = $weatherService->getCurrentSummary($lat, $lon);
-} catch (\Exception $e) {
+} catch (\Throwable $e) {
     $weather = [];
 }
 

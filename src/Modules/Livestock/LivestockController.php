@@ -24,12 +24,15 @@ class LivestockController {
             $fields = ['farm_id', 'type', 'breed', 'dob'];
             $errors = ValidationHelper::validateRequired($fields, $data);
             if (empty($errors)) {
-                if ($this->model->createAnimal($data['farm_id'], $data['type'], $data['breed'], $data['dob'])) {
-                    SessionHelper::setFlash('success', 'Animal added successfully!');
-                    header('Location: /index.php?module=Livestock&action=index');
-                    exit;
-                } else {
+                try {
+                    if ($this->model->createAnimal((int) $data['farm_id'], trim($data['type']), trim($data['breed']), trim($data['dob']))) {
+                        SessionHelper::setFlash('success', 'Animal added successfully!');
+                        header('Location: index.php?module=Livestock&action=manage');
+                        exit;
+                    }
                     $errors['general'] = "Failed to add animal.";
+                } catch (PDOException $e) {
+                    $errors['general'] = "Could not save animal: the selected farm may no longer exist.";
                 }
             }
             return array_merge(['errors' => $errors, 'data' => $data], $this->viewData());
@@ -60,3 +63,4 @@ class LivestockController {
         return array_merge(['errors' => $errors, 'data' => $data], $this->viewData());
     }
 }
+?>

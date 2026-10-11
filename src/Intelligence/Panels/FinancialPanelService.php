@@ -21,12 +21,14 @@ class FinancialPanelService {
 
         $month = $this->range($monthStart, date('Y-m-t'));
         $ytd   = $this->range($yearStart, date('Y-m-d'));
+        $all   = $this->range('1900-01-01', '2999-12-31');
 
-        $categories = $this->categories($yearStart);
-        $cashflow   = $this->cashflow($yearStart);
+        $categories = $this->categories('1900-01-01');
+        $cashflow   = $this->cashflow(date('Y-m-01', strtotime('-11 months')));
 
         $netMonth = $month['income'] - $month['expense'];
         $netYtd   = $ytd['income'] - $ytd['expense'];
+        $netAll   = $all['income'] - $all['expense'];
 
         return [
             'summary' => [
@@ -38,11 +40,15 @@ class FinancialPanelService {
                 'ytd_expense'     => round($ytd['expense'], 2),
                 'ytd_net'         => round($netYtd, 2),
                 'ytd_net_color'   => $this->netColor($netYtd),
+                'all_income'      => round($all['income'], 2),
+                'all_expense'     => round($all['expense'], 2),
+                'all_net'         => round($netAll, 2),
+                'all_net_color'   => $this->netColor($netAll),
             ],
             'cashflow' => $cashflow,
             'top_expenses' => array_slice($categories['expense'], 0, 5),
             'top_income'   => array_slice($categories['income'], 0, 5),
-            'currency' => 'ZMW',
+            'currency' => 'K',
         ];
     }
 

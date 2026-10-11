@@ -2,22 +2,33 @@
 
 <?php
 require_once __DIR__ . '/../../src/Helpers/FormHelper.php';
+require_once __DIR__ . '/../../src/Helpers/SessionHelper.php';
+
+$successMessage = SessionHelper::getFlash('success');
+$errors    = $data['errors'] ?? [];
+$formData  = $data['data'] ?? [];
+$farmRecords = $data['records'] ?? (is_array($data) ? $data : []);
+
 $fields = [
-    ['name' => 'name', 'label' => 'Farm Name'],
-    ['name' => 'location', 'label' => 'Location'],
+    ['name' => 'name', 'label' => 'Farm Name', 'value' => $formData['name'] ?? ''],
+    ['name' => 'location', 'label' => 'Location', 'value' => $formData['location'] ?? ''],
 ];
 ?>
 
+<?php if ($successMessage): ?>
+    <div class="bg-green-100 border border-green-400 text-green-800 px-4 py-3 rounded-lg mb-6 text-sm font-medium"><?php echo htmlspecialchars($successMessage); ?></div>
+<?php endif; ?>
+
 <div class="glass-card p-4 sm:p-6 mb-6">
     <h2 class="text-xl font-semibold mb-4">Add New Farm</h2>
-    <?php echo FormHelper::generateForm($fields, '?module=Farm&action=create'); ?>
+    <?php echo FormHelper::generateForm($fields, '/index.php?module=Farm&action=add', 'POST', $errors); ?>
 </div>
 
 <div class="glass-card p-4 sm:p-6">
-    <?php if (isset($data) && !empty($data)): ?>
+    <?php if (!empty($farmRecords)): ?>
         <ul class="space-y-2.5">
-            <?php foreach ($data as $farm): ?>
-                <li class="bg-white/50 border border-white/60 rounded-xl px-3.5 sm:px-4 py-3 text-sm text-slate-700 shadow-sm"><?php echo htmlspecialchars($farm['name']); ?> <span class="text-gray-500">- <?php echo htmlspecialchars($farm['location']); ?></span></li>
+            <?php foreach ($farmRecords as $farm): ?>
+                <li class="bg-white/50 border border-white/60 rounded-xl px-3.5 sm:px-4 py-3 text-sm text-slate-700 shadow-sm"><?php echo htmlspecialchars($farm['name']); ?> <span class="text-gray-500">- <?php echo htmlspecialchars($farm['location'] ?? ''); ?></span></li>
             <?php endforeach; ?>
         </ul>
     <?php else: ?>

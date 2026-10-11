@@ -13,7 +13,7 @@ $records = $data['records'] ?? ($data ?? []);
 
 <?php if ($successMessage): ?>
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
-        <?php echo $successMessage; ?>
+        <?php echo htmlspecialchars($successMessage); ?>
     </div>
 <?php endif; ?>
 
@@ -21,10 +21,10 @@ $records = $data['records'] ?? ($data ?? []);
     <h2 class="text-xl font-semibold mb-4">Add New Finance Record</h2>
     <?php
     $fields = [
-        ['name' => 'type', 'label' => 'Type (Income/Expense)', 'value' => $formData['type'] ?? ''],
-        ['name' => 'amount', 'label' => 'Amount (K)', 'value' => $formData['amount'] ?? ''],
+        ['name' => 'type', 'label' => 'Type', 'type' => 'select', 'options' => ['income' => 'Income', 'expense' => 'Expense'], 'placeholder' => 'Select a type…', 'value' => $formData['type'] ?? ''],
+        ['name' => 'amount', 'label' => 'Amount (K)', 'type' => 'number', 'step' => '0.01', 'min' => '0.01', 'value' => $formData['amount'] ?? ''],
         ['name' => 'description', 'label' => 'Description', 'type' => 'textarea', 'value' => $formData['description'] ?? ''],
-        ['name' => 'date', 'label' => 'Date', 'type' => 'date', 'value' => $formData['date'] ?? '']
+        ['name' => 'date', 'label' => 'Date', 'type' => 'date', 'value' => $formData['date'] ?? date('Y-m-d')]
     ];
     echo FormHelper::generateForm($fields, '/index.php?module=Finance&action=add', 'POST', $errors);
     ?>
