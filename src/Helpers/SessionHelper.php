@@ -49,5 +49,27 @@ class SessionHelper {
         }
         return null;
     }
+
+    /** Per-session CSRF token (created on first use). */
+    public static function csrfToken() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+        return $_SESSION['csrf_token'];
+    }
+
+    /** Constant-time check of a submitted CSRF token. */
+    public static function csrfValidate($token) {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        if (!is_string($token) || $token === '' || empty($_SESSION['csrf_token'])) {
+            return false;
+        }
+        return hash_equals($_SESSION['csrf_token'], $token);
+    }
 }
 ?>

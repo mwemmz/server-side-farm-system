@@ -13,6 +13,9 @@ class FinanceController {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = $_POST;
             $errors = ValidationHelper::validateRequired(['type', 'amount', 'description', 'date'], $data);
+            if (!isset($errors['type']) && !ValidationHelper::inList($data['type'], ['income', 'expense'])) {
+                $errors['type'] = "Type must be either Income or Expense.";
+            }
             $e = ValidationHelper::number($data, 'amount', ['label' => 'Amount', 'positive' => true]);
             if ($e) $errors['amount'] = $e;
             if (!isset($errors['farm_id'])) {

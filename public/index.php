@@ -1,4 +1,8 @@
 <?php
+// Idle session timeout (30 min). Must be set before session_start so that
+// session.gc_maxlifetime actually applies (ini_set after session_start warns).
+$idleLimit = 1800;
+ini_set('session.gc_maxlifetime', (string) $idleLimit);
 session_start();
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
@@ -36,8 +40,6 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 // --- Idle session timeout (30 min): log it and bounce back to login ---
-$idleLimit = 1800;
-ini_set('session.gc_maxlifetime', (string) $idleLimit);
 if (isset($_SESSION['last_activity']) && (time() - (int) $_SESSION['last_activity']) > $idleLimit) {
     require_once __DIR__ . '/../src/Modules/Security/SecurityModel.php';
     (new SecurityModel($pdo))->logEvent((int) ($_SESSION['user_id'] ?? 0), 'session_timeout');
@@ -58,6 +60,13 @@ if ($module === 'Finance' && !in_array($role, $financeOnly, true)) {
 $module = $_GET['module'] ?? 'Dashboard';
 $action = $_GET['action'] ?? 'index';
 
+// --- Pest is no longer a standalone module: it now lives inside Crop & Livestock.
+// Keep the old URL working by redirecting it into the Crop module.
+if ($module === 'Pest') {
+    header('Location: index.php?module=Crop&action=manage');
+    exit;
+}
+
 // --- Lookup reference data (dependent combobox options) ---
 if ($module === 'Lookup' && $action === 'options') {
     header('Content-Type: application/json; charset=UTF-8');
@@ -73,6 +82,22 @@ if ($module === 'Lookup' && $action === 'options') {
 if ($module === 'Lookup' && $action === 'remember') {
     header('Content-Type: application/json; charset=UTF-8');
     require_once __DIR__ . '/../src/Helpers/LookupHelper.php';
+    require_once __DIR__ . '/../src/Helpers/SessionHelper.php';
+
+    // Only supervisory roles may add new dropdown values, and the request must
+    // carry the session CSRF token (defence against cross-site posting).
+    $rememberRoles = ['admin', 'manager', 'accountant'];
+    if (!in_array($role, $rememberRoles, true)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'You are not permitted to add list values.']);
+        exit;
+    }
+    if (!SessionHelper::csrfValidate($_POST['csrf_token'] ?? '')) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Invalid or missing security token.']);
+        exit;
+    }
+
     $category = (string) ($_POST['category'] ?? '');
     $value    = (string) ($_POST['value'] ?? '');
     if (!preg_match('/^[a-z_]{1,40}$/', $category)) {
@@ -284,7 +309,7 @@ if ($module === 'Labour') {
     if (file_exists($viewFile)) {
         $data = $labour->dashboardView();
         $data['upcoming_leave'] = $labour->hrNew()->upcomingLeave(30);
-        $data['pending_leave'] = $labour->hrNew()->leaveRequests(true);
+        $data['pending_leave_list'] = $labour->hrNew()->leaveRequests(true);
         $data['recent_training'] = array_slice($labour->hrNew()->training(), 0, 5);
         ob_start();
         require $viewFile;

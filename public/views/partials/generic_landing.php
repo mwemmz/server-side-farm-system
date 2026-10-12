@@ -10,6 +10,11 @@
  */
 require_once __DIR__ . '/../../../config/env.php';
 $recs = $data ?? [];
+// Some controllers return structured arrays (e.g. Crop => ['crops'=>..,'pests'=>..]);
+// unwrap the record list so the landing iterates rows, not the wrapper.
+if (is_array($recs) && isset($recs['crops']) && is_array($recs['crops'])) {
+    $recs = $recs['crops'];
+}
 $m    = isset($module) ? $module : ($_GET['module'] ?? 'Module');
 
 function esc($v) { return htmlspecialchars($v ?? ''); }
@@ -31,7 +36,7 @@ switch ($m) {
         }
         $summaries = [['Active crops', $active, 'green'], ['Harvest due', $upcoming, 'amber'], ['Total fields', (int) $pdo->query('SELECT COUNT(*) FROM fields')->fetchColumn(), 'slate']];
         foreach ($recs as $c) {
-            $g = $c['expected_harvest_date'] ? ((strtotime((string) $c['expected_harvest_date']) < strtotime('today')) ? ['Overdue', 'red'] : ['On track', 'green']) : ['—', 'slate'];
+            $g = !empty($c['expected_harvest_date']) ? ((strtotime((string) $c['expected_harvest_date']) < strtotime('today')) ? ['Overdue', 'red'] : ['On track', 'green']) : ['—', 'slate'];
             $render .= '<div class="glass-card p-4 sm:p-5"><div class="flex justify-between items-start"><div class="text-base font-bold text-slate-800">' . esc($c['name']) . '</div><span class="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-'.(($g[1]==='red')?'red':'emerald').'-100 text-'.(($g[1]==='red')?'red':'emerald').'-800">'.$g[0].'</span></div>'
                 . '<div class="text-xs text-slate-500 mt-0.5">' . esc($c['variety'] ?? '') . ' · Farm #' . esc($c['farm_id'] ?? '—') . '</div>'
                 . '<div class="mt-2 text-xs text-slate-500 flex gap-4"><span>Planted <strong>' . esc($c['planting_date'] ?? '—') . '</strong></span><span>Harvest <strong>' . esc($c['expected_harvest_date'] ?? '—') . '</strong></span></div></div>';

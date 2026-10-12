@@ -54,9 +54,11 @@
       var cat = el.dataset.category;
       if (!cat) return;
       remembered[key] = true;
+      var meta = document.querySelector('meta[name="csrf-token"]');
       var body = new URLSearchParams();
       body.append('category', cat);
       body.append('value', v);
+      body.append('csrf_token', meta ? meta.getAttribute('content') : '');
       fetch('index.php?module=Lookup&action=remember', {
         method: 'POST',
         credentials: 'same-origin',

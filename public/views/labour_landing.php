@@ -85,8 +85,8 @@ $money = function ($n) { require_once __DIR__ . '/../../config/env.php'; return 
             <p class="text-sm text-slate-500">No approved leave in the next 30 days.</p>
         <?php endif; ?>
 
-        <h3 class="text-sm font-bold text-slate-600 mt-5 mb-2">Pending approvals (<?php echo count($data['pending_leave']); ?>)</h3>
-        <?php if (!empty($data['pending_leave'])): foreach ($data['pending_leave'] as $l): ?>
+        <h3 class="text-sm font-bold text-slate-600 mt-5 mb-2">Pending approvals (<?php echo count($data['pending_leave_list'] ?? []); ?>)</h3>
+        <?php if (!empty($data['pending_leave_list'])): foreach ($data['pending_leave_list'] as $l): ?>
             <div class="flex items-center justify-between text-sm border-l-4 border-amber-400 bg-amber-50/60 rounded-r-xl px-3 py-2 mb-2">
                 <span class="text-slate-700"><b><?php echo htmlspecialchars($l['employee_name']); ?></b> · <?php echo ucfirst($l['leave_type']); ?> · <?php echo $l['days']; ?> days</span>
                 <a href="index.php?module=Labour&subsection=leave" class="text-xs font-bold text-amber-700">Review</a>

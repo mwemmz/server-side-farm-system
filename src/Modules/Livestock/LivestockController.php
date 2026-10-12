@@ -31,6 +31,9 @@ class LivestockController {
                 $e = ValidationHelper::exists($this->pdo, 'farms', $data['farm_id'], 'farm');
                 if ($e) $errors['farm_id'] = $e;
             }
+            if (!isset($errors['dob']) && !ValidationHelper::dateNotFuture($data['dob'] ?? '')) {
+                $errors['dob'] = "Date of birth cannot be in the future.";
+            }
             if (empty($errors)) {
                 try {
                     if ($this->model->createAnimal((int) $data['farm_id'], trim($data['type']), trim($data['breed']), trim($data['dob']))) {
@@ -60,6 +63,11 @@ class LivestockController {
             if (!isset($errors['livestock_id'])) {
                 $e = ValidationHelper::exists($this->pdo, 'livestock', $data['livestock_id'], 'animal');
                 if ($e) $errors['livestock_id'] = $e;
+            }
+
+            if (!isset($errors['vaccination_date']) && !empty($data['next_due_date']) && !isset($errors['next_due_date'])
+                && strtotime((string) $data['next_due_date']) < strtotime((string) $data['vaccination_date'])) {
+                $errors['next_due_date'] = "Next due date cannot be before the vaccination date.";
             }
 
             if (empty($errors)) {
