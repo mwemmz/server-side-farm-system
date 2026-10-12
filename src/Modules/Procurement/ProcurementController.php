@@ -3,6 +3,7 @@ require_once __DIR__ . '/ProcurementModel.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
 require_once __DIR__ . '/../Finance/FinanceService.php';
+require_once __DIR__ . '/../Inventory/InventoryModel.php';
 
 class ProcurementController {
     private $model;
@@ -57,6 +58,21 @@ class ProcurementController {
                             'Purchase: ' . trim($data['item_name']) . ' x' . (int) $data['quantity'],
                             null, 'Procurement', $procId, $data['purchase_date'], 'paid'
                         );
+                        // Cross-module: received purchase increases stock (match or create the item).
+                        try {
+                            $inv = new InventoryModel($this->pdo);
+                            $find = $this->pdo->prepare("SELECT id FROM inventory WHERE LOWER(name) = LOWER(?) LIMIT 1");
+                            $find->execute([trim($data['item_name'])]);
+                            $itemId = $find->fetchColumn();
+                            if ($itemId === false) {
+                                $ins = $this->pdo->prepare("INSERT INTO inventory (name, quantity, unit, category) VALUES (?, 0, 'pcs', ?) RETURNING id");
+                                $ins->execute([trim($data['item_name']), $expCat]);
+                                $itemId = (int) $ins->fetchColumn();
+                            }
+                            $inv->move((int) $itemId, 'in', (float) $data['quantity'], 'Purchase', 'Procurement #' . $procId, 'Procurement', $procId, (int) ($_SESSION['user_id'] ?? 0));
+                        } catch (PDOException $e) {
+                            error_log('Procurement stock-in failed: ' . $e->getMessage());
+                        }
                         SessionHelper::setFlash('success', 'Procurement record added successfully!');
                         SessionHelper::flashCreated('Procurement', $procId, trim($data['item_name']), ['Quantity' => $data['quantity']]);
                         header('Location: index.php?module=Procurement&action=manage');
