@@ -11,6 +11,8 @@ class FarmModel {
         return $stmt->fetchAll();
     }
 
+    public function lastId() { return (int) $this->pdo->lastInsertId(); }
+
     public function createFarm($name, $location) {
         $stmt = $this->pdo->prepare("INSERT INTO farms (name, location) VALUES (?, ?)");
         return $stmt->execute([$name, $location]);

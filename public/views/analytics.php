@@ -20,7 +20,7 @@ $records = $data['records'] ?? ($data ?? []);
     <h2 class="text-xl font-semibold mb-4">Add New Analytics Entry</h2>
     <?php
     $fields = [
-        ['name' => 'module_name', 'label' => 'Module Name', 'value' => $formData['module_name'] ?? ''],
+        ['name' => 'module_name', 'label' => 'Module Name', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'report_type'), 'allow_custom' => true, 'category' => 'report_type', 'placeholder' => 'Crops, Labour, Finance…', 'value' => $formData['module_name'] ?? ''],
         ['name' => 'data_points', 'label' => 'Data Points', 'type' => 'textarea', 'value' => $formData['data_points'] ?? '']
     ];
     echo FormHelper::generateForm($fields, '/index.php?module=Analytics&action=add', 'POST', $errors);

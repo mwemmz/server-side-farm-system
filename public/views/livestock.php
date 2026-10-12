@@ -21,9 +21,9 @@ $vaccAnimals = $data['vaccAnimals'] ?? $animals;
     <h2 class="text-xl font-semibold mb-4">Add Livestock</h2>
     <?php
     $fields = [
-        ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'select', 'options' => FormHelper::farmOptions($pdo), 'placeholder' => 'Select a farm…', 'value' => $formData['farm_id'] ?? ''],
-        ['name' => 'type', 'label' => 'Type', 'type' => 'select', 'options' => ['Cattle' => 'Cattle', 'Goats' => 'Goats', 'Sheep' => 'Sheep', 'Pigs' => 'Pigs', 'Poultry' => 'Poultry', 'Other' => 'Other'], 'placeholder' => 'Select a type…', 'value' => $formData['type'] ?? ''],
-        ['name' => 'breed', 'label' => 'Breed', 'value' => $formData['breed'] ?? ''],
+        ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'combo', 'options' => FormHelper::farmOptions($pdo), 'allow_custom' => false, 'placeholder' => 'Type to find a farm…', 'value' => $formData['farm_id'] ?? ''],
+        ['name' => 'type', 'label' => 'Type', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'livestock_type'), 'allow_custom' => true, 'category' => 'livestock_type', 'placeholder' => 'e.g. Cattle, Goats, Poultry…', 'value' => $formData['type'] ?? ''],
+        ['name' => 'breed', 'label' => 'Breed', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'livestock_breed'), 'allow_custom' => true, 'category' => 'livestock_breed', 'depends_on' => 'type', 'placeholder' => 'Pick a type first, then choose or type a breed…', 'value' => $formData['breed'] ?? '', 'help' => 'Common breeds are suggested after you choose a type. Type a new one if it is not listed.'],
         ['name' => 'dob', 'label' => 'Date of Birth', 'type' => 'date', 'max' => date('Y-m-d'), 'value' => $formData['dob'] ?? '']
     ];
     echo FormHelper::generateForm($fields, 'index.php?module=Livestock&action=add', 'POST', $errors);
@@ -45,33 +45,19 @@ $vaccAnimals = $data['vaccAnimals'] ?? $animals;
 
 <div class="glass-card p-4 sm:p-6 mb-6">
     <h2 class="text-xl font-semibold mb-4">Record a Vaccination</h2>
-    <form action="index.php?module=Livestock&action=vaccinate" method="POST" class="space-y-6">
-        <div class="flex flex-col gap-2">
-            <label for="livestock_id" class="text-sm font-semibold text-slate-700">Animal</label>
-            <select name="livestock_id" id="livestock_id" class="w-full px-4 py-2.5 text-slate-800 bg-white/70 border rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:bg-white transition duration-150 <?php echo isset($errors['livestock_id']) ? 'border-red-400' : 'border-slate-200'; ?>">
-                <option value="">-- Select animal --</option>
-                <?php foreach ($vaccAnimals as $a): ?>
-                    <option value="<?php echo (int) $a['id']; ?>" <?php echo ((string) ($formData['livestock_id'] ?? '') === (string) $a['id']) ? 'selected' : ''; ?>><?php echo htmlspecialchars(ucfirst($a['type']) . ' — ' . ($a['breed'] ?? 'Unknown')); ?></option>
-                <?php endforeach; ?>
-            </select>
-            <?php if (isset($errors['livestock_id'])): ?><span class="text-red-600 text-xs font-medium"><?php echo htmlspecialchars($errors['livestock_id']); ?></span><?php endif; ?>
-        </div>
-        <div class="flex flex-col gap-2">
-            <label for="vaccine_name" class="text-sm font-semibold text-slate-700">Vaccine Name</label>
-            <input type="text" name="vaccine_name" id="vaccine_name" value="<?php echo htmlspecialchars($formData['vaccine_name'] ?? ''); ?>" autocomplete="off" class="w-full px-4 py-2.5 text-slate-800 bg-white/70 border rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:bg-white transition duration-150 placeholder:text-slate-400 <?php echo isset($errors['vaccine_name']) ? 'border-red-400' : 'border-slate-200'; ?>">
-            <?php if (isset($errors['vaccine_name'])): ?><span class="text-red-600 text-xs font-medium"><?php echo htmlspecialchars($errors['vaccine_name']); ?></span><?php endif; ?>
-        </div>
-        <div class="flex flex-col gap-2">
-            <label for="vaccination_date" class="text-sm font-semibold text-slate-700">Date Vaccinated</label>
-            <input type="date" name="vaccination_date" id="vaccination_date" value="<?php echo htmlspecialchars($formData['vaccination_date'] ?? ''); ?>" autocomplete="off" class="w-full px-4 py-2.5 text-slate-800 bg-white/70 border rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:bg-white transition duration-150 placeholder:text-slate-400 <?php echo isset($errors['vaccination_date']) ? 'border-red-400' : 'border-slate-200'; ?>">
-            <?php if (isset($errors['vaccination_date'])): ?><span class="text-red-600 text-xs font-medium"><?php echo htmlspecialchars($errors['vaccination_date']); ?></span><?php endif; ?>
-        </div>
-        <div class="flex flex-col gap-2">
-            <label for="next_due_date" class="text-sm font-semibold text-slate-700">Next Due Date</label>
-            <input type="date" name="next_due_date" id="next_due_date" value="<?php echo htmlspecialchars($formData['next_due_date'] ?? ''); ?>" autocomplete="off" class="w-full px-4 py-2.5 text-slate-800 bg-white/70 border rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:bg-white transition duration-150 placeholder:text-slate-400 border-slate-200">
-        </div>
-        <button type="submit" class="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-2.5 px-4 rounded-lg shadow-lg shadow-green-900/30 transition duration-150">Submit</button>
-    </form>
+    <?php
+    $vaccAnimalsOptions = [];
+    foreach ($vaccAnimals as $a) {
+        $vaccAnimalsOptions[(string) $a['id']] = '#' . $a['id'] . ' — ' . ucfirst($a['type'] ?? '') . ' ' . ($a['breed'] ?? 'Unknown');
+    }
+    $vaccFields = [
+        ['name' => 'livestock_id', 'label' => 'Animal', 'type' => 'combo', 'options' => $vaccAnimalsOptions, 'allow_custom' => false, 'placeholder' => 'Type an animal #, type or breed…', 'value' => $formData['livestock_id'] ?? '', 'help' => 'The animal ID is the "#" number shown in the list.'],
+        ['name' => 'vaccine_name', 'label' => 'Vaccine / Treatment', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'vaccine_name'), 'allow_custom' => true, 'category' => 'vaccine_name', 'placeholder' => 'e.g. FMD vaccine, or type another…', 'value' => $formData['vaccine_name'] ?? ''],
+        ['name' => 'vaccination_date', 'label' => 'Date Vaccinated', 'type' => 'date', 'value' => $formData['vaccination_date'] ?? date('Y-m-d')],
+        ['name' => 'next_due_date', 'label' => 'Next Due Date', 'type' => 'date', 'required' => false, 'value' => $formData['next_due_date'] ?? '', 'help' => 'Leave blank if not a repeat treatment.'],
+    ];
+    echo FormHelper::generateForm($vaccFields, 'index.php?module=Livestock&action=vaccinate', 'POST', $errors);
+    ?>
 </div>
 
 <div class="glass-card p-4 sm:p-6">

@@ -19,6 +19,7 @@ class MarketController {
                 try {
                     if ($this->model->create($row)) {
                         SessionHelper::setFlash('success', 'Market data added successfully!');
+                        SessionHelper::flashCreated('Market', $this->model->lastId(), trim($data['crop_name']), ['Price (K/kg)' => $data['price']]);
                         header('Location: index.php?module=Market&action=manage');
                         exit;
                     }

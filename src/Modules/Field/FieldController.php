@@ -5,7 +5,8 @@ require_once __DIR__ . '/../../Helpers/SessionHelper.php';
 
 class FieldController {
     private $model;
-    public function __construct($pdo) { $this->model = new FieldModel($pdo); }
+    private $pdo;
+    public function __construct($pdo) { $this->pdo = $pdo; $this->model = new FieldModel($pdo); }
     public function index() { return $this->model->getAll(); }
 
     public function add() {
@@ -13,6 +14,11 @@ class FieldController {
             $data = $_POST;
             $fields = ['farm_id', 'name', 'size', 'soil_type'];
             $errors = ValidationHelper::validateRequired($fields, $data);
+
+            if (!isset($errors['farm_id'])) {
+                $e = ValidationHelper::exists($this->pdo, 'farms', $data['farm_id'], 'farm');
+                if ($e) $errors['farm_id'] = $e;
+            }
 
             if (!isset($errors['size'])) {
                 if (!is_numeric($data['size'])) {
@@ -32,6 +38,7 @@ class FieldController {
                 try {
                     if ($this->model->create($row)) {
                         SessionHelper::setFlash('success', 'Field added successfully!');
+                        SessionHelper::flashCreated('Field', $this->model->lastId(), trim($data['name']), ['Size (ha)' => $data['size']]);
                         header('Location: index.php?module=Field&action=manage');
                         exit;
                     }

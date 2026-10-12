@@ -21,8 +21,8 @@ $records = $data['records'] ?? ($data ?? []);
     <h2 class="text-xl font-semibold mb-4">Add New Market Entry</h2>
     <?php
     $fields = [
-        ['name' => 'crop_name', 'label' => 'Crop Name', 'type' => 'select', 'options' => ['Maize' => 'Maize', 'Soybeans' => 'Soybeans', 'Wheat' => 'Wheat', 'Groundnuts' => 'Groundnuts', 'Tomato' => 'Tomato'], 'placeholder' => 'Select a crop…', 'value' => $formData['crop_name'] ?? ''],
-        ['name' => 'price', 'label' => 'Price (K per kg)', 'type' => 'number', 'step' => '0.01', 'min' => '0.01', 'value' => $formData['price'] ?? ''],
+        ['name' => 'crop_name', 'label' => 'Crop Name', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'crop_name'), 'allow_custom' => true, 'category' => 'crop_name', 'placeholder' => 'e.g. Maize, Soya…', 'value' => $formData['crop_name'] ?? ''],
+        ['name' => 'price', 'label' => 'Price', 'type' => 'number', 'step' => '0.01', 'min' => '0.01', 'value' => $formData['price'] ?? '', 'suffix' => 'K per kg'],
         ['name' => 'market_date', 'label' => 'Market Date', 'type' => 'date', 'value' => $formData['market_date'] ?? date('Y-m-d')]
     ];
     echo FormHelper::generateForm($fields, '/index.php?module=Market&action=add', 'POST', $errors);

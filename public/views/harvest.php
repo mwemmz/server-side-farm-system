@@ -20,10 +20,10 @@ $records = $data['records'] ?? ($data ?? []);
     <h2 class="text-xl font-semibold mb-4">Add New Harvest Record</h2>
     <?php
     $fields = [
-        ['name' => 'crop_id', 'label' => 'Crop', 'type' => 'select', 'options' => FormHelper::cropOptions($pdo), 'placeholder' => 'Select a crop…', 'value' => $formData['crop_id'] ?? ''],
-        ['name' => 'harvest_date', 'label' => 'Harvest Date', 'type' => 'date', 'value' => $formData['harvest_date'] ?? ''],
-        ['name' => 'quantity', 'label' => 'Quantity (kg)', 'type' => 'number', 'step' => '0.01', 'min' => '0.01', 'value' => $formData['quantity'] ?? ''],
-        ['name' => 'quality', 'label' => 'Quality', 'type' => 'select', 'required' => false, 'options' => ['Grade A' => 'Grade A', 'Grade B' => 'Grade B', 'Grade C' => 'Grade C', 'Rejected' => 'Rejected'], 'placeholder' => 'Select quality…', 'value' => $formData['quality'] ?? '']
+        ['name' => 'crop_id', 'label' => 'Crop', 'type' => 'combo', 'options' => FormHelper::cropOptions($pdo), 'allow_custom' => false, 'placeholder' => 'Type to find a crop…', 'value' => $formData['crop_id'] ?? ''],
+        ['name' => 'harvest_date', 'label' => 'Harvest Date', 'type' => 'date', 'value' => $formData['harvest_date'] ?? date('Y-m-d')],
+        ['name' => 'quantity', 'label' => 'Quantity', 'type' => 'number', 'step' => '0.01', 'min' => '0.01', 'value' => $formData['quantity'] ?? '', 'suffix' => 'kg'],
+        ['name' => 'quality', 'label' => 'Quality', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'harvest_quality'), 'allow_custom' => true, 'category' => 'harvest_quality', 'placeholder' => 'Grade A / B / C…', 'value' => $formData['quality'] ?? '']
     ];
     echo FormHelper::generateForm($fields, '/index.php?module=Harvest&action=add', 'POST', $errors);
     ?>

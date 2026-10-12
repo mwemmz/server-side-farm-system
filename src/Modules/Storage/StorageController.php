@@ -14,9 +14,22 @@ class StorageController {
             $fields = ['name', 'capacity', 'current_stock'];
             $errors = ValidationHelper::validateRequired($fields, $data);
 
+            if (!isset($errors['capacity'])) {
+                $e = ValidationHelper::number($data, 'capacity', ['label' => 'Capacity', 'min' => 0]);
+                if ($e) $errors['capacity'] = $e;
+            }
+            if (!isset($errors['current_stock'])) {
+                $e = ValidationHelper::number($data, 'current_stock', ['label' => 'Current stock', 'min' => 0]);
+                if ($e) $errors['current_stock'] = $e;
+            }
+
             if (empty($errors)) {
-                if ($this->model->create($data)) {
+                $row = array_intersect_key($data, array_flip(['name', 'facility_type', 'capacity', 'current_stock', 'unit']));
+                $row['name'] = trim($row['name']);
+                foreach (['facility_type', 'unit'] as $k) { if (isset($row[$k]) && trim($row[$k]) === '') $row[$k] = null; }
+                if ($this->model->create($row)) {
                     SessionHelper::setFlash('success', 'Storage record added successfully!');
+                    SessionHelper::flashCreated('Storage', $this->model->lastId(), trim($data['name']));
                     header('Location: /index.php?module=Storage&action=index');
                     exit;
                 } else {

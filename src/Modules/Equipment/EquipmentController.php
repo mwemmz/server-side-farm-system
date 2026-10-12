@@ -13,8 +13,9 @@ class EquipmentController {
             $errors = ValidationHelper::validateRequired(['name', 'status'], $data);
             if (empty($errors)) {
                 try {
-                    if ($this->model->addEquipment(trim($data['name']), trim($data['status']))) {
+                    if ($this->model->addEquipment(trim($data['name']), trim($data['status']), trim($data['equipment_type'] ?? ''), trim($data['farm_id'] ?? ''), trim($data['purchase_date'] ?? ''))) {
                         SessionHelper::setFlash('success', 'Equipment added successfully!');
+                        SessionHelper::flashCreated('Equipment', $this->model->lastId(), trim($data['name']), ['Status' => trim($data['status'])]);
                         header('Location: index.php?module=Equipment&action=manage');
                         exit;
                     }

@@ -27,7 +27,10 @@ $records = $data['records'] ?? ($data ?? []);
     <?php
     $fields = [
         ['name' => 'type', 'label' => 'Type', 'type' => 'select', 'options' => ['income' => 'Income', 'expense' => 'Expense'], 'placeholder' => 'Select a type…', 'value' => $formData['type'] ?? ''],
-        ['name' => 'amount', 'label' => 'Amount (K)', 'type' => 'number', 'step' => '0.01', 'min' => '0.01', 'value' => $formData['amount'] ?? ''],
+        ['name' => 'category', 'label' => 'Category', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'finance_category'), 'allow_custom' => true, 'category' => 'finance_category', 'placeholder' => 'Seeds, Labour, Crop sales…', 'value' => $formData['category'] ?? ''],
+        ['name' => 'amount', 'label' => 'Amount', 'type' => 'number', 'step' => '0.01', 'min' => '0.01', 'value' => $formData['amount'] ?? '', 'suffix' => 'K'],
+        ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'combo', 'required' => false, 'options' => FormHelper::farmOptions($pdo), 'allow_custom' => false, 'placeholder' => 'Type to find a farm…', 'value' => $formData['farm_id'] ?? ''],
+        ['name' => 'payment_method', 'label' => 'Payment Method', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'payment_method'), 'allow_custom' => true, 'category' => 'payment_method', 'placeholder' => 'Cash, Mobile money…', 'value' => $formData['payment_method'] ?? ''],
         ['name' => 'description', 'label' => 'Description', 'type' => 'textarea', 'value' => $formData['description'] ?? ''],
         ['name' => 'date', 'label' => 'Date', 'type' => 'date', 'value' => $formData['date'] ?? date('Y-m-d')]
     ];

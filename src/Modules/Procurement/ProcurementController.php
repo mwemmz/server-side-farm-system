@@ -38,6 +38,7 @@ class ProcurementController {
                 try {
                     if ($this->model->create($row)) {
                         SessionHelper::setFlash('success', 'Procurement record added successfully!');
+                        SessionHelper::flashCreated('Procurement', $this->model->lastId(), trim($data['item_name']), ['Quantity' => $data['quantity']]);
                         header('Location: index.php?module=Procurement&action=manage');
                         exit;
                     }

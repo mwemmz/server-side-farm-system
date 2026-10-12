@@ -23,6 +23,7 @@ class FarmController {
                 try {
                     if ($this->model->createFarm(trim($data['name']), trim($data['location']))) {
                         SessionHelper::setFlash('success', 'Farm added successfully!');
+                        SessionHelper::flashCreated('Farm', $this->model->lastId(), trim($data['name']), ['Location' => trim($data['location'])]);
                         header('Location: index.php?module=Farm&action=manage');
                         exit;
                     }

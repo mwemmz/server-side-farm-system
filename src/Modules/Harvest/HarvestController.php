@@ -34,6 +34,7 @@ class HarvestController {
                 try {
                     if ($this->model->create($row)) {
                         SessionHelper::setFlash('success', 'Harvest record added successfully!');
+                        SessionHelper::flashCreated('Harvest', $this->model->lastId(), 'Harvest record', ['Quantity (kg)' => $data['quantity']]);
                         header('Location: index.php?module=Harvest&action=manage');
                         exit;
                     }

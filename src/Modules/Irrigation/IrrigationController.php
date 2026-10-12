@@ -18,8 +18,9 @@ class IrrigationController {
             }
             if (empty($errors)) {
                 try {
-                    if ($this->model->createSystem((int) $data['farm_id'], trim($data['type']), trim($data['status']))) {
+                    if ($this->model->createSystem((int) $data['farm_id'], trim($data['type']), trim($data['status']), trim($data['water_source'] ?? ''))) {
                         SessionHelper::setFlash('success', 'Irrigation system added successfully!');
+                        SessionHelper::flashCreated('Irrigation', $this->model->lastId(), trim($data['type']), ['Status' => trim($data['status'])]);
                         header('Location: index.php?module=Irrigation&action=manage');
                         exit;
                     }

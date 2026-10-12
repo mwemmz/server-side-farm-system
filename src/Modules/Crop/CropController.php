@@ -5,8 +5,10 @@ require_once __DIR__ . '/../../Helpers/SessionHelper.php';
 
 class CropController {
     private $model;
+    private $pdo;
 
     public function __construct($pdo) {
+        $this->pdo = $pdo;
         $this->model = new CropModel($pdo);
     }
 
@@ -20,6 +22,11 @@ class CropController {
             $fields = ['farm_id', 'name', 'planting_date'];
             $errors = ValidationHelper::validateRequired($fields, $data);
 
+            if (!isset($errors['farm_id'])) {
+                $e = ValidationHelper::exists($this->pdo, 'farms', $data['farm_id'], 'farm');
+                if ($e) $errors['farm_id'] = $e;
+            }
+
             $variety = isset($data['variety']) && trim($data['variety']) !== '' ? trim($data['variety']) : null;
             $harvest = isset($data['expected_harvest_date']) && trim($data['expected_harvest_date']) !== '' ? trim($data['expected_harvest_date']) : null;
 
@@ -31,6 +38,7 @@ class CropController {
                 try {
                     if ($this->model->createCrop((int) $data['farm_id'], trim($data['name']), $variety, $data['planting_date'], $harvest)) {
                         SessionHelper::setFlash('success', 'Crop added successfully!');
+                        SessionHelper::flashCreated('Crop', $this->model->lastId(), trim($data['name']), ['Planted' => $data['planting_date']]);
                         header('Location: index.php?module=Crop&action=manage');
                         exit;
                     }

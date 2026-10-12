@@ -20,9 +20,9 @@ $crops = $data['crops'] ?? ($data ?? []); // Handle both cases for index and add
     <h2 class="text-xl font-semibold mb-4">Add New Crop</h2>
     <?php
     $fields = [
-        ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'select', 'options' => FormHelper::farmOptions($pdo), 'placeholder' => 'Select a farm…', 'value' => $formData['farm_id'] ?? ''],
-        ['name' => 'name', 'label' => 'Crop Name', 'value' => $formData['name'] ?? ''],
-        ['name' => 'variety', 'label' => 'Variety', 'required' => false, 'value' => $formData['variety'] ?? ''],
+        ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'combo', 'options' => FormHelper::farmOptions($pdo), 'allow_custom' => false, 'placeholder' => 'Type to find a farm…', 'value' => $formData['farm_id'] ?? ''],
+        ['name' => 'name', 'label' => 'Crop Name', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'crop_name'), 'allow_custom' => true, 'category' => 'crop_name', 'placeholder' => 'e.g. Maize, or type another crop…', 'value' => $formData['name'] ?? ''],
+        ['name' => 'variety', 'label' => 'Variety', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'crop_variety'), 'allow_custom' => true, 'category' => 'crop_variety', 'placeholder' => 'e.g. SC 403 (optional)', 'value' => $formData['variety'] ?? ''],
         ['name' => 'planting_date', 'label' => 'Planting Date', 'type' => 'date', 'help' => 'Defaults to today.', 'value' => $formData['planting_date'] ?? date('Y-m-d')],
         ['name' => 'expected_harvest_date', 'label' => 'Expected Harvest Date', 'type' => 'date', 'required' => false, 'help' => 'Not sure? Leave blank, or enter the crop name to get an estimate.', 'value' => $formData['expected_harvest_date'] ?? '']
     ];
@@ -45,7 +45,7 @@ $crops = $data['crops'] ?? ($data ?? []); // Handle both cases for index and add
 
 <script>
 (function () {
-    var nameEl = document.getElementById('name');
+    var nameEl = document.getElementById('name_input') || document.getElementById('name');
     var plantEl = document.getElementById('planting_date');
     var harvEl = document.getElementById('expected_harvest_date');
     if (!nameEl || !plantEl || !harvEl) return;

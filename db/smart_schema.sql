@@ -77,3 +77,4 @@ ALTER TABLE vaccinations      ADD COLUMN IF NOT EXISTS batch_number VARCHAR(60);
 ALTER TABLE vaccinations      ADD COLUMN IF NOT EXISTS administered_by INT;
 ALTER TABLE vaccinations      ADD COLUMN IF NOT EXISTS cost DECIMAL(12,2);
 ALTER TABLE vaccinations      ADD COLUMN IF NOT EXISTS vaccine_catalog_id INT;
+ALTER TABLE pest_records      ADD COLUMN IF NOT EXISTS severity VARCHAR(20);

@@ -69,6 +69,21 @@ if ($module === 'Lookup' && $action === 'options') {
     exit;
 }
 
+// --- Remember a custom value typed into an open combobox (Phase 2) ---
+if ($module === 'Lookup' && $action === 'remember') {
+    header('Content-Type: application/json; charset=UTF-8');
+    require_once __DIR__ . '/../src/Helpers/LookupHelper.php';
+    $category = (string) ($_POST['category'] ?? '');
+    $value    = (string) ($_POST['value'] ?? '');
+    if (!preg_match('/^[a-z_]{1,40}$/', $category)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid category.']);
+        exit;
+    }
+    $canonical = LookupHelper::remember($pdo, $category, $value);
+    echo json_encode(['success' => true, 'value' => $canonical]);
+    exit;
+}
+
 // --- Lookup demo/acceptance page (Phase 1): proves pick-or-type + custom values ---
 if ($module === 'Lookup' && $action === 'test') {
     require_once __DIR__ . '/../src/Helpers/LookupHelper.php';

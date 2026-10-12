@@ -20,9 +20,9 @@ $records = $data['records'] ?? ($data ?? []);
     <h2 class="text-xl font-semibold mb-4">Add New Weather Record</h2>
     <?php
     $fields = [
-        ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'select', 'options' => FormHelper::farmOptions($pdo), 'placeholder' => 'Select a farm…', 'value' => $formData['farm_id'] ?? ''],
-        ['name' => 'temperature', 'label' => 'Temperature (°C)', 'type' => 'number', 'step' => '0.1', 'min' => '-50', 'max' => '60', 'value' => $formData['temperature'] ?? ''],
-        ['name' => 'humidity', 'label' => 'Humidity (%)', 'type' => 'number', 'step' => '0.1', 'min' => '0', 'max' => '100', 'value' => $formData['humidity'] ?? '']
+        ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'combo', 'options' => FormHelper::farmOptions($pdo), 'allow_custom' => false, 'placeholder' => 'Type to find a farm…', 'value' => $formData['farm_id'] ?? ''],
+        ['name' => 'temperature', 'label' => 'Temperature', 'type' => 'number', 'step' => '0.1', 'min' => '-50', 'max' => '60', 'value' => $formData['temperature'] ?? '', 'suffix' => '°C'],
+        ['name' => 'humidity', 'label' => 'Humidity', 'type' => 'number', 'step' => '0.1', 'min' => '0', 'max' => '100', 'value' => $formData['humidity'] ?? '', 'suffix' => '%']
     ];
     echo FormHelper::generateForm($fields, '/index.php?module=Weather&action=add', 'POST', $errors);
     ?>

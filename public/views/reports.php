@@ -44,7 +44,7 @@ $exportSets = [
     <h2 class="text-xl font-semibold mb-4">Generate New Report</h2>
     <?php
     $fields = [
-        ['name' => 'report_type', 'label' => 'Report Type', 'value' => $formData['report_type'] ?? ''],
+        ['name' => 'report_type', 'label' => 'Report Type', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'report_type'), 'allow_custom' => true, 'category' => 'report_type', 'placeholder' => 'Crop performance, Finance summary…', 'value' => $formData['report_type'] ?? ''],
         ['name' => 'data', 'label' => 'Data', 'type' => 'textarea', 'value' => $formData['data'] ?? '']
     ];
     echo FormHelper::generateForm($fields, '/index.php?module=Reports&action=add', 'POST', $errors);

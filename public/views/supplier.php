@@ -21,7 +21,9 @@ $records = $data['records'] ?? ($data ?? []);
     <?php
     $fields = [
         ['name' => 'name', 'label' => 'Name', 'value' => $formData['name'] ?? ''],
-        ['name' => 'contact_info', 'label' => 'Contact Info', 'value' => $formData['contact_info'] ?? '']
+        ['name' => 'category', 'label' => 'Supplies', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'supplier_category'), 'allow_custom' => true, 'category' => 'supplier_category', 'placeholder' => 'Seeds, Fertiliser, Fuel, Services…', 'value' => $formData['category'] ?? ''],
+        ['name' => 'phone', 'label' => 'Phone', 'required' => false, 'value' => $formData['phone'] ?? ''],
+        ['name' => 'contact_info', 'label' => 'Contact Info', 'type' => 'textarea', 'required' => false, 'value' => $formData['contact_info'] ?? '']
     ];
     echo FormHelper::generateForm($fields, '/index.php?module=Supplier&action=add', 'POST', $errors);
     ?>

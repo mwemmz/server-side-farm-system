@@ -22,7 +22,7 @@ $formData = $data['data'] ?? [];
     <h2 class="text-xl font-semibold mb-4">Add Budget Line</h2>
     <?php
     $fields = [
-        ['name' => 'category', 'label' => 'Category', 'type' => 'text', 'value' => $formData['category'] ?? ''],
+        ['name' => 'category', 'label' => 'Category', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'finance_category'), 'allow_custom' => true, 'category' => 'finance_category', 'placeholder' => 'Seeds, Labour, Fuel…', 'value' => $formData['category'] ?? ''],
         ['name' => 'period', 'label' => 'Period', 'type' => 'text', 'value' => $formData['period'] ?? '', 'help' => 'e.g. 2026 Q1, October 2026', 'required' => false],
         ['name' => 'planned_amount', 'label' => 'Planned Amount (K)', 'type' => 'number', 'step' => '0.01', 'min' => '0', 'value' => $formData['planned_amount'] ?? ''],
         ['name' => 'notes', 'label' => 'Notes', 'type' => 'textarea', 'value' => $formData['notes'] ?? '', 'required' => false],

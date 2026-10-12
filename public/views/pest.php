@@ -20,9 +20,10 @@ $records = $data['records'] ?? ($data ?? []);
     <h2 class="text-xl font-semibold mb-4">Add New Pest Record</h2>
     <?php
     $fields = [
-        ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'select', 'options' => FormHelper::farmOptions($pdo), 'placeholder' => 'Select a farm…', 'value' => $formData['farm_id'] ?? ''],
-        ['name' => 'pest_name', 'label' => 'Pest Name', 'value' => $formData['pest_name'] ?? ''],
-        ['name' => 'detected_date', 'label' => 'Detected Date', 'type' => 'date', 'value' => $formData['detected_date'] ?? ''],
+        ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'combo', 'options' => FormHelper::farmOptions($pdo), 'allow_custom' => false, 'placeholder' => 'Type to find a farm…', 'value' => $formData['farm_id'] ?? ''],
+        ['name' => 'pest_name', 'label' => 'Pest / Problem', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'pest_name'), 'allow_custom' => true, 'category' => 'pest_name', 'placeholder' => 'e.g. Fall armyworm, or type another…', 'value' => $formData['pest_name'] ?? ''],
+        ['name' => 'severity', 'label' => 'Severity', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'pest_severity'), 'allow_custom' => true, 'category' => 'pest_severity', 'placeholder' => 'Low, Moderate, High…', 'value' => $formData['severity'] ?? ''],
+        ['name' => 'detected_date', 'label' => 'Detected Date', 'type' => 'date', 'value' => $formData['detected_date'] ?? date('Y-m-d')],
         ['name' => 'action_taken', 'label' => 'Action Taken', 'type' => 'textarea', 'value' => $formData['action_taken'] ?? '']
     ];
     echo FormHelper::generateForm($fields, '/index.php?module=Pest&action=add', 'POST', $errors);

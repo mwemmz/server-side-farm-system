@@ -230,6 +230,70 @@
                         <span><?php echo $success; ?></span>
                     </div>
                 <?php endif; ?>
+                <?php
+                $created = SessionHelper::getCreated();
+                if ($created):
+                    $refSafe = htmlspecialchars($created['ref']);
+                ?>
+                <div id="ff-created-modal" class="fixed inset-0 z-[120] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="ff-created-title">
+                    <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" data-ff-created-close></div>
+                    <div class="relative w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
+                        <div class="px-6 pt-6 pb-4 text-center">
+                            <div class="mx-auto w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mb-3">
+                                <svg class="w-7 h-7 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            </div>
+                            <h2 id="ff-created-title" class="text-lg font-bold text-slate-800">Saved successfully</h2>
+                            <p class="text-sm text-slate-500 mt-0.5"><?php echo htmlspecialchars($created['module']); ?> &middot; <?php echo htmlspecialchars($created['label']); ?></p>
+                        </div>
+                        <div class="px-6">
+                            <div class="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">Reference code</div>
+                            <div class="flex items-center gap-2">
+                                <div id="ff-created-ref" class="flex-1 font-mono text-lg font-bold tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-center select-all"><?php echo $refSafe; ?></div>
+                                <button type="button" id="ff-created-copy" class="shrink-0 px-4 py-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-bold shadow-lg hover:opacity-90 transition">Copy</button>
+                            </div>
+                            <?php if (!empty($created['extra'])): ?>
+                            <dl class="mt-4 space-y-1.5 text-sm">
+                                <?php foreach ($created['extra'] as $k => $v): ?>
+                                <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5 last:border-0">
+                                    <dt class="text-slate-500"><?php echo htmlspecialchars((string) $k); ?></dt>
+                                    <dd class="font-semibold text-slate-700 text-right"><?php echo htmlspecialchars((string) $v); ?></dd>
+                                </div>
+                                <?php endforeach; ?>
+                            </dl>
+                            <?php endif; ?>
+                        </div>
+                        <div class="px-6 py-5 flex gap-2">
+                            <a href="index.php?module=<?php echo urlencode($created['module']); ?>&amp;action=manage" class="flex-1 text-center px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-sm font-bold hover:bg-slate-200 transition">Go to list</a>
+                            <button type="button" data-ff-created-close class="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-bold shadow-lg hover:opacity-90 transition">Done</button>
+                        </div>
+                    </div>
+                </div>
+                <script>
+                (function () {
+                    var modal = document.getElementById('ff-created-modal');
+                    if (!modal) return;
+                    function close() { modal.style.display = 'none'; }
+                    modal.querySelectorAll('[data-ff-created-close]').forEach(function (el) { el.addEventListener('click', close); });
+                    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+                    var btn = document.getElementById('ff-created-copy');
+                    var ref = document.getElementById('ff-created-ref');
+                    if (btn && ref) {
+                        btn.addEventListener('click', function () {
+                            var text = ref.textContent.trim();
+                            function done() { btn.textContent = 'Copied!'; setTimeout(function () { btn.textContent = 'Copy'; }, 1500); }
+                            if (navigator.clipboard && navigator.clipboard.writeText) {
+                                navigator.clipboard.writeText(text).then(done, function () { fallback(); });
+                            } else { fallback(); }
+                            function fallback() {
+                                var t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select();
+                                try { document.execCommand('copy'); done(); } catch (e) {}
+                                document.body.removeChild(t);
+                            }
+                        });
+                    }
+                })();
+                </script>
+                <?php endif; ?>
                 <?php echo $content; ?>
             </div>
         </main>

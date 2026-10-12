@@ -45,8 +45,31 @@
       hidden.dispatchEvent(new Event('ff-combo-change'));
     }
 
+    // Persist custom values (open lists) so they are suggested next time.
+    var remembered = {};
+    function remember() {
+      var v = display.value.trim();
+      var key = v.toLowerCase();
+      if (!allow || v === '' || map[key] !== undefined || remembered[key]) return;
+      var cat = el.dataset.category;
+      if (!cat) return;
+      remembered[key] = true;
+      var body = new URLSearchParams();
+      body.append('category', cat);
+      body.append('value', v);
+      fetch('index.php?module=Lookup&action=remember', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      }).then(function (r) { return r.json(); })
+        .then(function (j) { if (j && j.value) map[key] = j.value; })
+        .catch(function () {});
+    }
+
     display.addEventListener('input', sync);
-    display.addEventListener('change', sync);
+    display.addEventListener('change', function () { sync(); remember(); });
+    display.addEventListener('blur', remember);
     sync();
 
     // Dependent options: reload the list when the parent combo changes.

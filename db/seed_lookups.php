@@ -36,6 +36,14 @@ try {
         'notification_type'  => ['Info', 'Warning', 'Urgent'],
         'report_type'        => ['Crop performance', 'Livestock health', 'Inventory valuation', 'Finance summary', 'Labour', 'Custom'],
         'stock_move_reason'  => ['Purchase', 'Used on crop', 'Fed to livestock', 'Sprayed on field', 'Fuel for machine', 'Damaged or expired', 'Adjustment', 'Sale'],
+        'crop_name'          => ['Maize', 'Soybeans', 'Wheat', 'Groundnuts', 'Tomato', 'Cabbage', 'Onion', 'Sunflower', 'Cotton', 'Tobacco', 'Rice', 'Sorghum', 'Millet', 'Cowpeas', 'Beans', 'Cassava', 'Potato'],
+        'crop_variety'       => ['SC 403', 'SC 513', 'PAN 53', 'Dekalb', 'Boron', 'Local', 'Hybrid'],
+        'inventory_item'     => ['Maize seed', 'Fertiliser (D-compound)', 'Fertiliser (Urea)', 'Fertiliser (CAN)', 'Herbicide', 'Pesticide', 'Insecticide', 'Animal feed', 'Veterinary drug', 'Vaccine', 'Diesel', 'Petrol', 'Engine oil', 'Twine', 'Packaging bags', 'Spare parts'],
+        'pest_name'          => ['Fall armyworm', 'Aphids', 'Stalk borer', 'Bollworm', 'Whitefly', 'Locusts', 'Rodents', 'Weeds', 'Armyworm', 'Termites'],
+        'pest_severity'      => ['Low', 'Moderate', 'High', 'Severe'],
+        'finance_category'   => ['Seeds', 'Fertiliser', 'Chemicals & pesticides', 'Animal feed', 'Veterinary & medicines', 'Labour & wages', 'Fuel', 'Equipment & repairs', 'Irrigation & water', 'Transport', 'Storage & packaging', 'Utilities', 'Loan repayment', 'Crop sales', 'Livestock sales', 'Other income', 'Other'],
+        'disease_name'       => ['Foot and mouth disease', 'East Coast fever', 'Mastitis', 'Newcastle disease', 'Coccidiosis', 'Anthrax', 'Blackleg', 'Lumpy skin disease', 'African swine fever'],
+        'vaccine_name'       => ['FMD vaccine', 'Anthrax vaccine', 'Blackleg vaccine', 'Newcastle (NCD)', 'Gumboro (IBD)', 'Fowl pox', 'Rabies', 'Dewormer'],
     ];
 
     foreach ($lists as $category => $items) {

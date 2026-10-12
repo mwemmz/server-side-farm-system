@@ -15,17 +15,25 @@ class FinanceController {
             $errors = ValidationHelper::validateRequired(['type', 'amount', 'description', 'date'], $data);
             $e = ValidationHelper::number($data, 'amount', ['label' => 'Amount', 'positive' => true]);
             if ($e) $errors['amount'] = $e;
+            if (!isset($errors['farm_id'])) {
+                $e = ValidationHelper::exists($this->pdo, 'farms', $data['farm_id'] ?? '', 'farm');
+                if ($e) $errors['farm_id'] = $e;
+            }
 
             if (empty($errors)) {
                 $row = [
-                    'type'        => $data['type'],
-                    'amount'      => $data['amount'],
-                    'description' => trim($data['description']),
-                    'date'        => $data['date'],
+                    'type'           => $data['type'],
+                    'category'       => (trim($data['category'] ?? '') !== '' ? trim($data['category']) : null),
+                    'amount'         => $data['amount'],
+                    'farm_id'        => (trim($data['farm_id'] ?? '') !== '' ? (int) $data['farm_id'] : null),
+                    'payment_method' => (trim($data['payment_method'] ?? '') !== '' ? trim($data['payment_method']) : null),
+                    'description'    => trim($data['description']),
+                    'date'           => $data['date'],
                 ];
                 try {
                     if ($this->model->create($row)) {
                         SessionHelper::setFlash('success', 'Finance record added successfully!');
+                        SessionHelper::flashCreated('Finance', $this->model->lastId(), ucfirst($data['type']) . ' — K' . number_format((float) $data['amount'], 2));
                         header('Location: index.php?module=Finance&action=manage');
                         exit;
                     }
@@ -57,6 +65,7 @@ class FinanceController {
                 try {
                     $this->model->addLoan($data);
                     SessionHelper::setFlash('success', 'Loan recorded successfully.');
+                    SessionHelper::flashCreated('Loan', $this->model->lastId(), trim($data['lender']), ['Principal' => 'K' . number_format((float) $data['principal'], 2)]);
                     header('Location: index.php?module=Finance&action=loans');
                     exit;
                 } catch (PDOException $ex) {
@@ -79,6 +88,7 @@ class FinanceController {
                 try {
                     $this->model->addBudget($data);
                     SessionHelper::setFlash('success', 'Budget line saved successfully.');
+                    SessionHelper::flashCreated('Budget', $this->model->lastId(), trim($data['category']), ['Planned' => 'K' . number_format((float) $data['planned_amount'], 2)]);
                     header('Location: index.php?module=Finance&action=budgets');
                     exit;
                 } catch (PDOException $ex) {

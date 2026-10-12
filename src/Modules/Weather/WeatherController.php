@@ -36,6 +36,7 @@ class WeatherController {
                 try {
                     if ($this->model->create($row)) {
                         SessionHelper::setFlash('success', 'Weather record added successfully!');
+                        SessionHelper::flashCreated('Weather', $this->model->lastId(), 'Weather record', ['Temperature' => $data['temperature'] . '°C']);
                         header('Location: index.php?module=Weather&action=manage');
                         exit;
                     }

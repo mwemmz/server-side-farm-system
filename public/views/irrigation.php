@@ -10,9 +10,10 @@ $formData = $data['data'] ?? [];
     <h2 class="text-xl font-semibold mb-4">Add Irrigation System</h2>
     <?php
     $fields = [
-        ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'select', 'options' => FormHelper::farmOptions($pdo), 'placeholder' => 'Select a farm…', 'value' => $formData['farm_id'] ?? ''],
-        ['name' => 'type', 'label' => 'Type', 'type' => 'select', 'options' => ['Drip' => 'Drip', 'Sprinkler' => 'Sprinkler', 'Pivot' => 'Pivot', 'Flood' => 'Flood', 'Furrow' => 'Furrow'], 'placeholder' => 'Select a type…', 'value' => $formData['type'] ?? ''],
-        ['name' => 'status', 'label' => 'Status', 'type' => 'select', 'options' => ['Operational' => 'Operational', 'Maintenance' => 'Maintenance', 'Offline' => 'Offline', 'Planned' => 'Planned'], 'placeholder' => 'Select a status…', 'value' => $formData['status'] ?? '']
+        ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'combo', 'options' => FormHelper::farmOptions($pdo), 'allow_custom' => false, 'placeholder' => 'Type to find a farm…', 'value' => $formData['farm_id'] ?? ''],
+        ['name' => 'type', 'label' => 'Type', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'irrigation_type'), 'allow_custom' => true, 'category' => 'irrigation_type', 'placeholder' => 'Drip, Sprinkler, Pivot…', 'value' => $formData['type'] ?? ''],
+        ['name' => 'status', 'label' => 'Status', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'irrigation_status'), 'allow_custom' => true, 'category' => 'irrigation_status', 'placeholder' => 'Active, Idle, Faulty…', 'value' => $formData['status'] ?? ''],
+        ['name' => 'water_source', 'label' => 'Water Source', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'water_source'), 'allow_custom' => true, 'category' => 'water_source', 'placeholder' => 'Borehole, River, Dam…', 'value' => $formData['water_source'] ?? '']
     ];
     echo FormHelper::generateForm($fields, 'index.php?module=Irrigation&action=add', 'POST', $errors);
     ?>

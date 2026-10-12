@@ -14,9 +14,23 @@ class SalesController {
             $fields = ['customer_name', 'amount', 'sale_date'];
             $errors = ValidationHelper::validateRequired($fields, $data);
 
+            if (!isset($errors['amount'])) {
+                $e = ValidationHelper::number($data, 'amount', ['label' => 'Amount', 'positive' => true]);
+                if ($e) $errors['amount'] = $e;
+            }
+            if (!isset($errors['quantity']) && isset($data['quantity']) && trim($data['quantity']) !== '') {
+                $e = ValidationHelper::number($data, 'quantity', ['label' => 'Quantity', 'min' => 0]);
+                if ($e) $errors['quantity'] = $e;
+            }
+
             if (empty($errors)) {
-                if ($this->model->create($data)) {
+                $row = array_intersect_key($data, array_flip(['customer_name', 'crop_name', 'quantity', 'unit', 'amount', 'payment_method', 'sale_date']));
+                $row['customer_name'] = trim($row['customer_name']);
+                foreach (['crop_name', 'unit', 'payment_method'] as $k) { if (isset($row[$k]) && trim($row[$k]) === '') $row[$k] = null; }
+                if (isset($row['quantity']) && trim((string) $row['quantity']) === '') $row['quantity'] = null;
+                if ($this->model->create($row)) {
                     SessionHelper::setFlash('success', 'Sale added successfully!');
+                    SessionHelper::flashCreated('Sales', $this->model->lastId(), trim($data['customer_name']), ['Amount' => 'K' . number_format((float) $data['amount'], 2)]);
                     header('Location: /index.php?module=Sales&action=index');
                     exit;
                 } else {

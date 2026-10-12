@@ -20,7 +20,7 @@ $records = $data['records'] ?? ($data ?? []);
     <h2 class="text-xl font-semibold mb-4">Add New Field</h2>
     <?php
     $fields = [
-        ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'select', 'options' => FormHelper::farmOptions($pdo), 'placeholder' => 'Select a farm…', 'value' => $formData['farm_id'] ?? ($_GET['farm_id'] ?? '')],
+        ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'combo', 'options' => FormHelper::farmOptions($pdo), 'allow_custom' => false, 'placeholder' => 'Type to find a farm…', 'value' => $formData['farm_id'] ?? ($_GET['farm_id'] ?? '')],
         ['name' => 'name', 'label' => 'Name', 'value' => $formData['name'] ?? ''],
         ['name' => 'size', 'label' => 'Size (hectares)', 'type' => 'number', 'step' => '0.01', 'min' => '0.01', 'value' => $formData['size'] ?? ''],
         ['name' => 'soil_type', 'label' => 'Soil Type', 'type' => 'select', 'options' => ['Loam' => 'Loam', 'Clay' => 'Clay', 'Sandy' => 'Sandy', 'Silty' => 'Silty', 'Chalky' => 'Chalky', 'Peat' => 'Peat'], 'placeholder' => 'Select a soil type…', 'value' => $formData['soil_type'] ?? '']

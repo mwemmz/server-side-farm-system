@@ -22,8 +22,12 @@ $records = $data['records'] ?? ($data ?? []);
     <?php
     $fields = [
         ['name' => 'customer_name', 'label' => 'Customer Name', 'value' => $formData['customer_name'] ?? ''],
-        ['name' => 'amount', 'label' => 'Amount (K)', 'value' => $formData['amount'] ?? ''],
-        ['name' => 'sale_date', 'label' => 'Sale Date', 'type' => 'date', 'value' => $formData['sale_date'] ?? '']
+        ['name' => 'crop_name', 'label' => 'Product Sold', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'crop_name'), 'allow_custom' => true, 'category' => 'crop_name', 'placeholder' => 'Maize, Livestock…', 'value' => $formData['crop_name'] ?? ''],
+        ['name' => 'quantity', 'label' => 'Quantity', 'type' => 'number', 'step' => '0.01', 'min' => '0', 'required' => false, 'value' => $formData['quantity'] ?? ''],
+        ['name' => 'unit', 'label' => 'Unit', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'unit'), 'allow_custom' => true, 'category' => 'unit', 'placeholder' => 'kg, bag, head…', 'value' => $formData['unit'] ?? ''],
+        ['name' => 'amount', 'label' => 'Total Amount', 'type' => 'number', 'step' => '0.01', 'min' => '0.01', 'value' => $formData['amount'] ?? '', 'suffix' => 'K'],
+        ['name' => 'payment_method', 'label' => 'Payment Method', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'payment_method'), 'allow_custom' => true, 'category' => 'payment_method', 'placeholder' => 'Cash, Mobile money…', 'value' => $formData['payment_method'] ?? ''],
+        ['name' => 'sale_date', 'label' => 'Sale Date', 'type' => 'date', 'value' => $formData['sale_date'] ?? date('Y-m-d')]
     ];
     echo FormHelper::generateForm($fields, '/index.php?module=Sales&action=add', 'POST', $errors);
     ?>

@@ -21,12 +21,14 @@ class PestController {
                 $row = [
                     'farm_id'       => (int) $data['farm_id'],
                     'pest_name'     => trim($data['pest_name']),
+                    'severity'      => (trim($data['severity'] ?? '') !== '' ? trim($data['severity']) : null),
                     'detected_date' => $data['detected_date'],
                     'action_taken'  => trim($data['action_taken']),
                 ];
                 try {
                     if ($this->model->create($row)) {
                         SessionHelper::setFlash('success', 'Pest record added successfully!');
+                        SessionHelper::flashCreated('Pest', $this->model->lastId(), trim($data['pest_name']));
                         header('Location: index.php?module=Pest&action=manage');
                         exit;
                     }

@@ -20,9 +20,11 @@ $records = $data['records'] ?? ($data ?? []);
     <h2 class="text-xl font-semibold mb-4">Add New Storage Record</h2>
     <?php
     $fields = [
-        ['name' => 'name', 'label' => 'Name', 'value' => $formData['name'] ?? ''],
-        ['name' => 'capacity', 'label' => 'Capacity', 'value' => $formData['capacity'] ?? ''],
-        ['name' => 'current_stock', 'label' => 'Current Stock', 'value' => $formData['current_stock'] ?? '']
+        ['name' => 'name', 'label' => 'Storage Name', 'value' => $formData['name'] ?? ''],
+        ['name' => 'facility_type', 'label' => 'Facility Type', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'storage_facility_type'), 'allow_custom' => true, 'category' => 'storage_facility_type', 'placeholder' => 'Grain silo, Cold store, Warehouse…', 'value' => $formData['facility_type'] ?? ''],
+        ['name' => 'capacity', 'label' => 'Capacity', 'type' => 'number', 'step' => '0.01', 'min' => '0', 'value' => $formData['capacity'] ?? ''],
+        ['name' => 'current_stock', 'label' => 'Current Stock', 'type' => 'number', 'step' => '0.01', 'min' => '0', 'value' => $formData['current_stock'] ?? ''],
+        ['name' => 'unit', 'label' => 'Unit', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'unit'), 'allow_custom' => true, 'category' => 'unit', 'placeholder' => 'tonne, 50 kg bag…', 'value' => $formData['unit'] ?? '']
     ];
     echo FormHelper::generateForm($fields, '/index.php?module=Storage&action=add', 'POST', $errors);
     ?>

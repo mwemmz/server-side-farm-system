@@ -10,9 +10,10 @@ $formData = $data['data'] ?? [];
     <h2 class="text-xl font-semibold mb-4">Add Inventory Item</h2>
     <?php
     $fields = [
-        ['name' => 'name', 'label' => 'Item Name', 'value' => $formData['name'] ?? ''],
-        ['name' => 'quantity', 'label' => 'Quantity', 'type' => 'number', 'value' => $formData['quantity'] ?? ''],
-        ['name' => 'unit', 'label' => 'Unit', 'value' => $formData['unit'] ?? '']
+        ['name' => 'name', 'label' => 'Item Name', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'inventory_item'), 'allow_custom' => true, 'category' => 'inventory_item', 'placeholder' => 'e.g. Fertiliser (Urea), or type a new item…', 'value' => $formData['name'] ?? ''],
+        ['name' => 'category', 'label' => 'Category', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'inventory_category'), 'allow_custom' => true, 'category' => 'inventory_category', 'placeholder' => 'Seed, Fertiliser, Pesticide, Fuel…', 'value' => $formData['category'] ?? ''],
+        ['name' => 'quantity', 'label' => 'Quantity', 'type' => 'number', 'step' => '0.01', 'min' => '0', 'value' => $formData['quantity'] ?? ''],
+        ['name' => 'unit', 'label' => 'Unit', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'unit'), 'allow_custom' => true, 'category' => 'unit', 'placeholder' => 'kg, L, bag, piece…', 'value' => $formData['unit'] ?? '']
     ];
     echo FormHelper::generateForm($fields, 'index.php?module=Inventory&action=add', 'POST', $errors);
     ?>
