@@ -23,8 +23,17 @@ try {
         $pdo->exec($panelSchema);
     }
 
+    // Smart Upgrade reference-data schema (idempotent)
+    $smartSchema = file_get_contents(__DIR__ . '/smart_schema.sql');
+    if ($smartSchema !== false) {
+        $pdo->exec($smartSchema);
+    }
+
     // Seed default admin + mock data (idempotent)
     require_once __DIR__ . '/seed.php';
+
+    // Seed shared lookup reference data (idempotent)
+    require_once __DIR__ . '/seed_lookups.php';
 } catch (PDOException $e) {
     // Log the error, but don't block the application if it's already set up
     error_log("Migration failed: " . $e->getMessage());

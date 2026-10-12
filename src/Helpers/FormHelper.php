@@ -1,6 +1,17 @@
 <?php
 
 class FormHelper {
+    /**
+     * Render a form.
+     *
+     * Field definition keys:
+     *   name, label, type (text|number|date|textarea|select|combo|hidden), value,
+     *   options (value => label) OR optgroups ([ 'Group' => [value => label] ]),
+     *   required (default true), placeholder, help, step/min/max, suffix, default,
+     *   readonly, computed,
+     *   combo extras: allow_custom (bool), category (lookup category),
+     *                 depends_on (parent field name), empty_label.
+     */
     public static function generateForm($fields, $action, $method = 'POST', $errors = []) {
         $formId = 'ff-form-' . substr(md5($action . '|' . $method), 0, 8);
 
@@ -10,18 +21,24 @@ class FormHelper {
             $html .= "<div class='bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg text-sm' role='alert'>" . htmlspecialchars($errors['general']) . "</div>";
         }
 
+        $needsComboJs = false;
+
         foreach ($fields as $field) {
             $name  = $field['name'];
             $label = $field['label'] ?? ucfirst(str_replace('_', ' ', $name));
             $type  = $field['type'] ?? 'text';
             $value = $field['value'] ?? '';
+            if ($value === '' && isset($field['default'])) $value = $field['default'];
             $required    = array_key_exists('required', $field) ? (bool) $field['required'] : true;
             $placeholder = $field['placeholder'] ?? '';
             $help        = $field['help'] ?? '';
+            $suffix      = $field['suffix'] ?? '';
+            $readonly    = !empty($field['readonly']);
 
             $border = isset($errors[$name]) ? 'border-red-400' : 'border-slate-200';
             $base = "class='w-full px-4 py-2.5 text-slate-800 bg-white/70 border {$border} rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:bg-white transition duration-150 placeholder:text-slate-400'";
             $req = $required ? ' required' : '';
+            $ro  = $readonly ? ' readonly' : '';
 
             $html .= "<div class='flex flex-col gap-2'>";
 
@@ -33,6 +50,12 @@ class FormHelper {
             }
             $html .= "<label for='$name' class='text-sm font-semibold text-slate-700'>$labelHtml</label>";
 
+            if ($type === 'hidden') {
+                $html .= "<input type='hidden' name='$name' id='$name' value='" . htmlspecialchars($value) . "'>";
+                $html .= "</div>";
+                continue;
+            }
+
             if ($type === 'textarea') {
                 $html .= "<textarea name='$name' id='$name' rows='3' placeholder='" . htmlspecialchars($placeholder) . "'$req $base>" . htmlspecialchars($value) . "</textarea>";
             } elseif ($type === 'select') {
@@ -40,19 +63,36 @@ class FormHelper {
                 if ($placeholder !== '') {
                     $html .= "<option value=''>" . htmlspecialchars($placeholder) . "</option>";
                 }
-                foreach (($field['options'] ?? []) as $optVal => $optLabel) {
-                    $sel = ((string) $optVal === (string) $value) ? ' selected' : '';
-                    $html .= "<option value='" . htmlspecialchars((string) $optVal) . "'$sel>" . htmlspecialchars((string) $optLabel) . "</option>";
+                if (!empty($field['optgroups'])) {
+                    foreach ($field['optgroups'] as $group => $opts) {
+                        $html .= "<optgroup label='" . htmlspecialchars((string) $group) . "'>";
+                        foreach ($opts as $optVal => $optLabel) {
+                            $sel = ((string) $optVal === (string) $value) ? ' selected' : '';
+                            $html .= "<option value='" . htmlspecialchars((string) $optVal) . "'$sel>" . htmlspecialchars((string) $optLabel) . "</option>";
+                        }
+                        $html .= "</optgroup>";
+                    }
+                } else {
+                    foreach (($field['options'] ?? []) as $optVal => $optLabel) {
+                        $sel = ((string) $optVal === (string) $value) ? ' selected' : '';
+                        $html .= "<option value='" . htmlspecialchars((string) $optVal) . "'$sel>" . htmlspecialchars((string) $optLabel) . "</option>";
+                    }
                 }
                 $html .= "</select>";
+            } elseif ($type === 'combo') {
+                $needsComboJs = true;
+                $html .= self::renderCombo($field, $value, $required, $border);
             } else {
                 $attrs = '';
                 if (isset($field['step'])) { $attrs .= " step='" . htmlspecialchars((string) $field['step']) . "'"; }
                 if (isset($field['min']))  { $attrs .= " min='" . htmlspecialchars((string) $field['min']) . "'"; }
                 if (isset($field['max']))  { $attrs .= " max='" . htmlspecialchars((string) $field['max']) . "'"; }
-                $html .= "<input type='" . htmlspecialchars($type) . "' name='$name' id='$name' value='" . htmlspecialchars($value) . "' placeholder='" . htmlspecialchars($placeholder) . "' autocomplete='off'$attrs$req $base>";
+                $html .= "<input type='" . htmlspecialchars($type) . "' name='$name' id='$name' value='" . htmlspecialchars($value) . "' placeholder='" . htmlspecialchars($placeholder) . "' autocomplete='off'$attrs$req$ro $base>";
             }
 
+            if ($suffix !== '') {
+                $html .= "<span class='text-xs text-slate-400'>Measured in: <strong>" . htmlspecialchars($suffix) . "</strong></span>";
+            }
             if (isset($errors[$name])) {
                 $html .= "<span class='text-red-600 text-xs font-medium'>" . htmlspecialchars($errors[$name]) . "</span>";
             }
@@ -67,7 +107,56 @@ class FormHelper {
         $html .= "</form>";
         $html .= "<script>(function(){var f=document.getElementById('$formId');if(!f)return;var b=f.querySelector('button[type=submit]');if(!b)return;function chk(){b.disabled=!f.checkValidity();}f.addEventListener('input',chk);f.addEventListener('change',chk);chk();})();</script>";
 
+        if ($needsComboJs && !self::$comboJsIncluded) {
+            self::$comboJsIncluded = true;
+            $html .= "<script src='views/js/lookup-combobox.js' defer></script>";
+        }
+
         return $html;
+    }
+
+    private static $comboJsIncluded = false;
+
+    /** Build a pick-or-type combobox (text + hidden value + datalist + no-JS select). */
+    private static function renderCombo($field, $value, $required, $border) {
+        $name       = $field['name'];
+        $options    = $field['options'] ?? [];
+        $allowCustom = !empty($field['allow_custom']);
+        $category   = $field['category'] ?? '';
+        $dependsOn  = $field['depends_on'] ?? '';
+        $placeholder = $field['placeholder'] ?? 'Start typing to search…';
+        $req = $required ? ' required' : '';
+
+        // Display text: the label when the value matches an option, else the raw value.
+        $display = $value;
+        foreach ($options as $optVal => $optLabel) {
+            if ((string) $optVal === (string) $value) { $display = $optLabel; break; }
+        }
+
+        $datalist = "<datalist id='{$name}_opts'>";
+        $noJs = "<select name='$name' id='{$name}_noscript' class='" . htmlspecialchars($border) . " w-full px-4 py-2.5 rounded-lg border bg-white/70'>";
+        $noJs .= "<option value=''>" . htmlspecialchars($placeholder) . "</option>";
+        foreach ($options as $optVal => $optLabel) {
+            $datalist .= "<option value='" . htmlspecialchars((string) $optLabel) . "' data-value='" . htmlspecialchars((string) $optVal) . "'></option>";
+            $sel = ((string) $optVal === (string) $value) ? ' selected' : '';
+            $noJs .= "<option value='" . htmlspecialchars((string) $optVal) . "'$sel>" . htmlspecialchars((string) $optLabel) . "</option>";
+        }
+        $datalist .= "</datalist>";
+        $noJs .= "</select>";
+
+        $dataAttrs  = " data-category='" . htmlspecialchars($category) . "'";
+        $dataAttrs .= " data-allow-custom='" . ($allowCustom ? '1' : '0') . "'";
+        $dataAttrs .= " data-name='" . htmlspecialchars($name) . "'";
+        if ($dependsOn !== '') $dataAttrs .= " data-depends-on='" . htmlspecialchars($dependsOn) . "'";
+
+        $base = "w-full px-4 py-2.5 text-slate-800 bg-white/70 border " . htmlspecialchars($border) . " rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:bg-white transition duration-150 placeholder:text-slate-400";
+
+        return "<div class='ff-combo relative'$dataAttrs>"
+            . "<input type='text' id='{$name}_input' class='ff-combo-input $base' list='{$name}_opts' value='" . htmlspecialchars((string) $display) . "' placeholder='" . htmlspecialchars($placeholder) . "' autocomplete='off'$req>"
+            . "<input type='hidden' name='$name' id='$name' value='" . htmlspecialchars((string) $value) . "'>"
+            . $datalist
+            . "<noscript>$noJs</noscript>"
+            . "</div>";
     }
 
     public static function options($pdo, $sql) {
@@ -79,19 +168,43 @@ class FormHelper {
         return $options;
     }
 
+    /** value => "id — label" for record pickers. */
+    public static function recordOptions($pdo, $sql) {
+        $options = [];
+        foreach ($pdo->query($sql)->fetchAll() as $row) {
+            $vals = array_values($row);
+            $id = $vals[0];
+            $label = isset($vals[1]) ? $vals[1] : '';
+            $extra = isset($vals[2]) && $vals[2] !== null ? ' — ' . $vals[2] : '';
+            $options[$id] = $id . ' — ' . $label . $extra;
+        }
+        return $options;
+    }
+
     public static function farmOptions($pdo) {
-        return self::options($pdo, "SELECT id, name FROM farms ORDER BY name");
+        return self::recordOptions($pdo, "SELECT id, name, location FROM farms ORDER BY name");
     }
 
     public static function cropOptions($pdo) {
-        return self::options($pdo, "SELECT id, name FROM crops ORDER BY name");
+        return self::recordOptions($pdo, "SELECT id, name FROM crops ORDER BY name");
     }
 
     public static function supplierOptions($pdo) {
-        return self::options($pdo, "SELECT id, name FROM suppliers ORDER BY name");
+        return self::recordOptions($pdo, "SELECT id, name FROM suppliers ORDER BY name");
     }
 
     public static function fieldOptions($pdo) {
-        return self::options($pdo, "SELECT id, name FROM fields ORDER BY name");
+        return self::recordOptions($pdo, "SELECT id, name FROM fields ORDER BY name");
+    }
+
+    public static function livestockOptions($pdo) {
+        return self::recordOptions($pdo, "SELECT l.id, COALESCE(NULLIF(l.tag_no,''), l.type || ' #' || l.id), l.type, l.breed FROM livestock l ORDER BY l.id");
+    }
+
+    /** LookupHelper-backed options for a category. */
+    public static function lookupOptions($pdo, $category) {
+        require_once __DIR__ . '/LookupHelper.php';
+        return LookupHelper::options($pdo, $category);
     }
 }
+?>

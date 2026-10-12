@@ -58,6 +58,37 @@ if ($module === 'Finance' && !in_array($role, $financeOnly, true)) {
 $module = $_GET['module'] ?? 'Dashboard';
 $action = $_GET['action'] ?? 'index';
 
+// --- Lookup reference data (dependent combobox options) ---
+if ($module === 'Lookup' && $action === 'options') {
+    header('Content-Type: application/json; charset=UTF-8');
+    require_once __DIR__ . '/../src/Helpers/LookupHelper.php';
+    $category = $_GET['category'] ?? '';
+    $parent   = $_GET['parent'] ?? '';
+    $filter   = ($parent !== '') ? ['parent' => $parent] : [];
+    echo json_encode(['success' => true, 'options' => LookupHelper::listOptions($pdo, $category, $filter)]);
+    exit;
+}
+
+// --- Lookup demo/acceptance page (Phase 1): proves pick-or-type + custom values ---
+if ($module === 'Lookup' && $action === 'test') {
+    require_once __DIR__ . '/../src/Helpers/LookupHelper.php';
+    require_once __DIR__ . '/../src/Helpers/FormHelper.php';
+    require_once __DIR__ . '/../src/Helpers/ValidationHelper.php';
+    $result = null; $errors = [];
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $breed = trim($_POST['breed'] ?? '');
+        $farm  = $_POST['farm_id'] ?? '';
+        if ($breed !== '') $breed = LookupHelper::remember($pdo, 'livestock_breed', $breed);
+        if (!ValidationHelper::existsIn($pdo, 'farms', $farm)) {
+            $errors['farm_id'] = 'Pick an existing farm from the list.';
+        }
+        if (empty($errors)) $result = ['breed' => $breed, 'farm_id' => (int) $farm];
+    }
+    $data = ['result' => $result, 'errors' => $errors, 'data' => $_POST];
+    ob_start(); require __DIR__ . '/views/lookup_test.php'; $content = ob_get_clean();
+    require __DIR__ . '/views/layout.php'; exit;
+}
+
 // --- AI/BI (Insights + Assistant): JSON actions + the Insights feed page ---
 require_once __DIR__ . '/../src/Intelligence/InsightsEngine.php';
 require_once __DIR__ . '/../src/Intelligence/Assistant.php';
