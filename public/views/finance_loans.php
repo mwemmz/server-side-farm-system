@@ -44,7 +44,7 @@ $formData = $data['data'] ?? [];
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left">
                 <thead class="text-xs uppercase text-slate-400 border-b border-slate-200">
-                    <tr><th class="py-2 pr-4">Lender</th><th class="py-2 pr-4">Principal</th><th class="py-2 pr-4">Rate</th><th class="py-2 pr-4">Balance</th><th class="py-2 pr-4">Due</th><th class="py-2 pr-4">Status</th></tr>
+                    <tr><th class="py-2 pr-4">Lender</th><th class="py-2 pr-4">Principal</th><th class="py-2 pr-4">Rate</th><th class="py-2 pr-4">Balance</th><th class="py-2 pr-4">Due</th><th class="py-2 pr-4">Status</th><th class="py-2 pr-4">Repayment</th></tr>
                 </thead>
                 <tbody>
                 <?php foreach ($loans as $l): ?>
@@ -55,6 +55,18 @@ $formData = $data['data'] ?? [];
                         <td class="py-2 pr-4"><?php echo money($l['balance']); ?></td>
                         <td class="py-2 pr-4"><?php echo htmlspecialchars($l['due_date'] ?? '—'); ?></td>
                         <td class="py-2 pr-4"><span class="text-[11px] font-bold uppercase px-2 py-0.5 rounded-full <?php echo $l['status'] === 'active' ? 'bg-amber-100 text-amber-800' : ($l['status'] === 'repaid' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-700'); ?>"><?php echo htmlspecialchars($l['status']); ?></span></td>
+                        <td class="py-2 pr-4">
+                            <?php if ((float) $l['balance'] > 0): ?>
+                            <form method="post" action="index.php?module=Finance&action=loans" class="flex items-center gap-1.5">
+                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
+                                <input type="hidden" name="loan_id" value="<?php echo (int) $l['id']; ?>">
+                                <input type="number" name="repay_amount" step="0.01" min="0.01" max="<?php echo htmlspecialchars($l['balance']); ?>" placeholder="K" class="w-24 border border-slate-300 rounded-lg px-2 py-1 text-xs bg-white">
+                                <button type="submit" class="text-[11px] font-bold bg-green-700 hover:bg-green-800 text-white px-2.5 py-1 rounded-lg">Pay</button>
+                            </form>
+                            <?php else: ?>
+                                <span class="text-xs text-slate-400">Settled</span>
+                            <?php endif; ?>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>

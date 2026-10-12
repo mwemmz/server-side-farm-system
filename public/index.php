@@ -127,6 +127,12 @@ if ($module === 'Lookup' && $action === 'options') {
         echo json_encode(['success' => true, 'options' => $options]);
         exit;
     }
+    // Finance categories depend on the chosen type (Income vs Expense).
+    if ($category === 'finance_category' && $parent !== '') {
+        $listCat = (strtolower($parent) === 'income') ? 'finance_category_income' : 'finance_category_expense';
+        echo json_encode(['success' => true, 'options' => LookupHelper::listOptions($pdo, $listCat)]);
+        exit;
+    }
     $filter   = ($parent !== '') ? ['parent' => $parent] : [];
     echo json_encode(['success' => true, 'options' => LookupHelper::listOptions($pdo, $category, $filter)]);
     exit;

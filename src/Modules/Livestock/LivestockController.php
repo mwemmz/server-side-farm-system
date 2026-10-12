@@ -3,6 +3,7 @@ require_once __DIR__ . '/LivestockModel.php';
 require_once __DIR__ . '/../Pest/PestModel.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
+require_once __DIR__ . '/../Finance/FinanceService.php';
 
 class LivestockController {
     private $model;
@@ -199,9 +200,18 @@ class LivestockController {
                             'Treatment: ' . trim($data['treatment_name']),
                         ]);
                     }
+                    $treatmentId = $this->model->lastId();
                     $this->pdo->commit();
+                    // Cross-module: a paid treatment posts an expense (idempotent by source).
+                    if (($data['cost'] ?? '') !== '') {
+                        (new FinanceService($this->pdo))->postSafe(
+                            'expense', 'Veterinary & medicines', $data['cost'],
+                            'Animal treatment: ' . trim($data['treatment_name']),
+                            null, 'Treatment', $treatmentId, $data['treatment_date'], 'paid'
+                        );
+                    }
                     SessionHelper::setFlash('success', 'Treatment recorded successfully!');
-                    SessionHelper::flashCreated('Livestock', $this->model->lastId(), trim($data['treatment_name']), ['Date' => $data['treatment_date'], 'Withdrawal ends' => ($data['withdrawal_ends'] ?: '—')]);
+                    SessionHelper::flashCreated('Livestock', $treatmentId, trim($data['treatment_name']), ['Date' => $data['treatment_date'], 'Withdrawal ends' => ($data['withdrawal_ends'] ?: '—')]);
                     header('Location: index.php?module=Livestock&action=manage');
                     exit;
                 } catch (PDOException $e) {

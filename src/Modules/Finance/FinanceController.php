@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/FinanceModel.php';
+require_once __DIR__ . '/FinanceService.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
 
@@ -7,7 +8,27 @@ class FinanceController {
     private $model;
     private $pdo;
     public function __construct($pdo) { $this->pdo = $pdo; $this->model = new FinanceModel($pdo); }
-    public function index() { return $this->model->getAll(); }
+
+    private function filters() {
+        return [
+            'type'           => $_GET['type'] ?? '',
+            'category'       => $_GET['category'] ?? '',
+            'farm_id'        => $_GET['farm_id'] ?? '',
+            'payment_status' => $_GET['payment_status'] ?? '',
+            'date_from'      => $_GET['date_from'] ?? '',
+            'date_to'        => $_GET['date_to'] ?? '',
+        ];
+    }
+
+    public function index() {
+        $f = $this->filters();
+        return [
+            'records'  => $this->model->getAll($f),
+            'groups'   => $this->model->groupTotals($f),
+            'unpaid'   => $this->model->getUnpaidOverdue(),
+            'filters'  => $f,
+        ];
+    }
 
     public function add() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -49,9 +70,9 @@ class FinanceController {
                     $errors['general'] = "Could not save finance record.";
                 }
             }
-            return ['errors' => $errors, 'data' => $data, 'records' => $this->model->getAll()];
+            return array_merge($this->index(), ['errors' => $errors, 'data' => $data]);
         }
-        return ['records' => $this->model->getAll()];
+        return $this->index();
     }
 
     // ---- Loans --------------------------------------------------------
@@ -59,6 +80,37 @@ class FinanceController {
         $errors = [];
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = $_POST;
+
+            // Repayment branch: reduces the balance and posts a Loan repayment expense.
+            if (isset($data['repay_amount']) && $data['repay_amount'] !== '') {
+                $err = ValidationHelper::number($data, 'repay_amount', ['label' => 'Repayment amount', 'positive' => true]);
+                if ($err) {
+                    $errors['repay_amount'] = $err;
+                }
+                $loan = $this->model->getLoan((int) ($data['loan_id'] ?? 0));
+                if (!$loan) {
+                    $errors['general'] = 'Loan not found.';
+                }
+                if (empty($errors)) {
+                    $applied = min((float) $data['repay_amount'], (float) $loan['balance']);
+                    try {
+                        $this->model->repayLoan((int) $loan['id'], $applied);
+                        // Each repayment is a distinct expense, so no source link (no dedupe).
+                        (new FinanceService($this->pdo))->postSafe(
+                            'expense', 'Loan repayment', $applied,
+                            'Loan repayment to ' . $loan['lender'],
+                            null, null, null, date('Y-m-d'), 'paid'
+                        );
+                        SessionHelper::setFlash('success', 'Repayment of K' . number_format($applied, 2) . ' recorded.');
+                        header('Location: index.php?module=Finance&action=loans');
+                        exit;
+                    } catch (PDOException $ex) {
+                        $errors['general'] = 'Could not record repayment.';
+                    }
+                }
+                return ['loans' => $this->model->loans(), 'totals' => $this->model->loanTotals(), 'errors' => $errors, 'data' => $data];
+            }
+
             $errors = ValidationHelper::validateRequired(['lender', 'principal'], $data);
             $e = ValidationHelper::number($data, 'principal', ['label' => 'Principal', 'positive' => true]);
             if ($e) $errors['principal'] = $e;

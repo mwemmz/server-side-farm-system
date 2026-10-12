@@ -3,8 +3,62 @@ require_once __DIR__ . '/../BaseModuleModel.php';
 class FinanceModel extends BaseModuleModel {
     public function __construct($pdo) { parent::__construct($pdo, 'finance_records'); }
 
-    public function getAll() {
-        return $this->pdo->query("SELECT * FROM finance_records ORDER BY date DESC, id DESC")->fetchAll();
+    public function getAll($f = []) {
+        $where = [];
+        $args = [];
+        if (!empty($f['type']) && in_array($f['type'], ['income', 'expense'], true)) {
+            $where[] = "type = ?"; $args[] = $f['type'];
+        }
+        if (!empty($f['category'])) {
+            $where[] = "category = ?"; $args[] = $f['category'];
+        }
+        if (!empty($f['farm_id'])) {
+            $where[] = "farm_id = ?"; $args[] = (int) $f['farm_id'];
+        }
+        if (!empty($f['payment_status'])) {
+            $where[] = "COALESCE(payment_status,'paid') = ?"; $args[] = $f['payment_status'];
+        }
+        if (!empty($f['date_from'])) {
+            $where[] = "date >= ?"; $args[] = $f['date_from'];
+        }
+        if (!empty($f['date_to'])) {
+            $where[] = "date <= ?"; $args[] = $f['date_to'];
+        }
+        $sql = "SELECT * FROM finance_records";
+        if ($where) { $sql .= " WHERE " . implode(' AND ', $where); }
+        $sql .= " ORDER BY date DESC, id DESC";
+        $st = $this->pdo->prepare($sql);
+        $st->execute($args);
+        return $st->fetchAll();
+    }
+
+    /** Per-category subtotals for the current filter. */
+    public function groupTotals($f = []) {
+        $where = [];
+        $args = [];
+        if (!empty($f['type']) && in_array($f['type'], ['income', 'expense'], true)) {
+            $where[] = "type = ?"; $args[] = $f['type'];
+        }
+        if (!empty($f['farm_id'])) { $where[] = "farm_id = ?"; $args[] = (int) $f['farm_id']; }
+        if (!empty($f['payment_status'])) { $where[] = "COALESCE(payment_status,'paid') = ?"; $args[] = $f['payment_status']; }
+        if (!empty($f['date_from'])) { $where[] = "date >= ?"; $args[] = $f['date_from']; }
+        if (!empty($f['date_to'])) { $where[] = "date <= ?"; $args[] = $f['date_to']; }
+        $sql = "SELECT type, COALESCE(NULLIF(category,''),'Uncategorised') AS cat, SUM(amount) AS total, COUNT(*) AS n
+                FROM finance_records";
+        if ($where) { $sql .= " WHERE " . implode(' AND ', $where); }
+        $sql .= " GROUP BY type, COALESCE(NULLIF(category,''),'Uncategorised') ORDER BY type, total DESC";
+        $st = $this->pdo->prepare($sql);
+        $st->execute($args);
+        return $st->fetchAll();
+    }
+
+    /** Unpaid or overdue records (for the "needs attention" views). */
+    public function getUnpaidOverdue() {
+        return $this->pdo->query(
+            "SELECT * FROM finance_records
+             WHERE COALESCE(payment_status,'paid') IN ('unpaid','partial')
+             ORDER BY (due_date IS NULL), due_date ASC, date DESC"
+        )->fetchAll();
     }
 
     public function loans() {
@@ -20,6 +74,20 @@ class FinanceModel extends BaseModuleModel {
             ($d['start_date'] ?: null), ($d['due_date'] ?: null),
             $balance, $d['status'] ?? 'active', trim($d['notes'] ?? ''),
         ]);
+    }
+    public function getLoan($id) {
+        $st = $this->pdo->prepare("SELECT * FROM loans WHERE id = ?");
+        $st->execute([(int) $id]);
+        return $st->fetch();
+    }
+    public function repayLoan($id, $amount) {
+        $st = $this->pdo->prepare(
+            "UPDATE loans
+             SET balance = GREATEST(balance - ?, 0),
+                 status = CASE WHEN balance - ? <= 0 THEN 'paid' ELSE status END
+             WHERE id = ?"
+        );
+        return $st->execute([(float) $amount, (float) $amount, (int) $id]);
     }
     public function loanTotals() {
         return $this->pdo->query(

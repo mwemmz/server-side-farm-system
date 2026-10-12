@@ -2,6 +2,7 @@
 require_once __DIR__ . '/ProcurementModel.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
+require_once __DIR__ . '/../Finance/FinanceService.php';
 
 class ProcurementController {
     private $model;
@@ -41,8 +42,23 @@ class ProcurementController {
                 ];
                 try {
                     if ($this->model->create($row)) {
+                        $procId = $this->model->lastId();
+                        // Cross-module: a purchase posts an expense (idempotent by source).
+                        $item = strtolower(trim($data['item_name']));
+                        $expCat = 'Other';
+                        foreach (['seed' => 'Seeds', 'fertili' => 'Fertiliser', 'feed' => 'Animal feed',
+                                  'vet' => 'Veterinary & medicines', 'drug' => 'Veterinary & medicines',
+                                  'fuel' => 'Fuel', 'diesel' => 'Fuel', 'petrol' => 'Fuel',
+                                  'chem' => 'Chemicals & pesticides', 'spray' => 'Chemicals & pesticides'] as $needle => $label) {
+                            if (strpos($item, $needle) !== false) { $expCat = $label; break; }
+                        }
+                        (new FinanceService($this->pdo))->postSafe(
+                            'expense', $expCat, $data['cost'],
+                            'Purchase: ' . trim($data['item_name']) . ' x' . (int) $data['quantity'],
+                            null, 'Procurement', $procId, $data['purchase_date'], 'paid'
+                        );
                         SessionHelper::setFlash('success', 'Procurement record added successfully!');
-                        SessionHelper::flashCreated('Procurement', $this->model->lastId(), trim($data['item_name']), ['Quantity' => $data['quantity']]);
+                        SessionHelper::flashCreated('Procurement', $procId, trim($data['item_name']), ['Quantity' => $data['quantity']]);
                         header('Location: index.php?module=Procurement&action=manage');
                         exit;
                     }

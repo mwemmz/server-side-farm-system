@@ -3,12 +3,15 @@ require_once __DIR__ . '/LabourModel.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Intelligence/HrService.php';
+require_once __DIR__ . '/../Finance/FinanceService.php';
 
 class LabourController {
     private $model;
     private $hr;
+    private $pdo;
 
     public function __construct($pdo) {
+        $this->pdo = $pdo;
         $this->model = new LabourModel($pdo);
         $this->hr = new HrService($pdo);
     }
@@ -134,7 +137,28 @@ class LabourController {
             case 'grievances:resolve':
                 return $this->hr->resolveGrievance((int) $_GET['id'], trim($_POST['resolution_notes'] ?? 'Resolved'));
             case 'payroll:paid':
-                return $this->hr->markPaid((int) $_GET['id']);
+                $payrollId = (int) $_GET['id'];
+                $result = $this->hr->markPaid($payrollId);
+                // Cross-module: a paid payroll run posts a Labour expense (idempotent).
+                try {
+                    $st = $this->pdo->prepare(
+                        "SELECT p.net_pay, p.payment_date, e.name AS employee_name, e.farm_id
+                         FROM payroll_records p JOIN employees e ON e.id = p.employee_id
+                         WHERE p.id = ? LIMIT 1"
+                    );
+                    $st->execute([$payrollId]);
+                    $pay = $st->fetch();
+                    if ($pay) {
+                        (new FinanceService($this->pdo))->postSafe(
+                            'expense', 'Labour & wages', $pay['net_pay'],
+                            'Payroll: ' . ($pay['employee_name'] ?: 'employee'),
+                            $pay['farm_id'] ?? null, 'Payroll', $payrollId, $pay['payment_date'] ?: date('Y-m-d'), 'paid'
+                        );
+                    }
+                } catch (PDOException $e) {
+                    error_log('Payroll finance post failed: ' . $e->getMessage());
+                }
+                return $result;
         }
         return null;
     }
