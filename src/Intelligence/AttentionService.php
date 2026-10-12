@@ -173,11 +173,12 @@ class AttentionService {
     }
 
     private function equipmentService() {
+        $eff = "COALESCE(next_service_date, CASE WHEN last_service_date IS NOT NULL AND service_interval_days IS NOT NULL THEN last_service_date + service_interval_days END)";
         $overdue = (int) $this->scalar(
-            "SELECT COUNT(*) FROM equipment WHERE next_service_date IS NOT NULL AND next_service_date < CURRENT_DATE"
+            "SELECT COUNT(*) FROM equipment WHERE $eff IS NOT NULL AND $eff < CURRENT_DATE"
         );
         $soon = (int) $this->scalar(
-            "SELECT COUNT(*) FROM equipment WHERE next_service_date IS NOT NULL AND next_service_date >= CURRENT_DATE AND next_service_date <= CURRENT_DATE + INTERVAL '14 days'"
+            "SELECT COUNT(*) FROM equipment WHERE $eff IS NOT NULL AND $eff >= CURRENT_DATE AND $eff <= CURRENT_DATE + INTERVAL '14 days'"
         );
         $out = [];
         if ($overdue > 0) {
