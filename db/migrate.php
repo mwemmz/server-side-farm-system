@@ -29,6 +29,12 @@ try {
         $pdo->exec($smartSchema);
     }
 
+    // Phase 3 Operations-depth schema (idempotent)
+    $phase3Schema = file_get_contents(__DIR__ . '/phase3_schema.sql');
+    if ($phase3Schema !== false) {
+        $pdo->exec($phase3Schema);
+    }
+
     // Seed default admin + mock data (idempotent)
     require_once __DIR__ . '/seed.php';
 

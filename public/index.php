@@ -119,6 +119,14 @@ if ($module === 'Lookup' && $action === 'options') {
     require_once __DIR__ . '/../src/Helpers/LookupHelper.php';
     $category = $_GET['category'] ?? '';
     $parent   = $_GET['parent'] ?? '';
+    if ($category === 'vaccine_name') {
+        $options = [];
+        foreach (LookupHelper::vaccineOptions($pdo, $parent !== '' ? $parent : null) as $value => $label) {
+            $options[] = ['value' => $value, 'label' => $label];
+        }
+        echo json_encode(['success' => true, 'options' => $options]);
+        exit;
+    }
     $filter   = ($parent !== '') ? ['parent' => $parent] : [];
     echo json_encode(['success' => true, 'options' => LookupHelper::listOptions($pdo, $category, $filter)]);
     exit;

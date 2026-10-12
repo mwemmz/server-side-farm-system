@@ -214,42 +214,89 @@ class InsightsEngine {
     // ------------------------------------------------------------------
     private function livestockRecommendations() {
         $recs = [];
+
+        // (a) Overdue / upcoming vaccinations, driven by each record's next_due_date.
+        $dues = $this->pdo->query("
+            SELECT v.livestock_id, v.vaccine_name, v.next_due_date,
+                   l.type AS animal_type, l.breed AS animal_breed, f.name AS farm_name
+            FROM vaccinations v
+            JOIN livestock l ON l.id = v.livestock_id
+            LEFT JOIN farms f ON f.id = l.farm_id
+            WHERE v.next_due_date IS NOT NULL
+              AND v.next_due_date <= CURRENT_DATE + INTERVAL '14 days'
+            ORDER BY v.next_due_date ASC")->fetchAll();
+        foreach ($dues as $d) {
+            $days = (int) floor((strtotime($d['next_due_date']) - strtotime('today')) / 86400);
+            $animal = trim(ucfirst((string) $d['animal_type']) . ' ' . ($d['animal_breed'] ?? ''));
+            if ($animal === '') { $animal = 'Animal #' . (int) $d['livestock_id']; }
+            if ($days < 0) {
+                $recs[] = $this->make('livestock', 'Livestock',
+                    'Vaccination OVERDUE: ' . $d['vaccine_name'],
+                    $animal . ' on ' . ($d['farm_name'] ?: 'the farm') . ' was due for ' . $d['vaccine_name'] . ' on ' . $d['next_due_date'] . ' (' . abs($days) . ' day(s) ago). Book it now.',
+                    'high', 'red',
+                    ['livestock_id' => (int) $d['livestock_id'], 'vaccine' => $d['vaccine_name'], 'due_date' => $d['next_due_date'], 'days' => $days, 'basis' => 'vaccination_next_due'],
+                    'livestock-due-' . (int) $d['livestock_id'] . '-' . md5($d['vaccine_name'] . '|' . $d['next_due_date']));
+            } else {
+                $recs[] = $this->make('livestock', 'Livestock',
+                    'Vaccination due soon: ' . $d['vaccine_name'],
+                    $animal . ' on ' . ($d['farm_name'] ?: 'the farm') . ' is due for ' . $d['vaccine_name'] . ' on ' . $d['next_due_date'] . ' (in ' . $days . ' day(s)).',
+                    'medium', 'amber',
+                    ['livestock_id' => (int) $d['livestock_id'], 'vaccine' => $d['vaccine_name'], 'due_date' => $d['next_due_date'], 'days' => $days, 'basis' => 'vaccination_next_due'],
+                    'livestock-due-' . (int) $d['livestock_id'] . '-' . md5($d['vaccine_name'] . '|' . $d['next_due_date']));
+            }
+        }
+
+        // (b) Catalogue-driven first-dose reminders (age-based) for animals not yet given that vaccine.
         $animals = $this->pdo->query("
             SELECT l.*, f.name AS farm_name FROM livestock l
             LEFT JOIN farms f ON f.id = l.farm_id ORDER BY l.id")->fetchAll();
+        $catalog = $this->pdo->query(
+            "SELECT species, name, first_dose_age_days FROM vaccine_catalog WHERE first_dose_age_days IS NOT NULL"
+        )->fetchAll();
+        $bySpecies = [];
+        foreach ($catalog as $c) { $bySpecies[strtolower($c['species'])][] = $c; }
+        $vaccSet = [];
+        foreach ($this->pdo->query("SELECT livestock_id, LOWER(vaccine_name) AS v FROM vaccinations")->fetchAll() as $r) {
+            $vaccSet[(int) $r['livestock_id'] . '|' . $r['v']] = true;
+        }
         foreach ($animals as $a) {
             $ageDays = $this->ageInDays($a['dob']);
             if ($ageDays < 0) { continue; }
-            $weeks = (int) floor($ageDays / 7);
-            $type = strtolower((string) $a['type']);
-
-            // Poultry: booster/vaccination around 5 & 10 weeks (anchored to DOB).
-            if (strpos($type, 'poultry') !== false || strpos($type, 'chicken') !== false) {
-                foreach ([5, 10] as $due) {
-                    if ($weeks === $due || $weeks === $due - 1) {
-                        $recs[] = $this->make(
-                            'livestock', 'Livestock',
-                            'Poultry vaccination due (' . $due . ' weeks)',
-                            'Poultry on ' . ($a['farm_name'] ?: 'the farm') . ' is ' . $weeks . ' weeks old — schedule the ' . $due . '-week vaccine booster to keep the flock healthy.',
-                            'medium', 'indigo',
-                            ['livestock_id' => (int)$a['id'], 'type' => $a['type'], 'age_weeks' => $weeks, 'due_week' => $due, 'basis' => 'age_based_vaccination_schedule']
-                        );
-                        break;
-                    }
-                }
-            } else {
-                // Livestock (cattle/goats): routine health check reminder.
-                if ($weeks > 0 && $weeks % 12 === 0) {
-                    $recs[] = $this->make(
-                        'livestock', 'Livestock',
-                        'Health check due for ' . $a['type'],
-                        'Your ' . $a['type'] . ' is ' . $weeks . ' weeks old — plan a routine health & deworming check on ' . ($a['farm_name'] ?: 'the farm') . '.',
-                        'low', 'indigo',
-                        ['livestock_id' => (int)$a['id'], 'type' => $a['type'], 'age_weeks' => $weeks, 'basis' => 'periodic_health_check']
-                    );
-                }
+            $sp = strtolower((string) $a['type']);
+            if (!isset($bySpecies[$sp])) { continue; }
+            foreach ($bySpecies[$sp] as $c) {
+                $dueAge = (int) $c['first_dose_age_days'];
+                if ($ageDays < $dueAge - 3 || $ageDays > $dueAge + 7) { continue; }
+                if (isset($vaccSet[(int) $a['id'] . '|' . strtolower($c['name'])])) { continue; }
+                $recs[] = $this->make('livestock', 'Livestock',
+                    'First dose due: ' . $c['name'],
+                    ucfirst($sp) . ' on ' . ($a['farm_name'] ?: 'the farm') . ' is ' . $ageDays . ' day(s) old — the first ' . $c['name'] . ' dose is scheduled around ' . $dueAge . ' days. Confirm the schedule with a veterinarian.',
+                    'medium', 'indigo',
+                    ['livestock_id' => (int) $a['id'], 'vaccine' => $c['name'], 'age_days' => $ageDays, 'first_dose_age_days' => $dueAge, 'basis' => 'vaccine_catalog_first_dose'],
+                    'livestock-first-' . (int) $a['id'] . '-' . md5($c['name']));
             }
         }
+
+        // (c) Active treatment withdrawal warnings (block sale/slaughter).
+        $wd = $this->pdo->query("
+            SELECT t.livestock_id, MAX(t.withdrawal_ends) AS until,
+                   l.type AS animal_type, l.breed AS animal_breed, f.name AS farm_name
+            FROM animal_treatments t
+            JOIN livestock l ON l.id = t.livestock_id
+            LEFT JOIN farms f ON f.id = l.farm_id
+            WHERE t.withdrawal_ends IS NOT NULL AND t.withdrawal_ends >= CURRENT_DATE
+            GROUP BY t.livestock_id, l.type, l.breed, f.name")->fetchAll();
+        foreach ($wd as $w) {
+            $animal = trim(ucfirst((string) $w['animal_type']) . ' ' . ($w['animal_breed'] ?? ''));
+            if ($animal === '') { $animal = 'Animal #' . (int) $w['livestock_id']; }
+            $recs[] = $this->make('livestock', 'Livestock',
+                'Withdrawal period active',
+                $animal . ' on ' . ($w['farm_name'] ?: 'the farm') . ' is under a treatment withdrawal until ' . $w['until'] . ' — do not sell or slaughter before then.',
+                'medium', 'amber',
+                ['livestock_id' => (int) $w['livestock_id'], 'withdrawal_until' => $w['until'], 'basis' => 'treatment_withdrawal'],
+                'livestock-wd-' . (int) $w['livestock_id'] . '-' . md5((string) $w['until']));
+        }
+
         return $recs;
     }
 
@@ -263,9 +310,9 @@ class InsightsEngine {
     }
 
     // ---- recommendation factory ----
-    private function make($category, $module, $title, $message, $priority, $color, $signal = []) {
+    private function make($category, $module, $title, $message, $priority, $color, $signal = [], $idSeed = null) {
         return [
-            'id'       => $category . '-' . md5($title),
+            'id'       => $category . '-' . md5($idSeed !== null ? $idSeed : $title),
             'category' => $category,
             'module'   => self::$moduleRoute[$module] ?? $module,
             'module_label' => $module,

@@ -70,6 +70,58 @@ try {
             $sort += 10;
         }
     }
+
+    // ------------------------------------------------------------
+    // Phase 3 (B1) — starter vaccine catalogue.
+    // Every interval is a STARTING recommendation only and is flagged
+    // needs_review = TRUE: a veterinarian must confirm for each farm.
+    // ------------------------------------------------------------
+    $vaccineInsert = $pdo->prepare(
+        "INSERT INTO vaccine_catalog
+            (species, name, disease, dose_interval_days, first_dose_age_days, booster_after_days, notes, needs_review)
+         VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)
+         ON CONFLICT (species, name) DO NOTHING"
+    );
+    // [species, name, disease, dose_interval_days, first_dose_age_days, booster_after_days, notes]
+    $vaccines = [
+        ['Cattle', 'FMD vaccine', 'Foot and mouth disease', 365, 120, 30, 'Confirm dosage and annual booster timing with a veterinarian.'],
+        ['Cattle', 'Anthrax vaccine', 'Anthrax', 365, 90, null, 'Annual in endemic areas. Confirm with a veterinarian.'],
+        ['Cattle', 'Blackleg vaccine', 'Black quarter (Blackleg)', 365, 120, null, 'Confirm with a veterinarian.'],
+        ['Cattle', 'Lumpy skin vaccine', 'Lumpy skin disease', 365, 120, null, 'Annual before the wet season. Confirm with a veterinarian.'],
+        ['Cattle', 'Brucellosis vaccine', 'Brucellosis', 730, 240, null, 'Heifers only (S19/RB51). Confirm with a veterinarian.'],
+        ['Cattle', 'Rift Valley Fever vaccine', 'Rift Valley fever', 365, 120, null, 'Where risk is present. Confirm with a veterinarian.'],
+        ['Goats', 'PPR vaccine', 'Peste des petits ruminants (PPR)', 365, 90, 21, 'Confirm with a veterinarian.'],
+        ['Goats', 'Enterotoxaemia vaccine', 'Enterotoxaemia (Pulpy kidney)', 365, 60, 21, 'Confirm with a veterinarian.'],
+        ['Sheep', 'PPR vaccine', 'Peste des petits ruminants (PPR)', 365, 90, 21, 'Confirm with a veterinarian.'],
+        ['Sheep', 'Enterotoxaemia vaccine', 'Enterotoxaemia (Pulpy kidney)', 365, 60, 21, 'Confirm with a veterinarian.'],
+        ['Pigs', 'Swine fever vaccine', 'Classical swine fever', 365, 60, null, 'Confirm with a veterinarian.'],
+        ['Poultry', 'Newcastle (NCD) vaccine', 'Newcastle disease', 365, 21, 21, 'Confirm with a veterinarian.'],
+        ['Poultry', 'Gumboro (IBD) vaccine', 'Infectious bursal disease (Gumboro)', 365, 14, 14, 'Confirm with a veterinarian.'],
+        ['Poultry', 'Fowl pox vaccine', 'Fowl pox', 365, 56, null, 'Confirm with a veterinarian.'],
+        ['Poultry', "Marek's vaccine", "Marek's disease", null, 1, null, 'Day-old administration at the hatchery. Confirm with a veterinarian.'],
+        ['Poultry', 'Fowl typhoid vaccine', 'Fowl typhoid', 365, 56, null, 'Confirm with a veterinarian.'],
+    ];
+    foreach ($vaccines as $v) {
+        $vaccineInsert->execute($v);
+    }
+
+    // ------------------------------------------------------------
+    // Phase 3 (B4) — starter health-issue catalogue, seeded from the
+    // existing pest_name (crops) and disease_name (livestock) lists.
+    // ------------------------------------------------------------
+    $issueInsert = $pdo->prepare(
+        "INSERT INTO health_issue_catalog (applies_to, species_or_crop, name, kind, typical_treatment, needs_review)
+         VALUES (?, ?, ?, ?, ?, FALSE)
+         ON CONFLICT (applies_to, species_or_crop, name) DO NOTHING"
+    );
+    $cropPests = ['Fall armyworm', 'Aphids', 'Stalk borer', 'Bollworm', 'Whitefly', 'Locusts', 'Rodents', 'Weeds', 'Armyworm', 'Termites'];
+    foreach ($cropPests as $pest) {
+        $issueInsert->execute(['crop', null, $pest, 'pest', null]);
+    }
+    $animalDiseases = ['Foot and mouth disease', 'East Coast fever', 'Mastitis', 'Newcastle disease', 'Coccidiosis', 'Anthrax', 'Blackleg', 'Lumpy skin disease', 'African swine fever'];
+    foreach ($animalDiseases as $disease) {
+        $issueInsert->execute(['livestock', null, $disease, 'disease', null]);
+    }
 } catch (PDOException $e) {
     error_log("Seed (lookups) failed: " . $e->getMessage());
 }

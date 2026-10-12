@@ -12,11 +12,19 @@ class LivestockController {
 
     private function viewData() {
         $animals = $this->model->getAllAnimals();
+        $withdrawals = [];
+        foreach ($this->model->getActiveWithdrawals() as $w) {
+            $withdrawals[(int) $w['livestock_id']] = $w['until'];
+        }
         return [
             'animals'       => $animals,
             'vaccinations'  => $this->model->getVaccinations(),
             'vaccAnimals'   => $animals,
             'pests'         => $this->pestModel->getLivestockPests(),
+            'vaccineCatalog'=> $this->model->getVaccineCatalog(),
+            'treatments'    => $this->model->getTreatments(),
+            'withdrawals'   => $withdrawals,
+            'vaccSpecies'   => $this->model->getAnimalsWithSpecies(),
         ];
     }
 
@@ -76,8 +84,20 @@ class LivestockController {
             }
 
             if (empty($errors)) {
+                // Auto-compute the next due date from the catalogue interval when
+                // the user leaves it blank (server-side backstop for the JS helper).
                 $nextDue = !empty($data['next_due_date']) ? $data['next_due_date'] : null;
-                if ($this->model->addVaccination($data['livestock_id'], $data['vaccine_name'], $data['vaccination_date'], $nextDue)) {
+                $catalog = $this->model->getVaccineCatalogByName(trim($data['vaccine_name']));
+                if ($nextDue === null && $catalog && !empty($catalog['dose_interval_days']) && !empty($data['vaccination_date'])) {
+                    $nextDue = date('Y-m-d', strtotime($data['vaccination_date'] . ' +' . (int) $catalog['dose_interval_days'] . ' days'));
+                }
+                $extra = [
+                    'dose_number'       => ($data['dose_number'] ?? '') !== '' ? (int) $data['dose_number'] : null,
+                    'batch_number'      => trim($data['batch_number'] ?? '') ?: null,
+                    'cost'              => ($data['cost'] ?? '') !== '' ? (float) $data['cost'] : null,
+                    'vaccine_catalog_id'=> $catalog ? (int) $catalog['id'] : null,
+                ];
+                if ($this->model->addVaccination($data['livestock_id'], $data['vaccine_name'], $data['vaccination_date'], $nextDue, $extra)) {
                     SessionHelper::setFlash('success', 'Vaccination record added successfully!');
                     SessionHelper::flashCreated('Livestock', $this->model->lastId(), trim($data['vaccine_name']), ['Vaccinated' => $data['vaccination_date'], 'Next due' => ($nextDue ?: '—')]);
                     header('Location: /index.php?module=Livestock&action=manage');
@@ -89,6 +109,114 @@ class LivestockController {
         }
 
         return array_merge(['errors' => $errors, 'data' => $data], $this->viewData());
+    }
+
+    /** Vaccinate several animals at once (one vaccine + date) in a single transaction. */
+    public function batchVaccinate() {
+        $data = $_POST;
+        $errors = [];
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $ids = $data['animal_ids'] ?? [];
+            if (!is_array($ids) || empty($ids)) {
+                $errors['animal_ids'] = "Select at least one animal.";
+            }
+            $errors = array_merge($errors, ValidationHelper::validateRequired(['vaccine_name', 'vaccination_date'], $data));
+
+            if (!isset($errors['vaccination_date'])) {
+                $e = ValidationHelper::dateNotFuture($data, 'vaccination_date', 'Vaccination date');
+                if ($e) $errors['vaccination_date'] = $e;
+            }
+
+            if (empty($errors)) {
+                $catalog = $this->model->getVaccineCatalogByName(trim($data['vaccine_name']));
+                $nextDue = !empty($data['next_due_date']) ? $data['next_due_date'] : null;
+                if ($nextDue === null && $catalog && !empty($catalog['dose_interval_days'])) {
+                    $nextDue = date('Y-m-d', strtotime($data['vaccination_date'] . ' +' . (int) $catalog['dose_interval_days'] . ' days'));
+                }
+                $count = $this->model->batchVaccinate(
+                    array_map('intval', $ids),
+                    trim($data['vaccine_name']),
+                    $data['vaccination_date'],
+                    $nextDue,
+                    ['batch_number' => trim($data['batch_number'] ?? '') ?: null, 'vaccine_catalog_id' => $catalog ? (int) $catalog['id'] : null]
+                );
+                if ($count !== false) {
+                    SessionHelper::setFlash('success', "Vaccination recorded for {$count} animal(s).");
+                    header('Location: index.php?module=Livestock&action=manage');
+                    exit;
+                }
+                $errors['general'] = "Could not record the batch vaccination.";
+            }
+
+            return array_merge(['batchErrors' => $errors, 'batchData' => $data], $this->viewData());
+        }
+
+        return $this->viewData();
+    }
+
+    /** Record a treatment; optionally draws down stock and logs the cost. */
+    public function addTreatment() {
+        $data = $_POST;
+        $errors = [];
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $errors = ValidationHelper::validateRequired(['livestock_id', 'treatment_name', 'treatment_date'], $data);
+
+            if (!isset($errors['livestock_id'])) {
+                $e = ValidationHelper::exists($this->pdo, 'livestock', $data['livestock_id'], 'animal');
+                if ($e) $errors['livestock_id'] = $e;
+            }
+            if (!isset($errors['treatment_date'])) {
+                $e = ValidationHelper::dateNotFuture($data, 'treatment_date', 'Treatment date');
+                if ($e) $errors['treatment_date'] = $e;
+            }
+            if (!empty($data['inventory_item_id'])) {
+                $e = ValidationHelper::exists($this->pdo, 'inventory', $data['inventory_item_id'], 'inventory item');
+                if ($e) $errors['inventory_item_id'] = $e;
+            }
+
+            if (empty($errors)) {
+                $withdrawDays = ($data['withdrawal_days'] ?? '') !== '' ? (int) $data['withdrawal_days'] : null;
+                $data['withdrawal_ends'] = ($withdrawDays !== null && !empty($data['treatment_date']))
+                    ? date('Y-m-d', strtotime($data['treatment_date'] . ' +' . $withdrawDays . ' days'))
+                    : null;
+
+                try {
+                    $this->pdo->beginTransaction();
+                    if (!$this->model->addTreatment($data)) {
+                        throw new PDOException('insert failed');
+                    }
+                    if (!empty($data['inventory_item_id']) && ($data['quantity_used'] ?? '') !== '') {
+                        $mv = $this->pdo->prepare(
+                            "INSERT INTO stock_movements (item_id, direction, quantity, reason, ref_module, ref_id, note)
+                             VALUES (?, 'out', ?, 'Treated livestock', 'Livestock', ?, ?)"
+                        );
+                        $mv->execute([
+                            (int) $data['inventory_item_id'],
+                            (float) $data['quantity_used'],
+                            (int) $data['livestock_id'],
+                            'Treatment: ' . trim($data['treatment_name']),
+                        ]);
+                    }
+                    $this->pdo->commit();
+                    SessionHelper::setFlash('success', 'Treatment recorded successfully!');
+                    SessionHelper::flashCreated('Livestock', $this->model->lastId(), trim($data['treatment_name']), ['Date' => $data['treatment_date'], 'Withdrawal ends' => ($data['withdrawal_ends'] ?: '—')]);
+                    header('Location: index.php?module=Livestock&action=manage');
+                    exit;
+                } catch (PDOException $e) {
+                    if ($this->pdo->inTransaction()) {
+                        $this->pdo->rollBack();
+                    }
+                    error_log('Add treatment failed: ' . $e->getMessage());
+                    $errors['general'] = "Could not save the treatment: the selected animal or item may no longer exist.";
+                }
+            }
+
+            return array_merge(['treatmentErrors' => $errors, 'treatmentData' => $data], $this->viewData());
+        }
+
+        return $this->viewData();
     }
 
     /** Log a pest/disease against an animal. Folded in from the old standalone Pest module. */

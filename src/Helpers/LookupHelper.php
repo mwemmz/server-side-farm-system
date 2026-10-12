@@ -38,6 +38,39 @@ class LookupHelper {
         return $out;
     }
 
+    /**
+     * Vaccine catalogue options (value => label), optionally filtered by species.
+     * Lives in its own table (vaccine_catalog) so schedules can be computed from it.
+     */
+    public static function vaccineOptions($pdo, $species = null) {
+        if ($species !== null && $species !== '') {
+            $st = $pdo->prepare("SELECT name FROM vaccine_catalog WHERE species = ? ORDER BY name");
+            $st->execute([$species]);
+        } else {
+            $st = $pdo->query("SELECT DISTINCT name FROM vaccine_catalog ORDER BY name");
+        }
+        $out = [];
+        foreach ($st->fetchAll() as $r) {
+            $out[$r['name']] = $r['name'];
+        }
+        return $out;
+    }
+
+    /** species+name -> interval data, for client/server next-due computation. */
+    public static function vaccineIntervals($pdo) {
+        $rows = $pdo->query("SELECT species, name, dose_interval_days, booster_after_days, first_dose_age_days FROM vaccine_catalog")->fetchAll();
+        $map = [];
+        foreach ($rows as $r) {
+            $map[(string) $r['name']] = [
+                'species'   => (string) $r['species'],
+                'interval'  => $r['dose_interval_days'] !== null ? (int) $r['dose_interval_days'] : null,
+                'booster'   => $r['booster_after_days'] !== null ? (int) $r['booster_after_days'] : null,
+                'first_age' => $r['first_dose_age_days'] !== null ? (int) $r['first_dose_age_days'] : null,
+            ];
+        }
+        return $map;
+    }
+
     /** Human label for a stored value, falling back to the raw value. */
     public static function label($pdo, $category, $value) {
         if ($value === null || $value === '') return '';
