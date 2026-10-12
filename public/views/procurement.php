@@ -21,10 +21,10 @@ $records = $data['records'] ?? ($data ?? []);
     <h2 class="text-xl font-semibold mb-4">Add New Procurement</h2>
     <?php
     $fields = [
-        ['name' => 'supplier_id', 'label' => 'Supplier ID', 'value' => $formData['supplier_id'] ?? ''],
+        ['name' => 'supplier_id', 'label' => 'Supplier', 'type' => 'select', 'options' => FormHelper::supplierOptions($pdo), 'placeholder' => 'Select a supplier…', 'value' => $formData['supplier_id'] ?? ''],
         ['name' => 'item_name', 'label' => 'Item Name', 'value' => $formData['item_name'] ?? ''],
-        ['name' => 'quantity', 'label' => 'Quantity', 'value' => $formData['quantity'] ?? ''],
-        ['name' => 'cost', 'label' => 'Cost (K)', 'value' => $formData['cost'] ?? ''],
+        ['name' => 'quantity', 'label' => 'Quantity', 'type' => 'number', 'step' => '1', 'min' => '1', 'value' => $formData['quantity'] ?? ''],
+        ['name' => 'cost', 'label' => 'Cost (K)', 'type' => 'number', 'step' => '0.01', 'min' => '0', 'value' => $formData['cost'] ?? ''],
         ['name' => 'purchase_date', 'label' => 'Purchase Date', 'type' => 'date', 'value' => $formData['purchase_date'] ?? '']
     ];
     echo FormHelper::generateForm($fields, '/index.php?module=Procurement&action=add', 'POST', $errors);

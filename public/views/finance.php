@@ -11,6 +11,11 @@ $records = $data['records'] ?? ($data ?? []);
 
 <h1 class="text-2xl sm:text-3xl font-bold mb-6 text-green-800">Finance Management</h1>
 
+<div class="flex flex-wrap items-center gap-3 mb-6">
+    <a href="index.php?module=Finance&action=loans" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-bold shadow-sm hover:bg-slate-50 transition-colors">Loans</a>
+    <a href="index.php?module=Finance&action=budgets" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-bold shadow-sm hover:bg-slate-50 transition-colors">Budgets</a>
+</div>
+
 <?php if ($successMessage): ?>
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
         <?php echo htmlspecialchars($successMessage); ?>

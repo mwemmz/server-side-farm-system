@@ -5,20 +5,27 @@ require_once __DIR__ . '/../../Helpers/SessionHelper.php';
 
 class IrrigationController {
     private $model;
-    public function __construct($pdo) { $this->model = new IrrigationModel($pdo); }
+    private $pdo;
+    public function __construct($pdo) { $this->pdo = $pdo; $this->model = new IrrigationModel($pdo); }
     public function index() { return $this->model->getAllSystems(); }
     public function add() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = $_POST;
-            $fields = ['farm_id', 'type', 'status'];
-            $errors = ValidationHelper::validateRequired($fields, $data);
+            $errors = ValidationHelper::validateRequired(['farm_id', 'type', 'status'], $data);
+            if (!isset($errors['farm_id'])) {
+                $e = ValidationHelper::exists($this->pdo, 'farms', $data['farm_id'], 'farm');
+                if ($e) $errors['farm_id'] = $e;
+            }
             if (empty($errors)) {
-                if ($this->model->createSystem($data['farm_id'], $data['type'], $data['status'])) {
-                    SessionHelper::setFlash('success', 'System added successfully!');
-                    header('Location: /index.php?module=Irrigation&action=index');
-                    exit;
-                } else {
+                try {
+                    if ($this->model->createSystem((int) $data['farm_id'], trim($data['type']), trim($data['status']))) {
+                        SessionHelper::setFlash('success', 'Irrigation system added successfully!');
+                        header('Location: index.php?module=Irrigation&action=manage');
+                        exit;
+                    }
                     $errors['general'] = "Failed to add system.";
+                } catch (PDOException $e) {
+                    $errors['general'] = "Could not save system: the selected farm may no longer exist.";
                 }
             }
             return ['errors' => $errors, 'data' => $data, 'systems' => $this->model->getAllSystems()];
@@ -26,3 +33,4 @@ class IrrigationController {
         return ['systems' => $this->model->getAllSystems()];
     }
 }
+?>

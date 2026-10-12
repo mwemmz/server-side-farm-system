@@ -35,6 +35,19 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+// --- Idle session timeout (30 min): log it and bounce back to login ---
+$idleLimit = 1800;
+ini_set('session.gc_maxlifetime', (string) $idleLimit);
+if (isset($_SESSION['last_activity']) && (time() - (int) $_SESSION['last_activity']) > $idleLimit) {
+    require_once __DIR__ . '/../src/Modules/Security/SecurityModel.php';
+    (new SecurityModel($pdo))->logEvent((int) ($_SESSION['user_id'] ?? 0), 'session_timeout');
+    session_unset();
+    session_destroy();
+    header('Location: index.php?module=Security&action=login&expired=1');
+    exit;
+}
+$_SESSION['last_activity'] = time();
+
 // --- Role-Based Access Control (RBAC) ---
 $role = $_SESSION['role'] ?? 'worker';
 $financeOnly = ['admin', 'accountant'];
@@ -233,6 +246,75 @@ if ($module === 'Labour') {
         require __DIR__ . "/views/layout.php";
         exit;
     }
+}
+
+// --- Finance: loans & budgets (sub-views demoted behind panel buttons) ---
+if ($module === 'Finance' && in_array($action, ['loans', 'budgets'], true)) {
+    require_once __DIR__ . '/../src/Modules/Finance/FinanceController.php';
+    $finance = new FinanceController($pdo);
+    $finView = ($action === 'loans') ? 'finance_loans.php' : 'finance_budgets.php';
+    $data = $finance->$action();
+    ob_start();
+    require __DIR__ . '/views/' . $finView;
+    $content = ob_get_clean();
+    require __DIR__ . '/views/layout.php';
+    exit;
+}
+
+// --- Notifications: mark-as-read + alert-rule actions and rules view ---
+if ($module === 'Notifications') {
+    require_once __DIR__ . '/../src/Modules/Notifications/NotificationsController.php';
+    $notif = new NotificationsController($pdo);
+    $notifMap = [
+        'mark_read'     => 'markRead',
+        'mark_all_read' => 'markAllRead',
+        'run_rules'     => 'runRules',
+        'toggle_rule'   => 'toggleRule',
+        'delete_rule'   => 'deleteRule',
+    ];
+    if (isset($notifMap[$action])) {
+        $method = $notifMap[$action];
+        if (in_array($action, ['mark_read', 'toggle_rule', 'delete_rule'], true)) {
+            $notif->$method((int) ($_GET['id'] ?? 0));
+        } else {
+            $notif->$method();
+        }
+        header('Location: index.php?module=Notifications&action=manage');
+        exit;
+    }
+    if ($action === 'rules') {
+        $data = $notif->rules();
+        ob_start();
+        require __DIR__ . '/views/notifications_rules.php';
+        $content = ob_get_clean();
+        require __DIR__ . '/views/layout.php';
+        exit;
+    }
+}
+
+// --- Security: password change, user management, audit log ---
+if ($module === 'Security') {
+    require_once __DIR__ . '/../src/Modules/Security/SecurityController.php';
+    $secCtrl = new SecurityController($pdo);
+    if ($action === 'change_password') {
+        $data = $secCtrl->changePassword();
+        ob_start(); require __DIR__ . '/views/security_password.php'; $content = ob_get_clean();
+        require __DIR__ . '/views/layout.php'; exit;
+    }
+    if ($action === 'users') {
+        if ($role !== 'admin') { die("Access Denied: User management is restricted to admins."); }
+        $data = $secCtrl->users();
+        ob_start(); require __DIR__ . '/views/security_users.php'; $content = ob_get_clean();
+        require __DIR__ . '/views/layout.php'; exit;
+    }
+    if ($action === 'audit') {
+        $data = $secCtrl->auditLog();
+        ob_start(); require __DIR__ . '/views/security_audit.php'; $content = ob_get_clean();
+        require __DIR__ . '/views/layout.php'; exit;
+    }
+    $data = $secCtrl->index();
+    ob_start(); require __DIR__ . '/views/security.php'; $content = ob_get_clean();
+    require __DIR__ . '/views/layout.php'; exit;
 }
 
 if ($module === 'Dashboard') {

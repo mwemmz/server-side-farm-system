@@ -134,10 +134,19 @@ switch ($m) {
 
     case 'Notifications':
         $title = 'Notifications'; $subtitle = 'Alerts and intelligence updates.';
-        $summaries = [['Notifications', count($recs), 'green']];
+        $unread = 0;
+        foreach ($recs as $n) { if (!in_array($n['is_read'] ?? false, [true, 1, '1', 't', 'true'], true)) $unread++; }
+        $summaries = [['Total', count($recs), 'slate'], ['Unread', $unread, ($unread ? 'red' : 'green')]];
+        $render .= '<div class="flex flex-wrap items-center gap-3 mb-2">'
+            . '<a href="index.php?module=Notifications&action=mark_all_read&back=' . urlencode('index.php?module=Notifications') . '" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700">Mark all read</a>'
+            . '<a href="index.php?module=Notifications&action=rules" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 text-white">Alert Rules</a></div>';
         foreach ($recs as $n) {
-            $render .= '<div class="glass-card p-4 sm:p-5 flex items-start gap-3"><span class="w-2 h-2 rounded-full bg-green-500 mt-2 shrink-0"></span>'
-                . '<div><div class="text-sm text-slate-800">' . esc($n['message']) . '</div><div class="text-[11px] text-slate-400 mt-1">' . esc($n['created_at'] ?? '') . '</div></div></div>';
+            $read = in_array($n['is_read'] ?? false, [true, 1, '1', 't', 'true'], true);
+            $dot = $read ? 'bg-slate-300' : 'bg-green-500';
+            $render .= '<div class="glass-card p-4 sm:p-5 flex items-start gap-3' . ($read ? ' opacity-60' : '') . '"><span class="w-2 h-2 rounded-full ' . $dot . ' mt-2 shrink-0"></span>'
+                . '<div class="flex-1"><div class="text-sm text-slate-800">' . esc($n['message']) . '</div><div class="text-[11px] text-slate-400 mt-1">' . esc($n['created_at'] ?? '') . '</div></div>'
+                . ($read ? '<span class="text-[10px] font-bold text-slate-400">Read</span>' : '<a href="index.php?module=Notifications&action=mark_read&id=' . (int) $n['id'] . '&back=' . urlencode('index.php?module=Notifications') . '" class="text-[10px] font-bold text-green-700">Mark read</a>')
+                . '</div>';
         }
         break;
 

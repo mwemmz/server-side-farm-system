@@ -20,7 +20,7 @@ $records = $data['records'] ?? ($data ?? []);
     <h2 class="text-xl font-semibold mb-4">Add New Pest Record</h2>
     <?php
     $fields = [
-        ['name' => 'farm_id', 'label' => 'Farm ID', 'value' => $formData['farm_id'] ?? ''],
+        ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'select', 'options' => FormHelper::farmOptions($pdo), 'placeholder' => 'Select a farm…', 'value' => $formData['farm_id'] ?? ''],
         ['name' => 'pest_name', 'label' => 'Pest Name', 'value' => $formData['pest_name'] ?? ''],
         ['name' => 'detected_date', 'label' => 'Detected Date', 'type' => 'date', 'value' => $formData['detected_date'] ?? ''],
         ['name' => 'action_taken', 'label' => 'Action Taken', 'type' => 'textarea', 'value' => $formData['action_taken'] ?? '']

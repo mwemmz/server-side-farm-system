@@ -12,10 +12,15 @@ class EquipmentController {
             $data = $_POST;
             $errors = ValidationHelper::validateRequired(['name', 'status'], $data);
             if (empty($errors)) {
-                if ($this->model->addEquipment($data['name'], $data['status'])) {
-                    SessionHelper::setFlash('success', 'Equipment added!');
-                    header('Location: /index.php?module=Equipment&action=index');
-                    exit;
+                try {
+                    if ($this->model->addEquipment(trim($data['name']), trim($data['status']))) {
+                        SessionHelper::setFlash('success', 'Equipment added successfully!');
+                        header('Location: index.php?module=Equipment&action=manage');
+                        exit;
+                    }
+                    $errors['general'] = 'Failed to add equipment.';
+                } catch (PDOException $e) {
+                    $errors['general'] = 'Could not save equipment.';
                 }
             }
             return ['errors' => $errors, 'data' => $data, 'items' => $this->model->getAllEquipment()];
@@ -23,3 +28,4 @@ class EquipmentController {
         return ['items' => $this->model->getAllEquipment()];
     }
 }
+?>

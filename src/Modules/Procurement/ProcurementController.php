@@ -5,22 +5,45 @@ require_once __DIR__ . '/../../Helpers/SessionHelper.php';
 
 class ProcurementController {
     private $model;
-    public function __construct($pdo) { $this->model = new ProcurementModel($pdo); }
+    private $pdo;
+    public function __construct($pdo) { $this->pdo = $pdo; $this->model = new ProcurementModel($pdo); }
     public function index() { return $this->model->getAll(); }
 
     public function add() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = $_POST;
-            $fields = ['supplier_id', 'item_name', 'quantity', 'cost', 'purchase_date'];
-            $errors = ValidationHelper::validateRequired($fields, $data);
+            $errors = ValidationHelper::validateRequired(['supplier_id', 'item_name', 'quantity', 'cost', 'purchase_date'], $data);
+
+            if (!isset($errors['supplier_id'])) {
+                $e = ValidationHelper::exists($this->pdo, 'suppliers', $data['supplier_id'], 'supplier');
+                if ($e) $errors['supplier_id'] = $e;
+            }
+            if (!isset($errors['quantity'])) {
+                $e = ValidationHelper::number($data, 'quantity', ['label' => 'Quantity', 'integer' => true, 'min' => 1]);
+                if ($e) $errors['quantity'] = $e;
+            }
+            if (!isset($errors['cost'])) {
+                $e = ValidationHelper::number($data, 'cost', ['label' => 'Cost', 'min' => 0]);
+                if ($e) $errors['cost'] = $e;
+            }
 
             if (empty($errors)) {
-                if ($this->model->create($data)) {
-                    SessionHelper::setFlash('success', 'Procurement record added successfully!');
-                    header('Location: /index.php?module=Procurement&action=index');
-                    exit;
-                } else {
+                $row = [
+                    'supplier_id'   => (int) $data['supplier_id'],
+                    'item_name'     => trim($data['item_name']),
+                    'quantity'      => (int) $data['quantity'],
+                    'cost'          => $data['cost'],
+                    'purchase_date' => $data['purchase_date'],
+                ];
+                try {
+                    if ($this->model->create($row)) {
+                        SessionHelper::setFlash('success', 'Procurement record added successfully!');
+                        header('Location: index.php?module=Procurement&action=manage');
+                        exit;
+                    }
                     $errors['general'] = "Failed to add procurement record.";
+                } catch (PDOException $e) {
+                    $errors['general'] = "Could not save procurement record: the selected supplier may no longer exist.";
                 }
             }
             return ['errors' => $errors, 'data' => $data, 'records' => $this->model->getAll()];

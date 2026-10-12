@@ -66,18 +66,33 @@
                 'Notifications' => '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
                 'Reports' => '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/>',
                 'Security' => '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+                'Users' => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+                'Audit Log' => '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/>',
                 'Procurement' => '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
                 'Sales' => '<line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/>',
             ];
             // Resolve where each sidebar item links (Market Analysis is hosted
-            // under the Insights predictive-analytics view) and if it's active.
+            // under the Insights predictive-analytics view; Users / Audit Log
+            // live under the Security module) and whether it's active.
+            $currentAction = $_GET['action'] ?? 'index';
+            if (($_SESSION['role'] ?? '') !== 'admin') unset($modules['Users']);
+            $specialHref = [
+                'Market Analysis' => 'index.php?module=Insights&amp;view=market',
+                'Users'           => 'index.php?module=Security&amp;action=users',
+                'Audit Log'       => 'index.php?module=Security&amp;action=audit',
+            ];
             $navHref = []; $navActive = [];
             foreach ($modules as $mod => $iconPath) {
-                $isMarket = ($mod === 'Market Analysis');
-                $navHref[$mod]   = $isMarket ? 'index.php?module=Insights&amp;view=market' : 'index.php?module=' . urlencode($mod);
-                $navActive[$mod] = $isMarket
-                    ? ($currentModule === 'Insights' && $currentView === 'market')
-                    : ($currentModule === $mod);
+                $navHref[$mod] = isset($specialHref[$mod]) ? $specialHref[$mod] : 'index.php?module=' . urlencode($mod);
+                if ($mod === 'Market Analysis') {
+                    $navActive[$mod] = ($currentModule === 'Insights' && $currentView === 'market');
+                } elseif ($mod === 'Users') {
+                    $navActive[$mod] = ($currentModule === 'Security' && $currentAction === 'users');
+                } elseif ($mod === 'Audit Log') {
+                    $navActive[$mod] = ($currentModule === 'Security' && $currentAction === 'audit');
+                } else {
+                    $navActive[$mod] = ($currentModule === $mod);
+                }
             }
             foreach ($modules as $mod => $iconPath) {
                 $isActive = $navActive[$mod];

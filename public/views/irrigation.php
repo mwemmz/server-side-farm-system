@@ -10,9 +10,9 @@ $formData = $data['data'] ?? [];
     <h2 class="text-xl font-semibold mb-4">Add Irrigation System</h2>
     <?php
     $fields = [
-        ['name' => 'farm_id', 'label' => 'Farm ID', 'value' => $formData['farm_id'] ?? ''],
-        ['name' => 'type', 'label' => 'Type', 'value' => $formData['type'] ?? ''],
-        ['name' => 'status', 'label' => 'Status', 'value' => $formData['status'] ?? '']
+        ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'select', 'options' => FormHelper::farmOptions($pdo), 'placeholder' => 'Select a farm…', 'value' => $formData['farm_id'] ?? ''],
+        ['name' => 'type', 'label' => 'Type', 'type' => 'select', 'options' => ['Drip' => 'Drip', 'Sprinkler' => 'Sprinkler', 'Pivot' => 'Pivot', 'Flood' => 'Flood', 'Furrow' => 'Furrow'], 'placeholder' => 'Select a type…', 'value' => $formData['type'] ?? ''],
+        ['name' => 'status', 'label' => 'Status', 'type' => 'select', 'options' => ['Operational' => 'Operational', 'Maintenance' => 'Maintenance', 'Offline' => 'Offline', 'Planned' => 'Planned'], 'placeholder' => 'Select a status…', 'value' => $formData['status'] ?? '']
     ];
     echo FormHelper::generateForm($fields, 'index.php?module=Irrigation&action=add', 'POST', $errors);
     ?>

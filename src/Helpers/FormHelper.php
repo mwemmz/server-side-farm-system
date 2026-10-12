@@ -82,4 +82,16 @@ class FormHelper {
     public static function farmOptions($pdo) {
         return self::options($pdo, "SELECT id, name FROM farms ORDER BY name");
     }
+
+    public static function cropOptions($pdo) {
+        return self::options($pdo, "SELECT id, name FROM crops ORDER BY name");
+    }
+
+    public static function supplierOptions($pdo) {
+        return self::options($pdo, "SELECT id, name FROM suppliers ORDER BY name");
+    }
+
+    public static function fieldOptions($pdo) {
+        return self::options($pdo, "SELECT id, name FROM fields ORDER BY name");
+    }
 }

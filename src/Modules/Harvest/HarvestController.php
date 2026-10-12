@@ -5,22 +5,41 @@ require_once __DIR__ . '/../../Helpers/SessionHelper.php';
 
 class HarvestController {
     private $model;
-    public function __construct($pdo) { $this->model = new HarvestModel($pdo); }
+    private $pdo;
+    public function __construct($pdo) { $this->pdo = $pdo; $this->model = new HarvestModel($pdo); }
     public function index() { return $this->model->getAll(); }
 
     public function add() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = $_POST;
-            $fields = ['crop_id', 'harvest_date', 'quantity', 'quality'];
-            $errors = ValidationHelper::validateRequired($fields, $data);
+            $errors = ValidationHelper::validateRequired(['crop_id', 'harvest_date', 'quantity'], $data);
+
+            if (!isset($errors['crop_id'])) {
+                $e = ValidationHelper::exists($this->pdo, 'crops', $data['crop_id'], 'crop');
+                if ($e) $errors['crop_id'] = $e;
+            }
+            if (!isset($errors['quantity'])) {
+                $e = ValidationHelper::number($data, 'quantity', ['label' => 'Quantity', 'positive' => true]);
+                if ($e) $errors['quantity'] = $e;
+            }
 
             if (empty($errors)) {
-                if ($this->model->create($data)) {
-                    SessionHelper::setFlash('success', 'Harvest record added successfully!');
-                    header('Location: /index.php?module=Harvest&action=index');
-                    exit;
-                } else {
+                $quality = trim($data['quality'] ?? '');
+                $row = [
+                    'crop_id'      => (int) $data['crop_id'],
+                    'harvest_date' => $data['harvest_date'],
+                    'quantity'     => $data['quantity'],
+                    'quality'      => $quality !== '' ? $quality : null,
+                ];
+                try {
+                    if ($this->model->create($row)) {
+                        SessionHelper::setFlash('success', 'Harvest record added successfully!');
+                        header('Location: index.php?module=Harvest&action=manage');
+                        exit;
+                    }
                     $errors['general'] = "Failed to add harvest record.";
+                } catch (PDOException $e) {
+                    $errors['general'] = "Could not save harvest record: the selected crop may no longer exist.";
                 }
             }
             return ['errors' => $errors, 'data' => $data, 'records' => $this->model->getAll()];

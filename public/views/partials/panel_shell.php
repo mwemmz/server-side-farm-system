@@ -37,6 +37,14 @@ $cfg = [
 ?>
 <h1 class="text-2xl sm:text-3xl font-bold mb-6 text-green-800"><?php echo htmlspecialchars($panelTitle); ?></h1>
 
+<?php if (!empty($panelExtraLinks)): ?>
+<div class="flex flex-wrap items-center gap-3 mb-5">
+    <?php foreach ($panelExtraLinks as $link): ?>
+        <a href="<?php echo htmlspecialchars($link['href']); ?>" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-bold shadow-sm hover:bg-slate-50 transition-colors"><?php echo htmlspecialchars($link['label']); ?></a>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
 <?php
 // Contextual AI recommendation cards (data-driven) for this panel's module.
 require_once __DIR__ . '/../../../src/Intelligence/InsightsEngine.php';
