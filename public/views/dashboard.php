@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../src/Modules/Analytics/AnalyticsModel.php';
 require_once __DIR__ . '/../../src/Services/WeatherService.php';
+require_once __DIR__ . '/../../src/Intelligence/AttentionService.php';
 require_once __DIR__ . '/../../config/env.php';
 
 $analyticsModel = new AnalyticsModel($pdo);
@@ -38,6 +39,15 @@ function weatherLabel($code) {
     return $map[(int) $code] ?? 'Unknown';
 }
 
+// B5: "Needs attention today" — shared AttentionService.
+$attentionItems = [];
+try {
+    $attention = new AttentionService($pdo, $_SESSION['role'] ?? 'worker');
+    $attentionItems = $attention->collect();
+} catch (\Throwable $e) {
+    error_log('Dashboard attention failed: ' . $e->getMessage());
+}
+
 function weatherIcon($code) {
     $code = (int) $code;
     if ($code === 0 || $code === 1) return '<svg class="w-10 h-10 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>';
@@ -55,6 +65,36 @@ function weatherIcon($code) {
             <p class="text-sm text-slate-500 mt-1.5 max-w-3xl">Welcome to the Intelligent Farm Management System.</p>
         </div>
     </div>
+
+    <!-- B5: Needs attention today -->
+    <?php if (!empty($attentionItems)): ?>
+    <div class="glass-card p-4 sm:p-6 border-l-4 border-l-amber-400 animate-fade-in">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-bold text-slate-800">Needs attention today</h2>
+            <span class="text-[11px] font-bold uppercase px-2.5 py-1 rounded-full bg-amber-100 text-amber-800"><?php echo count($attentionItems); ?> item<?php echo count($attentionItems) > 1 ? 's' : ''; ?></span>
+        </div>
+        <ul class="space-y-2">
+            <?php foreach ($attentionItems as $it):
+                $sev = $it['severity'] ?? 'slate';
+                $dot = $sev === 'red' ? 'bg-red-500' : ($sev === 'amber' ? 'bg-amber-500' : 'bg-slate-400');
+                $chip = $sev === 'red' ? 'bg-red-100 text-red-800' : ($sev === 'amber' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700');
+            ?>
+                <li>
+                    <a href="<?php echo htmlspecialchars($it['link'] ?? '#'); ?>" class="flex items-start gap-3 rounded-xl px-3 py-2.5 bg-white/50 border border-white/60 hover:bg-white/80 transition">
+                        <span class="mt-1.5 w-2 h-2 rounded-full <?php echo $dot; ?> shrink-0"></span>
+                        <span class="min-w-0">
+                            <span class="block text-sm font-semibold text-slate-800"><?php echo htmlspecialchars($it['title'] ?? ''); ?></span>
+                            <span class="block text-xs text-slate-500 mt-0.5"><?php echo htmlspecialchars($it['detail'] ?? ''); ?></span>
+                        </span>
+                        <span class="ml-auto shrink-0 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full <?php echo $chip; ?>"><?php echo htmlspecialchars($it['module'] ?? ''); ?></span>
+                    </a>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+    <?php else: ?>
+    <div class="text-xs text-slate-400 px-1 -mt-2">Nothing needs attention right now.</div>
+    <?php endif; ?>
 
     <!-- KPI Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 stagger">

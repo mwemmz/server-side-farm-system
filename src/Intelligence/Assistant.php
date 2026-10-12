@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/InsightsEngine.php';
+require_once __DIR__ . '/AttentionService.php';
 
 /**
  * Assistant — a natural-language layer over the farm's actual data.
@@ -28,6 +29,11 @@ class Assistant {
         $q = strtolower(trim((string) $question));
         if ($q === '') {
             return $this->reply('error', "Ask me something about your farm — e.g. \"How much did I spend on fertilizer this season?\" or \"What should I do this week?\"");
+        }
+
+        // B5: what needs attention today (shared AttentionService).
+        if ($this->any($q, ['attention', 'urgent', 'alert', 'overdue', 'what needs', 'needs my', 'today'])) {
+            return $this->attentionToday();
         }
 
         // On-demand prioritized recommendations.
@@ -90,6 +96,31 @@ class Assistant {
         return $this->reply('recommendations',
             "Here's your prioritized action plan for the week (from your farm's own data):",
             $cards);
+    }
+
+    // --- "what needs attention today" (B5) ---
+    private function attentionToday() {
+        try {
+            $svc = new AttentionService($this->pdo, $_SESSION['role'] ?? 'worker');
+            $items = $svc->collect();
+        } catch (\Throwable $e) {
+            error_log('Assistant attention failed: ' . $e->getMessage());
+            $items = [];
+        }
+        if (!$items) {
+            return $this->reply('answer', 'Nothing needs your attention right now — no overdue vaccinations, low stock, unpaid records or open incidents. Keep logging data so I can flag issues early.');
+        }
+        $cards = [];
+        foreach ($items as $it) {
+            $cards[] = [
+                'title'    => $it['title'],
+                'body'     => $it['detail'],
+                'link'     => $it['link'] ?? '',
+                'priority' => $it['severity'] === 'red' ? 'high' : ($it['severity'] === 'amber' ? 'medium' : 'low'),
+                'color'    => $it['severity'] === 'red' ? 'red' : ($it['severity'] === 'amber' ? 'amber' : 'slate'),
+            ];
+        }
+        return $this->reply('recommendations', count($items) . ' thing' . (count($items) > 1 ? 's' : '') . ' need attention today:', $cards);
     }
 
     private function help() {

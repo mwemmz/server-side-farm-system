@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../BaseModuleModel.php';
+require_once __DIR__ . '/../../Intelligence/AttentionService.php';
 
 class NotificationsModel extends BaseModuleModel {
     public function __construct($pdo) { parent::__construct($pdo, 'notifications'); }
@@ -88,6 +89,34 @@ class NotificationsModel extends BaseModuleModel {
             if ($dupe->fetchColumn()) continue;
             $st = $this->pdo->prepare("INSERT INTO notifications (message, rule_id) VALUES (?, ?)");
             $st->execute([$rule['message'] . ' (current: ' . $value . ')', (int) $rule['id']]);
+            $fired++;
+        }
+        $fired += $this->raiseAttention();
+        return $fired;
+    }
+
+    /**
+     * B5: raise notifications for the shared "needs attention" items
+     * (overdue vaccinations, withdrawals, low stock, service due, unpaid
+     * finance, ...). De-duplicated by message so a scan never spams.
+     */
+    public function raiseAttention() {
+        $fired = 0;
+        try {
+            $svc = new AttentionService($this->pdo, 'admin');
+            $items = $svc->collect();
+        } catch (\Throwable $e) {
+            error_log('Notifications attention failed: ' . $e->getMessage());
+            return 0;
+        }
+        $dupe = $this->pdo->prepare(
+            "SELECT 1 FROM notifications WHERE message = ? AND created_at > CURRENT_TIMESTAMP - INTERVAL '1 day' LIMIT 1");
+        $st = $this->pdo->prepare("INSERT INTO notifications (message) VALUES (?)");
+        foreach ($items as $it) {
+            $msg = '⚠ ' . $it['title'] . ' — ' . $it['detail'];
+            $dupe->execute([$msg]);
+            if ($dupe->fetchColumn()) continue;
+            $st->execute([$msg]);
             $fired++;
         }
         return $fired;
