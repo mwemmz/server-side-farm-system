@@ -34,8 +34,28 @@ $crops = $data['crops'] ?? ($data ?? []); // Handle both cases for index and add
     <h2 class="text-xl font-semibold mb-4">Existing Crops</h2>
     <?php if (isset($crops) && !empty($crops)): ?>
         <ul class="space-y-2.5">
-            <?php foreach ($crops as $crop): ?>
-                <li class="bg-white/50 border border-white/60 rounded-xl px-3.5 sm:px-4 py-3 text-sm text-slate-700 shadow-sm"><?php echo htmlspecialchars($crop['name']); ?> - <?php echo htmlspecialchars($crop['variety'] ?? ''); ?></li>
+            <?php foreach ($crops as $crop):
+                $dueHtml = '';
+                if (!empty($crop['expected_harvest_date'])) {
+                    $today = new DateTimeImmutable('today');
+                    try {
+                        $due = new DateTimeImmutable($crop['expected_harvest_date']);
+                        $days = (int) $today->diff($due)->format('%r%a');
+                        if ($days < 0) {
+                            $dueHtml = '<span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-800">Harvest ' . abs($days) . 'd overdue</span>';
+                        } elseif ($days <= 7) {
+                            $dueHtml = '<span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">Harvest in ' . $days . ' day' . ($days === 1 ? '' : 's') . '</span>';
+                        } else {
+                            $dueHtml = '<span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">Harvest in ' . $days . ' days</span>';
+                        }
+                    } catch (\Throwable $e) { $dueHtml = ''; }
+                }
+            ?>
+                <li class="bg-white/50 border border-white/60 rounded-xl px-3.5 sm:px-4 py-3 text-sm text-slate-700 shadow-sm flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span><?php echo htmlspecialchars($crop['name']); ?></span>
+                    <?php if (!empty($crop['variety'])): ?><span class="text-slate-400">- <?php echo htmlspecialchars($crop['variety']); ?></span><?php endif; ?>
+                    <?php echo $dueHtml; ?>
+                </li>
             <?php endforeach; ?>
         </ul>
     <?php else: ?>

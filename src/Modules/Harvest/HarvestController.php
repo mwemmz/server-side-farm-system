@@ -28,6 +28,13 @@ class HarvestController {
                 if ($e) $errors['quantity'] = $e;
             }
 
+            // Optional "Store in" facility (B7).
+            $storageId = (!empty($data['storage_record_id'])) ? (int) $data['storage_record_id'] : null;
+            if ($storageId) {
+                $e = ValidationHelper::exists($this->pdo, 'storage_records', $storageId, 'storage facility');
+                if ($e) $errors['storage_record_id'] = $e;
+            }
+
             if (empty($errors)) {
                 $quality = trim($data['quality'] ?? '');
                 $row = [
@@ -36,21 +43,17 @@ class HarvestController {
                     'quantity'     => $data['quantity'],
                     'quality'      => $quality !== '' ? $quality : null,
                 ];
-                try {
-                    if ($this->model->create($row)) {
-                        SessionHelper::setFlash('success', 'Harvest record added successfully!');
-                        SessionHelper::flashCreated('Harvest', $this->model->lastId(), 'Harvest record', ['Quantity (kg)' => $data['quantity']]);
-                        header('Location: index.php?module=Harvest&action=manage');
-                        exit;
-                    }
-                    $errors['general'] = "Failed to add harvest record.";
-                } catch (PDOException $e) {
-                    $errors['general'] = "Could not save harvest record: the selected crop may no longer exist.";
+                $res = $this->model->createHarvest($row, $storageId);
+                if (!empty($res['ok'])) {
+                    SessionHelper::setFlash('success', 'Harvest record added successfully!');
+                    SessionHelper::flashCreated('Harvest', $res['id'], 'Harvest record', ['Quantity (kg)' => $data['quantity']]);
+                    header('Location: index.php?module=Harvest&action=manage');
+                    exit;
                 }
+                $errors['general'] = $res['error'] ?? 'Could not save harvest record.';
             }
-            return ['errors' => $errors, 'data' => $data, 'records' => $this->model->getAll()];
+            return ['errors' => $errors, 'data' => $data, 'records' => $this->model->getAll(), 'storageRecords' => $this->model->storageRecords()];
         }
-        return ['records' => $this->model->getAll()];
+        return ['records' => $this->model->getAll(), 'storageRecords' => $this->model->storageRecords()];
     }
 }
-?>
