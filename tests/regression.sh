@@ -113,6 +113,45 @@ S="$(status -b "$JAR" "$BASE/index.php?module=Pest")"
 case "$S" in 301|302|303|307|308) ok "?module=Pest redirects ($S)";; *) bad "?module=Pest did not redirect (got $S)";; esac
 
 # ---------------------------------------------------------------------------
+# 4b. Phase 3 (B1–B7): new endpoints exist and never 500
+# ---------------------------------------------------------------------------
+echo "-- Phase 3 endpoints --"
+
+# B1: the vaccine catalogue powers the Animal vaccination combo
+R="$(bodycode -b "$JAR" "$BASE/index.php?module=Lookup&action=options&category=vaccine_name&parent=Cattle")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "Lookup vaccine_name -> 200" "$S" "200"
+contains "$B" '"success"' "B1 vaccine catalogue responds with JSON"
+
+# B2: finance category options depend on the record type
+S="$(status -b "$JAR" "$BASE/index.php?module=Lookup&action=options&category=finance_category&parent=income")"
+check "Lookup finance_category -> 200" "$S" "200"
+
+# B3: a stock-out below zero is refused, never a 500
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "item_id=1&direction=out&quantity=999999&reason=Test" "$BASE/index.php?module=Inventory&action=move")"
+B="$(printf '%s' "$R" | sed '$d')"
+notcontains "$B" "Internal Server Error" "B3 stock-out below zero never 500s"
+
+# B4: marking a health incident resolved never 500s
+S="$(status -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "id=1&status=resolved" "$BASE/index.php?module=Crop&action=incidentStatus")"
+case "$S" in 200|302|303) ok "B4 incident status accepted ($S)";; *) bad "B4 incident status (got $S)";; esac
+
+# B5: Assistant "what needs attention today" responds
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "message=what needs attention today" "$BASE/index.php?module=Insights&action=chat")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "B5 assistant attention -> 200" "$S" "200"
+contains "$B" '"success"' "B5 assistant returns JSON"
+
+# B6: recording an equipment service never 500s
+S="$(status -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "id=1&service_date=$(date +%F)" "$BASE/index.php?module=Equipment&action=recordService")"
+case "$S" in 200|302|303) ok "B6 record service accepted ($S)";; *) bad "B6 record service (got $S)";; esac
+
+# B7: a harvest pointing at a missing storage facility is refused, not a 500
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "crop_id=1&harvest_date=$(date +%F)&quantity=5&storage_record_id=999999" "$BASE/index.php?module=Harvest&action=add")"
+B="$(printf '%s' "$R" | sed '$d')"
+notcontains "$B" "Internal Server Error" "B7 harvest storage never 500s"
+
+# ---------------------------------------------------------------------------
 # 5. Page sweep: every module x view returns 200
 # ---------------------------------------------------------------------------
 echo "-- page sweep --"
