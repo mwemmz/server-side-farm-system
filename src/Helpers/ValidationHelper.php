@@ -93,10 +93,29 @@ class ValidationHelper {
         return (bool) $st->fetchColumn();
     }
 
-    /** True when $v is empty or a date not later than today. */
-    public static function dateNotFuture($v) {
+    /**
+     * Guard a "something that already happened" date.
+     *
+     * Two call styles are supported:
+     *   dateNotFuture($value)                     -> bool  (true = empty or not in the future)
+     *   dateNotFuture($data, $field, $label = null) -> string|null (error message, or null when OK)
+     * Empty values pass in both styles; use validateRequired for presence.
+     */
+    public static function dateNotFuture($a, $b = null, $label = null) {
+        if (is_array($a)) {
+            $data  = $a;
+            $field = (string) $b;
+            $label = $label ?? ucfirst(str_replace('_', ' ', $field));
+            $v = $data[$field] ?? null;
+            if ($v === null || trim((string) $v) === '') return null;
+            $ts = strtotime((string) $v);
+            if ($ts === false) return $label . " is not a valid date.";
+            if ($ts > strtotime('today 23:59:59')) return $label . " cannot be in the future.";
+            return null;
+        }
+        $v = $a;
         if ($v === null || trim((string) $v) === '') return true;
-        $ts = strtotime($v);
+        $ts = strtotime((string) $v);
         if ($ts === false) return false;
         return $ts <= strtotime('today 23:59:59');
     }

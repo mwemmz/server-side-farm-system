@@ -61,6 +61,15 @@ class SessionHelper {
         return $_SESSION['csrf_token'];
     }
 
+    /** Issue a fresh CSRF token (call after authenticate / privilege change). */
+    public static function csrfRegenerate() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        return $_SESSION['csrf_token'];
+    }
+
     /** Constant-time check of a submitted CSRF token. */
     public static function csrfValidate($token) {
         if (session_status() === PHP_SESSION_NONE) {

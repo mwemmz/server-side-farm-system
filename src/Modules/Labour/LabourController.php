@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/LabourModel.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
+require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Intelligence/HrService.php';
 
 class LabourController {
@@ -81,6 +82,8 @@ class LabourController {
                 return $this->hr->addDepartment($name, trim($d['description'] ?? '')) ? true : 'Failed to add department.';
             case 'training':
                 if (empty($d['employee_id']) || empty(trim($d['course_name'] ?? ''))) return 'Employee and course name are required.';
+                $e = ValidationHelper::dateNotFuture($d, 'completion_date', 'Completion date');
+                if ($e) return $e;
                 return $this->hr->addTraining($d) ? true : 'Failed to add training record.';
             case 'payroll':
                 if (empty($d['employee_id'])) return 'Select an employee.';
@@ -102,6 +105,8 @@ class LabourController {
                 return $this->hr->addShift($d) ? true : 'Failed to add shift.';
             case 'attendance':
                 if (empty($d['employee_id']) || empty($d['work_date'])) return 'Employee and work date are required.';
+                $e = ValidationHelper::dateNotFuture($d, 'work_date', 'Work date');
+                if ($e) return $e;
                 return $this->hr->addAttendance($d) ? true : 'Failed to record attendance.';
             case 'grievances':
                 if (empty($d['employee_id']) || empty(trim($d['description'] ?? ''))) return 'Employee and description are required.';

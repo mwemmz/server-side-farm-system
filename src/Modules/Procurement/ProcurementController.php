@@ -14,6 +14,10 @@ class ProcurementController {
             $data = $_POST;
             $errors = ValidationHelper::validateRequired(['supplier_id', 'item_name', 'quantity', 'cost', 'purchase_date'], $data);
 
+            if (!isset($errors['purchase_date'])) {
+                $e = ValidationHelper::dateNotFuture($data, 'purchase_date', 'Purchase date');
+                if ($e) $errors['purchase_date'] = $e;
+            }
             if (!isset($errors['supplier_id'])) {
                 $e = ValidationHelper::exists($this->pdo, 'suppliers', $data['supplier_id'], 'supplier');
                 if ($e) $errors['supplier_id'] = $e;

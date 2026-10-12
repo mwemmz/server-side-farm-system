@@ -27,7 +27,7 @@ $records = $data['records'] ?? ($data ?? []);
         ['name' => 'unit', 'label' => 'Unit', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'unit'), 'allow_custom' => true, 'category' => 'unit', 'placeholder' => 'kg, bag, head…', 'value' => $formData['unit'] ?? ''],
         ['name' => 'amount', 'label' => 'Total Amount', 'type' => 'number', 'step' => '0.01', 'min' => '0.01', 'value' => $formData['amount'] ?? '', 'suffix' => 'K'],
         ['name' => 'payment_method', 'label' => 'Payment Method', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'payment_method'), 'allow_custom' => true, 'category' => 'payment_method', 'placeholder' => 'Cash, Mobile money…', 'value' => $formData['payment_method'] ?? ''],
-        ['name' => 'sale_date', 'label' => 'Sale Date', 'type' => 'date', 'value' => $formData['sale_date'] ?? date('Y-m-d')]
+        ['name' => 'sale_date', 'label' => 'Sale Date', 'type' => 'date', 'max' => date('Y-m-d'), 'value' => $formData['sale_date'] ?? date('Y-m-d')]
     ];
     echo FormHelper::generateForm($fields, '/index.php?module=Sales&action=add', 'POST', $errors);
     ?>

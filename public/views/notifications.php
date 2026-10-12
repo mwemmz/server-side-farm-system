@@ -19,7 +19,10 @@ foreach ($records as $r) { if (!$isRead($r['is_read'] ?? false)) $unread++; }
 
 <div class="flex flex-wrap items-center gap-3 mb-6">
     <span class="text-sm font-semibold text-slate-600"><?php echo $unread; ?> unread</span>
-    <a href="index.php?module=Notifications&action=mark_all_read&back=<?php echo urlencode('index.php?module=Notifications&action=manage'); ?>" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-bold shadow-sm hover:bg-slate-50 transition-colors">Mark all read</a>
+    <form method="POST" action="index.php?module=Notifications&action=mark_all_read" class="inline">
+        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
+        <button class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-bold shadow-sm hover:bg-slate-50 transition-colors">Mark all read</button>
+    </form>
     <a href="index.php?module=Notifications&action=rules" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-bold shadow-lg hover:shadow-emerald-700/40 transition-shadow">Alert Rules</a>
 </div>
 
@@ -45,7 +48,10 @@ foreach ($records as $r) { if (!$isRead($r['is_read'] ?? false)) $unread++; }
                         <span class="text-[11px] text-slate-400"><?php echo htmlspecialchars($record['created_at']); ?></span>
                     </span>
                     <?php if (!$read): ?>
-                        <a href="index.php?module=Notifications&action=mark_read&id=<?php echo (int) $record['id']; ?>&back=<?php echo urlencode('index.php?module=Notifications&action=manage'); ?>" class="text-[11px] font-bold text-green-700 hover:text-green-800 whitespace-nowrap">Mark read</a>
+                        <form method="POST" action="index.php?module=Notifications&action=mark_read&id=<?php echo (int) $record['id']; ?>" class="inline">
+                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
+                            <button class="text-[11px] font-bold text-green-700 hover:text-green-800 whitespace-nowrap">Mark read</button>
+                        </form>
                     <?php else: ?>
                         <span class="text-[11px] font-bold text-slate-400 whitespace-nowrap">Read</span>
                     <?php endif; ?>

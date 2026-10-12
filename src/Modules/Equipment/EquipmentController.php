@@ -11,6 +11,10 @@ class EquipmentController {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = $_POST;
             $errors = ValidationHelper::validateRequired(['name', 'status'], $data);
+            if (!isset($errors['purchase_date'])) {
+                $e = ValidationHelper::dateNotFuture($data, 'purchase_date', 'Purchase date');
+                if ($e) $errors['purchase_date'] = $e;
+            }
             if (empty($errors)) {
                 try {
                     if ($this->model->addEquipment(trim($data['name']), trim($data['status']), trim($data['equipment_type'] ?? ''), trim($data['farm_id'] ?? ''), trim($data['purchase_date'] ?? ''))) {

@@ -14,6 +14,10 @@ class SalesController {
             $fields = ['customer_name', 'amount', 'sale_date'];
             $errors = ValidationHelper::validateRequired($fields, $data);
 
+            if (!isset($errors['sale_date'])) {
+                $e = ValidationHelper::dateNotFuture($data, 'sale_date', 'Sale date');
+                if ($e) $errors['sale_date'] = $e;
+            }
             if (!isset($errors['amount'])) {
                 $e = ValidationHelper::number($data, 'amount', ['label' => 'Amount', 'positive' => true]);
                 if ($e) $errors['amount'] = $e;

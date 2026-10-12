@@ -14,6 +14,11 @@ class HarvestController {
             $data = $_POST;
             $errors = ValidationHelper::validateRequired(['crop_id', 'harvest_date', 'quantity'], $data);
 
+            if (!isset($errors['harvest_date'])) {
+                $e = ValidationHelper::dateNotFuture($data, 'harvest_date', 'Harvest date');
+                if ($e) $errors['harvest_date'] = $e;
+            }
+
             if (!isset($errors['crop_id'])) {
                 $e = ValidationHelper::exists($this->pdo, 'crops', $data['crop_id'], 'crop');
                 if ($e) $errors['crop_id'] = $e;

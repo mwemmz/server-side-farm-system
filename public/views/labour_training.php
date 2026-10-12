@@ -15,6 +15,7 @@ $flashErr = SessionHelper::getFlash('error') ?? null;
     <div class="glass-card p-5">
         <h2 class="text-lg font-bold text-slate-700 mb-4">Add Training Record</h2>
         <form method="POST" action="index.php?module=Labour&action=add&subsection=training" class="space-y-3">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
             <div class="flex flex-col gap-1">
                 <label class="text-sm font-semibold text-slate-700">Employee *</label>
                 <select name="employee_id" required class="w-full px-3 py-2 text-sm border rounded-lg">
@@ -28,7 +29,7 @@ $flashErr = SessionHelper::getFlash('error') ?? null;
                 <input type="text" name="provider" class="w-full px-3.5 py-2 text-sm border rounded-lg"></div>
             <div class="grid grid-cols-2 gap-3">
                 <div class="flex flex-col gap-1"><label class="text-sm font-semibold text-slate-700">Completion Date</label>
-                    <input type="date" name="completion_date" class="w-full px-3.5 py-2 text-sm border rounded-lg"></div>
+                    <input type="date" name="completion_date" max="<?php echo date('Y-m-d'); ?>" class="w-full px-3.5 py-2 text-sm border rounded-lg"></div>
                 <div class="flex flex-col gap-1"><label class="text-sm font-semibold text-slate-700">Status</label>
                     <select name="status" class="w-full px-3 py-2 text-sm border rounded-lg">
                         <option value="completed">Completed</option><option value="in_progress">In progress</option><option value="pending">Pending</option>

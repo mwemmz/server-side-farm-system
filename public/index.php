@@ -14,6 +14,52 @@ require_once __DIR__ . '/../db/migrate.php';
 $module = $_GET['module'] ?? 'Dashboard';
 $action = $_GET['action'] ?? 'index';
 
+// --- A1: Central CSRF protection for every state-changing request ---
+require_once __DIR__ . '/../src/Helpers/SessionHelper.php';
+$reqMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+$wantsJson = (stripos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false)
+    || (strcasecmp($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '', 'XMLHttpRequest') === 0)
+    || ($module === 'Lookup')
+    || ($module === 'Insights')
+    || ($module === 'Labour' && $action === 'emp_add');
+$providedToken = $_POST['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+
+// Actions that must never be reachable by a plain GET (no link-prefetch/CSRF-by-image).
+$mustPostActions = ['delete', 'approve', 'reject', 'resolve', 'paid',
+                    'mark_read', 'mark_all_read', 'run_rules', 'toggle_rule', 'delete_rule',
+                    'panel_act'];
+if (in_array($action, $mustPostActions, true) && $reqMethod !== 'POST') {
+    http_response_code(405);
+    if ($wantsJson) {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['success' => false, 'error' => 'This action must be submitted as a POST request.']);
+    } else {
+        echo "<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Action not allowed</title></head>"
+           . "<body style='font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0'>"
+           . "<div style='max-width:26rem;padding:2rem;text-align:center'>"
+           . "<h2 style='margin:0 0 .5rem'>Action not allowed</h2>"
+           . "<p style='color:#94a3b8'>For your security this action must be submitted from the application.</p>"
+           . "<p style='margin-top:1.5rem'><a href='index.php' style='color:#4ade80;font-weight:600'>Back to dashboard</a></p></div></body></html>";
+    }
+    exit;
+}
+
+if ($reqMethod === 'POST' && !SessionHelper::csrfValidate($providedToken)) {
+    http_response_code(403);
+    if ($wantsJson) {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['success' => false, 'error' => 'Invalid or missing security token.']);
+    } else {
+        echo "<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Session expired</title></head>"
+           . "<body style='font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0'>"
+           . "<div style='max-width:26rem;padding:2rem;text-align:center'>"
+           . "<h2 style='margin:0 0 .5rem'>Your session expired</h2>"
+           . "<p style='color:#94a3b8'>Go back, reload the page and try again.</p>"
+           . "<p style='margin-top:1.5rem'><a href='index.php' style='color:#4ade80;font-weight:600'>Back to the app</a></p></div></body></html>";
+    }
+    exit;
+}
+
 // --- Authentication actions (login/logout) handled before the auth gate ---
 if ($module === 'Security' && in_array($action, ['login', 'logout'], true)) {
     require_once __DIR__ . '/../src/Modules/Security/SecurityController.php';

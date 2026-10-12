@@ -14,6 +14,15 @@ class MarketController {
             $fields = ['crop_name', 'price', 'market_date'];
             $errors = ValidationHelper::validateRequired($fields, $data);
 
+            if (!isset($errors['market_date'])) {
+                $e = ValidationHelper::dateNotFuture($data, 'market_date', 'Market date');
+                if ($e) $errors['market_date'] = $e;
+            }
+            if (!isset($errors['price'])) {
+                $e = ValidationHelper::number($data, 'price', ['label' => 'Price', 'min' => 0]);
+                if ($e) $errors['price'] = $e;
+            }
+
             if (empty($errors)) {
                 $row = array_intersect_key($data, array_flip(['crop_name', 'price', 'market_date']));
                 try {

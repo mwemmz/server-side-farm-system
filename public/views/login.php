@@ -70,6 +70,7 @@
         <?php endif; ?>
 
         <form method="POST" action="index.php?module=Security&action=login" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
             <div>
                 <label for="username" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Username</label>
                 <input id="username" name="username" type="text" required autofocus placeholder="admin"

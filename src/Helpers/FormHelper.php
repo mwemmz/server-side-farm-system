@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/SessionHelper.php';
+
 class FormHelper {
     /**
      * Render a form.
@@ -16,6 +18,11 @@ class FormHelper {
         $formId = 'ff-form-' . substr(md5($action . '|' . $method), 0, 8);
 
         $html  = "<form id='$formId' action='" . htmlspecialchars($action) . "' method='" . htmlspecialchars($method) . "' class='space-y-6'>";
+
+        // A1: every POST form carries the session CSRF token.
+        if (strcasecmp($method, 'POST') === 0) {
+            $html .= "<input type='hidden' name='csrf_token' value='" . htmlspecialchars(SessionHelper::csrfToken()) . "'>";
+        }
 
         if (!empty($errors['general'])) {
             $html .= "<div class='bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg text-sm' role='alert'>" . htmlspecialchars($errors['general']) . "</div>";

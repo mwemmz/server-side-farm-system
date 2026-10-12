@@ -70,6 +70,11 @@ class CropController {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors = ValidationHelper::validateRequired(['crop_id', 'pest_name', 'detected_date'], $data);
 
+            if (!isset($errors['detected_date'])) {
+                $e = ValidationHelper::dateNotFuture($data, 'detected_date', 'Detected date');
+                if ($e) $errors['detected_date'] = $e;
+            }
+
             if (!isset($errors['crop_id'])) {
                 $e = ValidationHelper::exists($this->pdo, 'crops', $data['crop_id'], 'crop');
                 if ($e) $errors['crop_id'] = $e;

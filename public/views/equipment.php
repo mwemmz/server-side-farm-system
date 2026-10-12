@@ -22,7 +22,7 @@ $items    = $data['items'] ?? ($data ?? []);
         ['name' => 'equipment_type', 'label' => 'Type', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'equipment_type'), 'allow_custom' => true, 'category' => 'equipment_type', 'placeholder' => 'Tractor, Pump, Sprayer…', 'value' => $formData['equipment_type'] ?? ''],
         ['name' => 'status', 'label' => 'Status', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'equipment_status'), 'allow_custom' => true, 'category' => 'equipment_status', 'placeholder' => 'Operational, Under maintenance…', 'value' => $formData['status'] ?? ''],
         ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'combo', 'required' => false, 'options' => FormHelper::farmOptions($pdo), 'allow_custom' => false, 'placeholder' => 'Type to find a farm…', 'value' => $formData['farm_id'] ?? ''],
-        ['name' => 'purchase_date', 'label' => 'Purchase Date', 'type' => 'date', 'required' => false, 'value' => $formData['purchase_date'] ?? '']
+        ['name' => 'purchase_date', 'label' => 'Purchase Date', 'type' => 'date', 'max' => date('Y-m-d'), 'required' => false, 'value' => $formData['purchase_date'] ?? '']
     ];
     echo FormHelper::generateForm($fields, 'index.php?module=Equipment&action=add', 'POST', $errors);
     ?>

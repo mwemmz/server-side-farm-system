@@ -9,6 +9,7 @@
  * app's $pdo / $config globals are in scope.
  */
 require_once __DIR__ . '/../../../config/env.php';
+require_once __DIR__ . '/../../../src/Helpers/SessionHelper.php';
 $recs = $data ?? [];
 // Some controllers return structured arrays (e.g. Crop => ['crops'=>..,'pests'=>..]);
 // unwrap the record list so the landing iterates rows, not the wrapper.
@@ -142,15 +143,16 @@ switch ($m) {
         $unread = 0;
         foreach ($recs as $n) { if (!in_array($n['is_read'] ?? false, [true, 1, '1', 't', 'true'], true)) $unread++; }
         $summaries = [['Total', count($recs), 'slate'], ['Unread', $unread, ($unread ? 'red' : 'green')]];
+        $csrf = htmlspecialchars(SessionHelper::csrfToken());
         $render .= '<div class="flex flex-wrap items-center gap-3 mb-2">'
-            . '<a href="index.php?module=Notifications&action=mark_all_read&back=' . urlencode('index.php?module=Notifications') . '" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700">Mark all read</a>'
+            . '<form method="POST" action="index.php?module=Notifications&action=mark_all_read" class="inline"><input type="hidden" name="csrf_token" value="' . $csrf . '"><button class="text-xs font-bold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700">Mark all read</button></form>'
             . '<a href="index.php?module=Notifications&action=rules" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 text-white">Alert Rules</a></div>';
         foreach ($recs as $n) {
             $read = in_array($n['is_read'] ?? false, [true, 1, '1', 't', 'true'], true);
             $dot = $read ? 'bg-slate-300' : 'bg-green-500';
             $render .= '<div class="glass-card p-4 sm:p-5 flex items-start gap-3' . ($read ? ' opacity-60' : '') . '"><span class="w-2 h-2 rounded-full ' . $dot . ' mt-2 shrink-0"></span>'
                 . '<div class="flex-1"><div class="text-sm text-slate-800">' . esc($n['message']) . '</div><div class="text-[11px] text-slate-400 mt-1">' . esc($n['created_at'] ?? '') . '</div></div>'
-                . ($read ? '<span class="text-[10px] font-bold text-slate-400">Read</span>' : '<a href="index.php?module=Notifications&action=mark_read&id=' . (int) $n['id'] . '&back=' . urlencode('index.php?module=Notifications') . '" class="text-[10px] font-bold text-green-700">Mark read</a>')
+                . ($read ? '<span class="text-[10px] font-bold text-slate-400">Read</span>' : '<form method="POST" action="index.php?module=Notifications&action=mark_read&id=' . (int) $n['id'] . '" class="inline"><input type="hidden" name="csrf_token" value="' . $csrf . '"><button class="text-[10px] font-bold text-green-700">Mark read</button></form>')
                 . '</div>';
         }
         break;

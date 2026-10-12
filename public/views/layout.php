@@ -412,6 +412,7 @@
             <!-- Input -->
             <div class="border-t border-slate-200 p-3 bg-white">
                 <form id="ff-chat-form" class="flex gap-2">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
                     <input id="ff-chat-input" type="text" autocomplete="off" placeholder="Ask about your farm…"
                            class="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500/40">
                     <button type="submit" class="shrink-0 px-3 py-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-bold hover:opacity-90 transition">
@@ -560,6 +561,8 @@
                     const fd = new FormData();
                     fd.append('message', q);
                     if (sessionId) fd.append('session_id', sessionId);
+                    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+                    if (csrfMeta) fd.append('csrf_token', csrfMeta.getAttribute('content'));
                     const res = await fetch('index.php?module=Insights&action=chat', { method: 'POST', body: fd });
                     const json = await res.json();
                     typing.remove();

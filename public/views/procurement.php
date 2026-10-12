@@ -25,7 +25,7 @@ $records = $data['records'] ?? ($data ?? []);
         ['name' => 'item_name', 'label' => 'Item Name', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'inventory_item'), 'allow_custom' => true, 'category' => 'inventory_item', 'placeholder' => 'e.g. Fertiliser (D-compound)…', 'value' => $formData['item_name'] ?? ''],
         ['name' => 'quantity', 'label' => 'Quantity', 'type' => 'number', 'step' => '1', 'min' => '1', 'value' => $formData['quantity'] ?? ''],
         ['name' => 'cost', 'label' => 'Cost', 'type' => 'number', 'step' => '0.01', 'min' => '0', 'value' => $formData['cost'] ?? '', 'suffix' => 'K'],
-        ['name' => 'purchase_date', 'label' => 'Purchase Date', 'type' => 'date', 'value' => $formData['purchase_date'] ?? date('Y-m-d')]
+        ['name' => 'purchase_date', 'label' => 'Purchase Date', 'type' => 'date', 'max' => date('Y-m-d'), 'value' => $formData['purchase_date'] ?? date('Y-m-d')]
     ];
     echo FormHelper::generateForm($fields, '/index.php?module=Procurement&action=add', 'POST', $errors);
     ?>

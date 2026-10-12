@@ -268,7 +268,9 @@
         var extra = '';
         if (on !== null) extra += '&on=' + encodeURIComponent(on);
         if (act === 'run' || act === 'park') extra += '&running=' + encodeURIComponent(on);
-        fetch(actUrl(act, extra), { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        var csrfHdr = csrfMeta ? csrfMeta.getAttribute('content') : '';
+        fetch(actUrl(act, extra), { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-Token': csrfHdr } })
           .then(function (r) { return r.json(); })
           .then(function (res) { if (res.success && res.data) { render(res.data); refreshStatus(); } })
           .catch(function () {});

@@ -16,6 +16,10 @@ class FinanceController {
             if (!isset($errors['type']) && !ValidationHelper::inList($data['type'], ['income', 'expense'])) {
                 $errors['type'] = "Type must be either Income or Expense.";
             }
+            if (!isset($errors['date'])) {
+                $e = ValidationHelper::dateNotFuture($data, 'date', 'Date');
+                if ($e) $errors['date'] = $e;
+            }
             $e = ValidationHelper::number($data, 'amount', ['label' => 'Amount', 'positive' => true]);
             if ($e) $errors['amount'] = $e;
             if (!isset($errors['farm_id'])) {

@@ -65,7 +65,12 @@ class LivestockController {
                 if ($e) $errors['livestock_id'] = $e;
             }
 
-            if (!isset($errors['vaccination_date']) && !empty($data['next_due_date']) && !isset($errors['next_due_date'])
+            if (!isset($errors['vaccination_date'])) {
+                $e = ValidationHelper::dateNotFuture($data, 'vaccination_date', 'Vaccination date');
+                if ($e) $errors['vaccination_date'] = $e;
+            }
+
+            if (!isset($errors['vaccination_date']) && !isset($errors['next_due_date']) && !empty($data['next_due_date'])
                 && strtotime((string) $data['next_due_date']) < strtotime((string) $data['vaccination_date'])) {
                 $errors['next_due_date'] = "Next due date cannot be before the vaccination date.";
             }
@@ -93,6 +98,11 @@ class LivestockController {
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors = ValidationHelper::validateRequired(['livestock_id', 'pest_name', 'detected_date'], $data);
+
+            if (!isset($errors['detected_date'])) {
+                $e = ValidationHelper::dateNotFuture($data, 'detected_date', 'Detected date');
+                if ($e) $errors['detected_date'] = $e;
+            }
 
             if (!isset($errors['livestock_id'])) {
                 $e = ValidationHelper::exists($this->pdo, 'livestock', $data['livestock_id'], 'animal');

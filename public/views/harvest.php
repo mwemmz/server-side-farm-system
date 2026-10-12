@@ -21,7 +21,7 @@ $records = $data['records'] ?? ($data ?? []);
     <?php
     $fields = [
         ['name' => 'crop_id', 'label' => 'Crop', 'type' => 'combo', 'options' => FormHelper::cropOptions($pdo), 'allow_custom' => false, 'placeholder' => 'Type to find a crop…', 'value' => $formData['crop_id'] ?? ''],
-        ['name' => 'harvest_date', 'label' => 'Harvest Date', 'type' => 'date', 'value' => $formData['harvest_date'] ?? date('Y-m-d')],
+        ['name' => 'harvest_date', 'label' => 'Harvest Date', 'type' => 'date', 'max' => date('Y-m-d'), 'value' => $formData['harvest_date'] ?? date('Y-m-d')],
         ['name' => 'quantity', 'label' => 'Quantity', 'type' => 'number', 'step' => '0.01', 'min' => '0.01', 'value' => $formData['quantity'] ?? '', 'suffix' => 'kg'],
         ['name' => 'quality', 'label' => 'Quality', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'harvest_quality'), 'allow_custom' => true, 'category' => 'harvest_quality', 'placeholder' => 'Grade A / B / C…', 'value' => $formData['quality'] ?? '']
     ];

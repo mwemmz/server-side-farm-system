@@ -17,6 +17,7 @@ $flashErr = SessionHelper::getFlash('error') ?? null;
         <h2 class="text-lg font-bold text-slate-700 mb-1">Add Employee</h2>
         <p class="text-xs text-slate-500 mb-4">Appears in the table instantly — no page reload.</p>
         <form id="empAddForm" class="space-y-3">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
             <div class="flex flex-col gap-1">
                 <label class="text-sm font-semibold text-slate-700">Employee No.</label>
                 <input type="text" name="emp_no" placeholder="Auto-generated if blank" class="w-full px-3.5 py-2 text-sm text-slate-800 bg-white/70 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
@@ -46,7 +47,7 @@ $flashErr = SessionHelper::getFlash('error') ?? null;
             </div>
             <div class="grid grid-cols-2 gap-3">
                 <div class="flex flex-col gap-1"><label class="text-sm font-semibold text-slate-700">Hire Date</label>
-                    <input type="date" name="hire_date" class="w-full px-3.5 py-2 text-sm border rounded-lg"></div>
+                    <input type="date" name="hire_date" max="<?php echo date('Y-m-d'); ?>" class="w-full px-3.5 py-2 text-sm border rounded-lg"></div>
                 <div class="flex flex-col gap-1"><label class="text-sm font-semibold text-slate-700">Pay Type</label>
                     <select name="pay_type" class="w-full px-3 py-2 text-sm border rounded-lg">
                         <option value="monthly">Monthly</option><option value="daily">Daily</option><option value="piece">Piece-rate</option>
@@ -72,6 +73,7 @@ $flashErr = SessionHelper::getFlash('error') ?? null;
         <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
             <h2 class="text-lg font-bold text-slate-700">All Employees (<?php echo count($employees); ?>)</h2>
             <form method="get" action="index.php" class="flex items-center gap-2">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
                 <input type="hidden" name="module" value="Labour"><input type="hidden" name="subsection" value="employees">
                 <select name="dept" onchange="this.form.submit()" class="px-3 py-1.5 text-sm border rounded-lg bg-white/70">
                     <option value="">All departments</option>

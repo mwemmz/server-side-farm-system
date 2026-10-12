@@ -53,7 +53,7 @@ $vaccAnimals = $data['vaccAnimals'] ?? $animals;
     $vaccFields = [
         ['name' => 'livestock_id', 'label' => 'Animal', 'type' => 'combo', 'options' => $vaccAnimalsOptions, 'allow_custom' => false, 'placeholder' => 'Type an animal #, type or breed…', 'value' => $formData['livestock_id'] ?? '', 'help' => 'The animal ID is the "#" number shown in the list.'],
         ['name' => 'vaccine_name', 'label' => 'Vaccine / Treatment', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'vaccine_name'), 'allow_custom' => true, 'category' => 'vaccine_name', 'placeholder' => 'e.g. FMD vaccine, or type another…', 'value' => $formData['vaccine_name'] ?? ''],
-        ['name' => 'vaccination_date', 'label' => 'Date Vaccinated', 'type' => 'date', 'value' => $formData['vaccination_date'] ?? date('Y-m-d')],
+        ['name' => 'vaccination_date', 'label' => 'Date Vaccinated', 'type' => 'date', 'max' => date('Y-m-d'), 'value' => $formData['vaccination_date'] ?? date('Y-m-d')],
         ['name' => 'next_due_date', 'label' => 'Next Due Date', 'type' => 'date', 'required' => false, 'value' => $formData['next_due_date'] ?? '', 'help' => 'Leave blank if not a repeat treatment.'],
     ];
     echo FormHelper::generateForm($vaccFields, 'index.php?module=Livestock&action=vaccinate', 'POST', $errors);
@@ -115,7 +115,7 @@ $vaccAnimals = $data['vaccAnimals'] ?? $animals;
         ['name' => 'livestock_id', 'label' => 'Animal', 'type' => 'combo', 'options' => $livestockPestOptions, 'allow_custom' => false, 'placeholder' => 'Type an animal #, type or breed…', 'value' => $pestData['livestock_id'] ?? '', 'help' => 'The animal ID is the "#" number shown in the list.'],
         ['name' => 'pest_name', 'label' => 'Pest / Disease', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'disease_name'), 'allow_custom' => true, 'category' => 'disease_name', 'placeholder' => 'e.g. Foot rot, Ticks, or type another…', 'value' => $pestData['pest_name'] ?? ''],
         ['name' => 'severity', 'label' => 'Severity', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'pest_severity'), 'allow_custom' => true, 'category' => 'pest_severity', 'placeholder' => 'Low, Moderate, High…', 'value' => $pestData['severity'] ?? ''],
-        ['name' => 'detected_date', 'label' => 'Detected Date', 'type' => 'date', 'value' => $pestData['detected_date'] ?? date('Y-m-d')],
+        ['name' => 'detected_date', 'label' => 'Detected Date', 'type' => 'date', 'max' => date('Y-m-d'), 'value' => $pestData['detected_date'] ?? date('Y-m-d')],
         ['name' => 'action_taken', 'label' => 'Action Taken', 'type' => 'textarea', 'value' => $pestData['action_taken'] ?? ''],
     ];
     echo FormHelper::generateForm($pestFields, 'index.php?module=Livestock&action=addPest', 'POST', $pestErrors);

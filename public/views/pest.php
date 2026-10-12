@@ -23,7 +23,7 @@ $records = $data['records'] ?? ($data ?? []);
         ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'combo', 'options' => FormHelper::farmOptions($pdo), 'allow_custom' => false, 'placeholder' => 'Type to find a farm…', 'value' => $formData['farm_id'] ?? ''],
         ['name' => 'pest_name', 'label' => 'Pest / Problem', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'pest_name'), 'allow_custom' => true, 'category' => 'pest_name', 'placeholder' => 'e.g. Fall armyworm, or type another…', 'value' => $formData['pest_name'] ?? ''],
         ['name' => 'severity', 'label' => 'Severity', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'pest_severity'), 'allow_custom' => true, 'category' => 'pest_severity', 'placeholder' => 'Low, Moderate, High…', 'value' => $formData['severity'] ?? ''],
-        ['name' => 'detected_date', 'label' => 'Detected Date', 'type' => 'date', 'value' => $formData['detected_date'] ?? date('Y-m-d')],
+        ['name' => 'detected_date', 'label' => 'Detected Date', 'type' => 'date', 'max' => date('Y-m-d'), 'value' => $formData['detected_date'] ?? date('Y-m-d')],
         ['name' => 'action_taken', 'label' => 'Action Taken', 'type' => 'textarea', 'value' => $formData['action_taken'] ?? '']
     ];
     echo FormHelper::generateForm($fields, '/index.php?module=Pest&action=add', 'POST', $errors);

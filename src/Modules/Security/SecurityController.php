@@ -18,6 +18,7 @@ class SecurityController {
             $user = $this->model->getUserByUsername($username);
             if ($user && password_verify($_POST['password'] ?? '', $user['password_hash'])) {
                 session_regenerate_id(true);
+                SessionHelper::csrfRegenerate();
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['username'] = $user['username'];
                 $_SESSION['role'] = $user['role'];

@@ -53,7 +53,7 @@ $crops = $data['crops'] ?? ($data ?? []); // Handle both cases for index and add
         ['name' => 'crop_id', 'label' => 'Crop', 'type' => 'combo', 'options' => FormHelper::cropOptions($pdo), 'allow_custom' => false, 'placeholder' => 'Type to find a crop…', 'value' => $pestData['crop_id'] ?? ''],
         ['name' => 'pest_name', 'label' => 'Pest / Disease', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'pest_name'), 'allow_custom' => true, 'category' => 'pest_name', 'placeholder' => 'e.g. Fall armyworm, or type another…', 'value' => $pestData['pest_name'] ?? ''],
         ['name' => 'severity', 'label' => 'Severity', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'pest_severity'), 'allow_custom' => true, 'category' => 'pest_severity', 'placeholder' => 'Low, Moderate, High…', 'value' => $pestData['severity'] ?? ''],
-        ['name' => 'detected_date', 'label' => 'Detected Date', 'type' => 'date', 'value' => $pestData['detected_date'] ?? date('Y-m-d')],
+        ['name' => 'detected_date', 'label' => 'Detected Date', 'type' => 'date', 'max' => date('Y-m-d'), 'value' => $pestData['detected_date'] ?? date('Y-m-d')],
         ['name' => 'action_taken', 'label' => 'Action Taken', 'type' => 'textarea', 'value' => $pestData['action_taken'] ?? ''],
     ];
     echo FormHelper::generateForm($pestFields, '/index.php?module=Crop&action=addPest', 'POST', $pestErrors);

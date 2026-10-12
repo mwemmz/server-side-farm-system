@@ -13,6 +13,10 @@ class PestController {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = $_POST;
             $errors = ValidationHelper::validateRequired(['farm_id', 'pest_name', 'detected_date', 'action_taken'], $data);
+            if (!isset($errors['detected_date'])) {
+                $e = ValidationHelper::dateNotFuture($data, 'detected_date', 'Detected date');
+                if ($e) $errors['detected_date'] = $e;
+            }
             if (!isset($errors['farm_id'])) {
                 $e = ValidationHelper::exists($this->pdo, 'farms', $data['farm_id'], 'farm');
                 if ($e) $errors['farm_id'] = $e;

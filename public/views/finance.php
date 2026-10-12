@@ -32,7 +32,7 @@ $records = $data['records'] ?? ($data ?? []);
         ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'combo', 'required' => false, 'options' => FormHelper::farmOptions($pdo), 'allow_custom' => false, 'placeholder' => 'Type to find a farm…', 'value' => $formData['farm_id'] ?? ''],
         ['name' => 'payment_method', 'label' => 'Payment Method', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'payment_method'), 'allow_custom' => true, 'category' => 'payment_method', 'placeholder' => 'Cash, Mobile money…', 'value' => $formData['payment_method'] ?? ''],
         ['name' => 'description', 'label' => 'Description', 'type' => 'textarea', 'value' => $formData['description'] ?? ''],
-        ['name' => 'date', 'label' => 'Date', 'type' => 'date', 'value' => $formData['date'] ?? date('Y-m-d')]
+        ['name' => 'date', 'label' => 'Date', 'type' => 'date', 'max' => date('Y-m-d'), 'value' => $formData['date'] ?? date('Y-m-d')]
     ];
     echo FormHelper::generateForm($fields, '/index.php?module=Finance&action=add', 'POST', $errors);
     ?>

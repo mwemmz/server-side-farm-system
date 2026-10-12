@@ -37,7 +37,10 @@ $flash = SessionHelper::getFlash('success');
 <div class="glass-card p-4 sm:p-6">
     <div class="flex items-center justify-between mb-4">
         <h2 class="text-xl font-semibold">Active Rules (<?php echo count($rules); ?>)</h2>
-        <a href="index.php?module=Notifications&action=run_rules" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-bold shadow-lg hover:shadow-emerald-700/40 transition-shadow">Run rules now</a>
+        <form method="POST" action="index.php?module=Notifications&action=run_rules" class="inline">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
+            <button class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-bold shadow-lg hover:shadow-emerald-700/40 transition-shadow">Run rules now</button>
+        </form>
     </div>
     <?php if (!empty($rules)): ?>
         <ul class="space-y-2.5">
@@ -50,8 +53,14 @@ $flash = SessionHelper::getFlash('success');
                         <span class="ml-2 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full <?php echo $active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'; ?>"><?php echo $active ? 'active' : 'paused'; ?></span>
                     </span>
                     <span class="flex items-center gap-3 whitespace-nowrap">
-                        <a href="index.php?module=Notifications&action=toggle_rule&id=<?php echo (int) $r['id']; ?>" class="text-[11px] font-bold text-slate-600 hover:text-slate-800"><?php echo $active ? 'Pause' : 'Resume'; ?></a>
-                        <a href="index.php?module=Notifications&action=delete_rule&id=<?php echo (int) $r['id']; ?>" class="text-[11px] font-bold text-red-600 hover:text-red-700">Delete</a>
+                        <form method="POST" action="index.php?module=Notifications&action=toggle_rule&id=<?php echo (int) $r['id']; ?>" class="inline">
+                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
+                            <button class="text-[11px] font-bold text-slate-600 hover:text-slate-800"><?php echo $active ? 'Pause' : 'Resume'; ?></button>
+                        </form>
+                        <form method="POST" action="index.php?module=Notifications&action=delete_rule&id=<?php echo (int) $r['id']; ?>" class="inline">
+                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
+                            <button class="text-[11px] font-bold text-red-600 hover:text-red-700">Delete</button>
+                        </form>
                     </span>
                 </li>
             <?php endforeach; ?>

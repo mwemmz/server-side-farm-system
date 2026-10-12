@@ -24,6 +24,7 @@ $leaveColors = [
     <div class="glass-card p-5">
         <h2 class="text-lg font-bold text-slate-700 mb-4">Request Leave</h2>
         <form method="POST" action="index.php?module=Labour&action=add&subsection=leave" class="space-y-3">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
             <div class="flex flex-col gap-1"><label class="text-sm font-semibold text-slate-700">Employee *</label>
                 <select name="employee_id" id="lvEmp" required class="w-full px-3 py-2 text-sm border rounded-lg">
                     <option value="">— Select employee —</option>
@@ -60,8 +61,14 @@ $leaveColors = [
                 </div>
                 <div class="text-xs text-slate-500 mt-1"><?php echo date('M j', strtotime($p['start_date'])); ?> → <?php echo date('M j', strtotime($p['end_date'])); ?> · <?php echo $p['days']; ?> days</div>
                 <div class="flex gap-2 mt-2">
-                    <a href="index.php?module=Labour&action=approve&subsection=leave&id=<?php echo $p['id']; ?>" class="flex-1 text-center text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-600 text-white">Approve</a>
-                    <a href="index.php?module=Labour&action=reject&subsection=leave&id=<?php echo $p['id']; ?>" class="flex-1 text-center text-xs font-bold px-3 py-1.5 rounded-lg bg-rose-100 text-rose-700">Reject</a>
+                    <form method="POST" action="index.php?module=Labour&action=approve&subsection=leave&id=<?php echo (int) $p['id']; ?>" class="flex-1">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
+                        <button class="w-full text-center text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-600 text-white">Approve</button>
+                    </form>
+                    <form method="POST" action="index.php?module=Labour&action=reject&subsection=leave&id=<?php echo (int) $p['id']; ?>" class="flex-1">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
+                        <button class="w-full text-center text-xs font-bold px-3 py-1.5 rounded-lg bg-rose-100 text-rose-700">Reject</button>
+                    </form>
                 </div>
             </div>
         <?php endforeach; else: ?>
