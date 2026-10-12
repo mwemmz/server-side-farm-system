@@ -100,3 +100,49 @@ $vaccAnimals = $data['vaccAnimals'] ?? $animals;
         <p>No vaccination records yet.</p>
     <?php endif; ?>
 </div>
+
+<div class="glass-card p-4 sm:p-6 mt-6">
+    <h2 class="text-xl font-semibold mb-1 text-red-800">Pests &amp; Health Problems</h2>
+    <p class="text-xs text-slate-500 mb-4">Report a pest, parasite or disease on an animal. The record is stored against the animal (and its farm).</p>
+    <?php
+    $pestErrors = $data['pestErrors'] ?? [];
+    $pestData = $data['pestData'] ?? [];
+    $livestockPestOptions = [];
+    foreach ($animals as $a) {
+        $livestockPestOptions[(string) $a['id']] = '#' . $a['id'] . ' — ' . ucfirst($a['type'] ?? '') . ' ' . ($a['breed'] ?? 'Unknown');
+    }
+    $pestFields = [
+        ['name' => 'livestock_id', 'label' => 'Animal', 'type' => 'combo', 'options' => $livestockPestOptions, 'allow_custom' => false, 'placeholder' => 'Type an animal #, type or breed…', 'value' => $pestData['livestock_id'] ?? '', 'help' => 'The animal ID is the "#" number shown in the list.'],
+        ['name' => 'pest_name', 'label' => 'Pest / Disease', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'disease_name'), 'allow_custom' => true, 'category' => 'disease_name', 'placeholder' => 'e.g. Foot rot, Ticks, or type another…', 'value' => $pestData['pest_name'] ?? ''],
+        ['name' => 'severity', 'label' => 'Severity', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'pest_severity'), 'allow_custom' => true, 'category' => 'pest_severity', 'placeholder' => 'Low, Moderate, High…', 'value' => $pestData['severity'] ?? ''],
+        ['name' => 'detected_date', 'label' => 'Detected Date', 'type' => 'date', 'value' => $pestData['detected_date'] ?? date('Y-m-d')],
+        ['name' => 'action_taken', 'label' => 'Action Taken', 'type' => 'textarea', 'value' => $pestData['action_taken'] ?? ''],
+    ];
+    echo FormHelper::generateForm($pestFields, 'index.php?module=Livestock&action=addPest', 'POST', $pestErrors);
+    ?>
+</div>
+
+<div class="glass-card p-4 sm:p-6 mt-6">
+    <h2 class="text-xl font-semibold mb-4">Animal Health Records</h2>
+    <?php $animalPests = $data['pests'] ?? []; ?>
+    <?php if (!empty($animalPests)): ?>
+        <ul class="space-y-2.5">
+            <?php foreach ($animalPests as $p):
+                $animalLabel = trim(ucfirst($p['animal_type'] ?? '') . ' ' . ($p['animal_breed'] ?? ''));
+                if (empty($animalLabel)) $animalLabel = 'Animal #' . ($p['livestock_id'] ?? '—');
+            ?>
+                <li class="bg-white/50 border border-white/60 rounded-xl px-3.5 sm:px-4 py-3 text-sm text-slate-700 shadow-sm flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span class="font-semibold"><?php echo htmlspecialchars($p['pest_name']); ?></span>
+                    <span class="text-slate-400">on</span>
+                    <span><?php echo htmlspecialchars($animalLabel); ?></span>
+                    <?php if (!empty($p['severity'])): ?>
+                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-800"><?php echo htmlspecialchars($p['severity']); ?></span>
+                    <?php endif; ?>
+                    <span class="text-slate-400 text-xs"><?php echo htmlspecialchars($p['detected_date']); ?></span>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    <?php else: ?>
+        <p>No animal health records yet.</p>
+    <?php endif; ?>
+</div>

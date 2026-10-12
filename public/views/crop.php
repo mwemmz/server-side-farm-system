@@ -43,6 +43,45 @@ $crops = $data['crops'] ?? ($data ?? []); // Handle both cases for index and add
     <?php endif; ?>
 </div>
 
+<div class="glass-card p-4 sm:p-6 mb-6">
+    <h2 class="text-xl font-semibold mb-1 text-red-800">Pests &amp; Problems</h2>
+    <p class="text-xs text-slate-500 mb-4">Report a pest or disease on a crop. The record is stored against the crop (and its farm).</p>
+    <?php
+    $pestErrors = $data['pestErrors'] ?? [];
+    $pestData = $data['pestData'] ?? [];
+    $pestFields = [
+        ['name' => 'crop_id', 'label' => 'Crop', 'type' => 'combo', 'options' => FormHelper::cropOptions($pdo), 'allow_custom' => false, 'placeholder' => 'Type to find a crop…', 'value' => $pestData['crop_id'] ?? ''],
+        ['name' => 'pest_name', 'label' => 'Pest / Disease', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'pest_name'), 'allow_custom' => true, 'category' => 'pest_name', 'placeholder' => 'e.g. Fall armyworm, or type another…', 'value' => $pestData['pest_name'] ?? ''],
+        ['name' => 'severity', 'label' => 'Severity', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'pest_severity'), 'allow_custom' => true, 'category' => 'pest_severity', 'placeholder' => 'Low, Moderate, High…', 'value' => $pestData['severity'] ?? ''],
+        ['name' => 'detected_date', 'label' => 'Detected Date', 'type' => 'date', 'value' => $pestData['detected_date'] ?? date('Y-m-d')],
+        ['name' => 'action_taken', 'label' => 'Action Taken', 'type' => 'textarea', 'value' => $pestData['action_taken'] ?? ''],
+    ];
+    echo FormHelper::generateForm($pestFields, '/index.php?module=Crop&action=addPest', 'POST', $pestErrors);
+    ?>
+</div>
+
+<div class="glass-card p-4 sm:p-6">
+    <h2 class="text-xl font-semibold mb-4">Crop Pest Records</h2>
+    <?php $cropPests = $data['pests'] ?? []; ?>
+    <?php if (!empty($cropPests)): ?>
+        <ul class="space-y-2.5">
+            <?php foreach ($cropPests as $p): ?>
+                <li class="bg-white/50 border border-white/60 rounded-xl px-3.5 sm:px-4 py-3 text-sm text-slate-700 shadow-sm flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span class="font-semibold"><?php echo htmlspecialchars($p['pest_name']); ?></span>
+                    <span class="text-slate-400">on</span>
+                    <span><?php echo htmlspecialchars($p['crop_name']); ?></span>
+                    <?php if (!empty($p['severity'])): ?>
+                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-800"><?php echo htmlspecialchars($p['severity']); ?></span>
+                    <?php endif; ?>
+                    <span class="text-slate-400 text-xs"><?php echo htmlspecialchars($p['detected_date']); ?></span>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    <?php else: ?>
+        <p>No crop pest records yet.</p>
+    <?php endif; ?>
+</div>
+
 <script>
 (function () {
     var nameEl = document.getElementById('name_input') || document.getElementById('name');

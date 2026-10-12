@@ -78,3 +78,6 @@ ALTER TABLE vaccinations      ADD COLUMN IF NOT EXISTS administered_by INT;
 ALTER TABLE vaccinations      ADD COLUMN IF NOT EXISTS cost DECIMAL(12,2);
 ALTER TABLE vaccinations      ADD COLUMN IF NOT EXISTS vaccine_catalog_id INT;
 ALTER TABLE pest_records      ADD COLUMN IF NOT EXISTS severity VARCHAR(20);
+-- Pest records live inside the Crop and Livestock modules (no standalone Pest page).
+ALTER TABLE pest_records      ADD COLUMN IF NOT EXISTS crop_id INT;
+ALTER TABLE pest_records      ADD COLUMN IF NOT EXISTS livestock_id INT;

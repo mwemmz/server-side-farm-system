@@ -1,12 +1,14 @@
 <?php
 require_once __DIR__ . '/LivestockModel.php';
+require_once __DIR__ . '/../Pest/PestModel.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
 
 class LivestockController {
     private $model;
+    private $pestModel;
     private $pdo;
-    public function __construct($pdo) { $this->pdo = $pdo; $this->model = new LivestockModel($pdo); }
+    public function __construct($pdo) { $this->pdo = $pdo; $this->model = new LivestockModel($pdo); $this->pestModel = new PestModel($pdo); }
 
     private function viewData() {
         $animals = $this->model->getAllAnimals();
@@ -14,6 +16,7 @@ class LivestockController {
             'animals'       => $animals,
             'vaccinations'  => $this->model->getVaccinations(),
             'vaccAnimals'   => $animals,
+            'pests'         => $this->pestModel->getLivestockPests(),
         ];
     }
 
@@ -73,6 +76,52 @@ class LivestockController {
         }
 
         return array_merge(['errors' => $errors, 'data' => $data], $this->viewData());
+    }
+
+    /** Log a pest/disease against an animal. Folded in from the old standalone Pest module. */
+    public function addPest() {
+        $data = $_POST;
+        $errors = [];
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $errors = ValidationHelper::validateRequired(['livestock_id', 'pest_name', 'detected_date'], $data);
+
+            if (!isset($errors['livestock_id'])) {
+                $e = ValidationHelper::exists($this->pdo, 'livestock', $data['livestock_id'], 'animal');
+                if ($e) $errors['livestock_id'] = $e;
+            }
+
+            if (empty($errors)) {
+                $stmt = $this->pdo->prepare("SELECT farm_id, type, breed FROM livestock WHERE id = ?");
+                $stmt->execute([(int) $data['livestock_id']]);
+                $animal = $stmt->fetch();
+
+                $row = [
+                    'farm_id'       => $animal ? ($animal['farm_id'] ?: null) : null,
+                    'livestock_id'  => (int) $data['livestock_id'],
+                    'pest_name'     => trim($data['pest_name']),
+                    'severity'      => (trim($data['severity'] ?? '') !== '' ? trim($data['severity']) : null),
+                    'detected_date' => $data['detected_date'],
+                    'action_taken'  => trim($data['action_taken'] ?? ''),
+                ];
+                try {
+                    if ($this->pestModel->create($row)) {
+                        SessionHelper::setFlash('success', 'Health record added successfully!');
+                        $label = $animal ? (ucfirst((string) $animal['type']) . ' ' . ($animal['breed'] ?? '')) : ('Animal #' . (int) $data['livestock_id']);
+                        SessionHelper::flashCreated('Livestock', $this->pestModel->lastId(), trim($data['pest_name']), ['Animal' => trim($label), 'Detected' => $data['detected_date']]);
+                        header('Location: index.php?module=Livestock&action=manage');
+                        exit;
+                    }
+                    $errors['general'] = "Failed to add health record.";
+                } catch (PDOException $e) {
+                    $errors['general'] = "Could not save health record: the selected animal may no longer exist.";
+                }
+            }
+
+            return array_merge(['pestErrors' => $errors, 'pestData' => $data], $this->viewData());
+        }
+
+        return $this->viewData();
     }
 }
 ?>
