@@ -17,7 +17,7 @@ class ReportsController {
         'finance'       => ['Finance Records', 'SELECT id, type, amount, description, date FROM finance_records ORDER BY id'],
         'sales'         => ['Sales', 'SELECT id, customer_name, amount, sale_date FROM sales_records ORDER BY id'],
         'procurement'   => ['Procurement', 'SELECT id, supplier_id, item_name, quantity, cost, purchase_date FROM procurement_records ORDER BY id'],
-        'pest'          => ['Pest Records', 'SELECT id, farm_id, pest_name, detected_date, action_taken FROM pest_records ORDER BY id'],
+        'pest'          => ['Health Incidents', 'SELECT id, farm_id, subject_type, issue_name, issue_kind, severity, detected_date, status FROM health_incidents ORDER BY id'],
         'suppliers'     => ['Suppliers', 'SELECT id, name, contact_info FROM suppliers ORDER BY id'],
         'employees'     => ['Employees', 'SELECT id, emp_no, name, job_title, department_id, employment_status, hire_date FROM employees ORDER BY id'],
         'leave'         => ['Leave Requests', 'SELECT id, employee_id, leave_type, start_date, end_date, days, status FROM leave_requests ORDER BY id'],

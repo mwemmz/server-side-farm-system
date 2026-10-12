@@ -70,6 +70,11 @@ class SessionHelper {
         return $_SESSION['csrf_token'];
     }
 
+    /** Ready-to-echo hidden CSRF input for hand-written POST forms. */
+    public static function csrfField() {
+        return "<input type='hidden' name='csrf_token' value='" . htmlspecialchars(self::csrfToken()) . "'>";
+    }
+
     /** Constant-time check of a submitted CSRF token. */
     public static function csrfValidate($token) {
         if (session_status() === PHP_SESSION_NONE) {

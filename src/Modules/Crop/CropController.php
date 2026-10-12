@@ -19,6 +19,7 @@ class CropController {
         return [
             'crops' => $this->model->getAllCrops(),
             'pests' => $this->pestModel->getCropPests(),
+            'issueCatalog' => $this->pestModel->catalogFor('crop'),
         ];
     }
 
@@ -89,6 +90,7 @@ class CropController {
                     'farm_id'       => $crop ? ($crop['farm_id'] ?: null) : null,
                     'crop_id'       => (int) $data['crop_id'],
                     'pest_name'     => trim($data['pest_name']),
+                    'issue_kind'    => (trim($data['issue_kind'] ?? '') !== '' ? trim($data['issue_kind']) : 'pest'),
                     'severity'      => (trim($data['severity'] ?? '') !== '' ? trim($data['severity']) : null),
                     'detected_date' => $data['detected_date'],
                     'action_taken'  => trim($data['action_taken'] ?? ''),
@@ -110,6 +112,19 @@ class CropController {
         }
 
         return $this->viewData();
+    }
+
+    /** Mark a crop health incident treated or resolved. */
+    public function incidentStatus() {
+        $id = (int) ($_POST['id'] ?? $_GET['id'] ?? 0);
+        $status = $_POST['status'] ?? 'resolved';
+        if ($this->pestModel->setStatus($id, $status, $_POST['notes'] ?? null)) {
+            SessionHelper::setFlash('success', 'Health incident marked ' . htmlspecialchars($status) . '.');
+        } else {
+            SessionHelper::setFlash('error', 'Could not update the health incident.');
+        }
+        header('Location: index.php?module=Crop&action=manage');
+        exit;
     }
 }
 ?>

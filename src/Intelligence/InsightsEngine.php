@@ -25,7 +25,7 @@ class InsightsEngine {
         'Livestock'  => 'Livestock',
         'Inventory'  => 'Inventory',
         'Harvest'    => 'Harvest',
-        'Pest'       => 'Pest',
+        'Pest'       => 'Crop',
         'Crop'       => 'Crop',
         'Sales'      => 'Sales',
         'Finance'    => 'Finance',
@@ -180,12 +180,13 @@ class InsightsEngine {
     private function pestRiskRecommendations() {
         $recs = [];
         $rows = $this->pdo->query("
-            SELECT p.*, f.name AS field_name, farm.name AS farm_name
-            FROM pest_records p
-            LEFT JOIN fields f ON f.farm_id = p.farm_id
-            LEFT JOIN farms farm ON farm.id = p.farm_id
-            WHERE p.detected_date >= CURRENT_DATE - INTERVAL '30 days'
-            ORDER BY p.farm_id")->fetchAll();
+            SELECT h.id, h.farm_id, h.issue_name AS pest_name, h.detected_date, h.severity,
+                   f.name AS field_name, farm.name AS farm_name
+            FROM health_incidents h
+            LEFT JOIN fields f ON f.farm_id = h.farm_id
+            LEFT JOIN farms farm ON farm.id = h.farm_id
+            WHERE h.detected_date >= CURRENT_DATE - INTERVAL '30 days'
+            ORDER BY h.farm_id")->fetchAll();
 
         $byFarm = [];
         foreach ($rows as $r) { $byFarm[$r['farm_id']][] = $r; }

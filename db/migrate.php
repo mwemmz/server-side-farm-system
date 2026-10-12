@@ -68,6 +68,49 @@ try {
         error_log('Finance category backfill failed: ' . $e->getMessage());
     }
 
+    // Phase 3 (B4) — one-off, idempotent copy of legacy pest_records into
+    // health_incidents. Guarded per-row so re-running never duplicates.
+    try {
+        $legacy = $pdo->query("SELECT * FROM pest_records")->fetchAll();
+        if ($legacy) {
+            $copy = $pdo->prepare(
+                "INSERT INTO health_incidents
+                    (farm_id, subject_type, subject_id, issue_name, issue_kind, severity, detected_date, status, treatment_notes, crop_id, livestock_id)
+                 SELECT ?, ?, ?, ?, 'pest', ?, ?, 'open', ?, ?, ?
+                 WHERE NOT EXISTS (
+                    SELECT 1 FROM health_incidents h
+                    WHERE LOWER(h.issue_name) = LOWER(?)
+                      AND h.detected_date IS NOT DISTINCT FROM ?
+                      AND h.crop_id IS NOT DISTINCT FROM ?
+                      AND h.livestock_id IS NOT DISTINCT FROM ?
+                 )"
+            );
+            foreach ($legacy as $r) {
+                $cropId = !empty($r['crop_id']) ? (int) $r['crop_id'] : null;
+                $animalId = !empty($r['livestock_id']) ? (int) $r['livestock_id'] : null;
+                $subjectType = $animalId ? 'livestock' : 'crop';
+                $subjectId = $animalId ?: $cropId;
+                $copy->execute([
+                    !empty($r['farm_id']) ? (int) $r['farm_id'] : null,
+                    $subjectType,
+                    $subjectId,
+                    $r['pest_name'],
+                    $r['severity'] ?? null,
+                    $r['detected_date'] ?? null,
+                    $r['action_taken'] ?? null,
+                    $cropId,
+                    $animalId,
+                    $r['pest_name'],
+                    $r['detected_date'] ?? null,
+                    $cropId,
+                    $animalId,
+                ]);
+            }
+        }
+    } catch (PDOException $e) {
+        error_log('Health incident migration failed: ' . $e->getMessage());
+    }
+
     // Seed default admin + mock data (idempotent)
     require_once __DIR__ . '/seed.php';
 

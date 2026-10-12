@@ -27,7 +27,7 @@ $providedToken = $_POST['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
 // Actions that must never be reachable by a plain GET (no link-prefetch/CSRF-by-image).
 $mustPostActions = ['delete', 'approve', 'reject', 'resolve', 'paid',
                     'mark_read', 'mark_all_read', 'run_rules', 'toggle_rule', 'delete_rule',
-                    'panel_act'];
+                    'panel_act', 'incidentStatus'];
 if (in_array($action, $mustPostActions, true) && $reqMethod !== 'POST') {
     http_response_code(405);
     if ($wantsJson) {

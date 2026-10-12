@@ -307,9 +307,14 @@ $vaccineIntervals = LookupHelper::vaccineIntervals($pdo);
     foreach ($animals as $a) {
         $livestockPestOptions[(string) $a['id']] = '#' . $a['id'] . ' — ' . ucfirst($a['type'] ?? '') . ' ' . ($a['breed'] ?? 'Unknown');
     }
+    $issueOptions = [];
+    foreach (($data['issueCatalog'] ?? []) as $ic) {
+        $issueOptions[] = ['value' => $ic['name'], 'label' => $ic['name'] . (!empty($ic['kind']) ? ' (' . $ic['kind'] . ')' : '')];
+    }
     $pestFields = [
         ['name' => 'livestock_id', 'label' => 'Animal', 'type' => 'combo', 'options' => $livestockPestOptions, 'allow_custom' => false, 'placeholder' => 'Type an animal #, type or breed…', 'value' => $pestData['livestock_id'] ?? '', 'help' => 'The animal ID is the "#" number shown in the list.'],
-        ['name' => 'pest_name', 'label' => 'Pest / Disease', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'disease_name'), 'allow_custom' => true, 'category' => 'disease_name', 'placeholder' => 'e.g. Foot rot, Ticks, or type another…', 'value' => $pestData['pest_name'] ?? ''],
+        ['name' => 'pest_name', 'label' => 'Pest / Disease', 'type' => 'combo', 'options' => $issueOptions, 'allow_custom' => true, 'category' => 'disease_name', 'placeholder' => 'e.g. Foot rot, Ticks, or type another…', 'help' => 'Pick a common problem or type your own.', 'value' => $pestData['pest_name'] ?? ''],
+        ['name' => 'issue_kind', 'label' => 'Type', 'type' => 'combo', 'required' => false, 'allow_custom' => true, 'options' => [['value' => 'disease', 'label' => 'Disease'], ['value' => 'parasite', 'label' => 'Parasite'], ['value' => 'injury', 'label' => 'Injury'], ['value' => 'deficiency', 'label' => 'Deficiency'], ['value' => 'other', 'label' => 'Other']], 'value' => $pestData['issue_kind'] ?? 'disease'],
         ['name' => 'severity', 'label' => 'Severity', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'pest_severity'), 'allow_custom' => true, 'category' => 'pest_severity', 'placeholder' => 'Low, Moderate, High…', 'value' => $pestData['severity'] ?? ''],
         ['name' => 'detected_date', 'label' => 'Detected Date', 'type' => 'date', 'max' => date('Y-m-d'), 'value' => $pestData['detected_date'] ?? date('Y-m-d')],
         ['name' => 'action_taken', 'label' => 'Action Taken', 'type' => 'textarea', 'value' => $pestData['action_taken'] ?? ''],
@@ -326,15 +331,41 @@ $vaccineIntervals = LookupHelper::vaccineIntervals($pdo);
             <?php foreach ($animalPests as $p):
                 $animalLabel = trim(ucfirst($p['animal_type'] ?? '') . ' ' . ($p['animal_breed'] ?? ''));
                 if (empty($animalLabel)) $animalLabel = 'Animal #' . ($p['livestock_id'] ?? '—');
+                $status = $p['status'] ?? 'open';
+                $statusCls = $status === 'resolved' ? 'bg-green-100 text-green-800' : ($status === 'treated' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700');
             ?>
-                <li class="bg-white/50 border border-white/60 rounded-xl px-3.5 sm:px-4 py-3 text-sm text-slate-700 shadow-sm flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span class="font-semibold"><?php echo htmlspecialchars($p['pest_name']); ?></span>
-                    <span class="text-slate-400">on</span>
-                    <span><?php echo htmlspecialchars($animalLabel); ?></span>
-                    <?php if (!empty($p['severity'])): ?>
-                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-800"><?php echo htmlspecialchars($p['severity']); ?></span>
+                <li class="bg-white/50 border border-white/60 rounded-xl px-3.5 sm:px-4 py-3 text-sm text-slate-700 shadow-sm">
+                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span class="font-semibold"><?php echo htmlspecialchars($p['pest_name']); ?></span>
+                        <span class="text-slate-400">on</span>
+                        <span><?php echo htmlspecialchars($animalLabel); ?></span>
+                        <?php if (!empty($p['severity'])): ?>
+                            <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-800"><?php echo htmlspecialchars($p['severity']); ?></span>
+                        <?php endif; ?>
+                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full <?php echo $statusCls; ?>"><?php echo htmlspecialchars($status); ?></span>
+                        <span class="text-slate-400 text-xs"><?php echo htmlspecialchars($p['detected_date']); ?></span>
+                    </div>
+                    <?php if (!empty($p['action_taken'])): ?>
+                        <p class="text-xs text-slate-500 mt-1"><?php echo nl2br(htmlspecialchars($p['action_taken'])); ?></p>
                     <?php endif; ?>
-                    <span class="text-slate-400 text-xs"><?php echo htmlspecialchars($p['detected_date']); ?></span>
+                    <?php if ($status !== 'resolved'): ?>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            <?php if ($status === 'open'): ?>
+                                <form method="POST" action="index.php?module=Livestock&action=incidentStatus" class="inline">
+                                    <?php echo \SessionHelper::csrfField(); ?>
+                                    <input type="hidden" name="id" value="<?php echo (int) $p['id']; ?>">
+                                    <input type="hidden" name="status" value="treated">
+                                    <button type="submit" class="text-xs font-semibold px-3 py-1 rounded-lg bg-amber-500 text-white hover:bg-amber-600">Mark treated</button>
+                                </form>
+                            <?php endif; ?>
+                            <form method="POST" action="index.php?module=Livestock&action=incidentStatus" class="inline">
+                                <?php echo \SessionHelper::csrfField(); ?>
+                                <input type="hidden" name="id" value="<?php echo (int) $p['id']; ?>">
+                                <input type="hidden" name="status" value="resolved">
+                                <button type="submit" class="text-xs font-semibold px-3 py-1 rounded-lg bg-green-600 text-white hover:bg-green-700">Mark resolved</button>
+                            </form>
+                        </div>
+                    <?php endif; ?>
                 </li>
             <?php endforeach; ?>
         </ul>

@@ -49,9 +49,14 @@ $crops = $data['crops'] ?? ($data ?? []); // Handle both cases for index and add
     <?php
     $pestErrors = $data['pestErrors'] ?? [];
     $pestData = $data['pestData'] ?? [];
+    $issueOptions = [];
+    foreach (($data['issueCatalog'] ?? []) as $ic) {
+        $issueOptions[] = ['value' => $ic['name'], 'label' => $ic['name'] . (!empty($ic['kind']) ? ' (' . $ic['kind'] . ')' : '')];
+    }
     $pestFields = [
         ['name' => 'crop_id', 'label' => 'Crop', 'type' => 'combo', 'options' => FormHelper::cropOptions($pdo), 'allow_custom' => false, 'placeholder' => 'Type to find a crop…', 'value' => $pestData['crop_id'] ?? ''],
-        ['name' => 'pest_name', 'label' => 'Pest / Disease', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'pest_name'), 'allow_custom' => true, 'category' => 'pest_name', 'placeholder' => 'e.g. Fall armyworm, or type another…', 'value' => $pestData['pest_name'] ?? ''],
+        ['name' => 'pest_name', 'label' => 'Pest / Disease', 'type' => 'combo', 'options' => $issueOptions, 'allow_custom' => true, 'category' => 'pest_name', 'placeholder' => 'e.g. Fall armyworm, or type another…', 'help' => 'Pick a common problem or type your own.', 'value' => $pestData['pest_name'] ?? ''],
+        ['name' => 'issue_kind', 'label' => 'Type', 'type' => 'combo', 'required' => false, 'allow_custom' => true, 'options' => [['value' => 'pest', 'label' => 'Pest'], ['value' => 'disease', 'label' => 'Disease'], ['value' => 'deficiency', 'label' => 'Nutrient deficiency'], ['value' => 'disorder', 'label' => 'Disorder'], ['value' => 'other', 'label' => 'Other']], 'value' => $pestData['issue_kind'] ?? 'pest'],
         ['name' => 'severity', 'label' => 'Severity', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'pest_severity'), 'allow_custom' => true, 'category' => 'pest_severity', 'placeholder' => 'Low, Moderate, High…', 'value' => $pestData['severity'] ?? ''],
         ['name' => 'detected_date', 'label' => 'Detected Date', 'type' => 'date', 'max' => date('Y-m-d'), 'value' => $pestData['detected_date'] ?? date('Y-m-d')],
         ['name' => 'action_taken', 'label' => 'Action Taken', 'type' => 'textarea', 'value' => $pestData['action_taken'] ?? ''],
@@ -66,14 +71,42 @@ $crops = $data['crops'] ?? ($data ?? []); // Handle both cases for index and add
     <?php if (!empty($cropPests)): ?>
         <ul class="space-y-2.5">
             <?php foreach ($cropPests as $p): ?>
-                <li class="bg-white/50 border border-white/60 rounded-xl px-3.5 sm:px-4 py-3 text-sm text-slate-700 shadow-sm flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span class="font-semibold"><?php echo htmlspecialchars($p['pest_name']); ?></span>
-                    <span class="text-slate-400">on</span>
-                    <span><?php echo htmlspecialchars($p['crop_name']); ?></span>
-                    <?php if (!empty($p['severity'])): ?>
-                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-800"><?php echo htmlspecialchars($p['severity']); ?></span>
+                <?php
+                $status = $p['status'] ?? 'open';
+                $statusCls = $status === 'resolved' ? 'bg-green-100 text-green-800' : ($status === 'treated' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700');
+                ?>
+                <li class="bg-white/50 border border-white/60 rounded-xl px-3.5 sm:px-4 py-3 text-sm text-slate-700 shadow-sm">
+                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span class="font-semibold"><?php echo htmlspecialchars($p['pest_name']); ?></span>
+                        <span class="text-slate-400">on</span>
+                        <span><?php echo htmlspecialchars($p['crop_name']); ?></span>
+                        <?php if (!empty($p['severity'])): ?>
+                            <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-800"><?php echo htmlspecialchars($p['severity']); ?></span>
+                        <?php endif; ?>
+                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full <?php echo $statusCls; ?>"><?php echo htmlspecialchars($status); ?></span>
+                        <span class="text-slate-400 text-xs"><?php echo htmlspecialchars($p['detected_date']); ?></span>
+                    </div>
+                    <?php if (!empty($p['action_taken'])): ?>
+                        <p class="text-xs text-slate-500 mt-1"><?php echo nl2br(htmlspecialchars($p['action_taken'])); ?></p>
                     <?php endif; ?>
-                    <span class="text-slate-400 text-xs"><?php echo htmlspecialchars($p['detected_date']); ?></span>
+                    <?php if ($status !== 'resolved'): ?>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            <?php if ($status === 'open'): ?>
+                                <form method="POST" action="index.php?module=Crop&action=incidentStatus" class="inline">
+                                    <?php echo \SessionHelper::csrfField(); ?>
+                                    <input type="hidden" name="id" value="<?php echo (int) $p['id']; ?>">
+                                    <input type="hidden" name="status" value="treated">
+                                    <button type="submit" class="text-xs font-semibold px-3 py-1 rounded-lg bg-amber-500 text-white hover:bg-amber-600">Mark treated</button>
+                                </form>
+                            <?php endif; ?>
+                            <form method="POST" action="index.php?module=Crop&action=incidentStatus" class="inline">
+                                <?php echo \SessionHelper::csrfField(); ?>
+                                <input type="hidden" name="id" value="<?php echo (int) $p['id']; ?>">
+                                <input type="hidden" name="status" value="resolved">
+                                <button type="submit" class="text-xs font-semibold px-3 py-1 rounded-lg bg-green-600 text-white hover:bg-green-700">Mark resolved</button>
+                            </form>
+                        </div>
+                    <?php endif; ?>
                 </li>
             <?php endforeach; ?>
         </ul>

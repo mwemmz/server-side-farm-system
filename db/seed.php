@@ -171,11 +171,11 @@ try {
         (2, 'Tembo Mulenga', 'Irrigation Operator', '2026-08-21'),
         (3, 'Natasha Zulu', 'Vet Technician', '2026-08-22')");
 
-    // Pests & diseases
-    $pdo->exec("INSERT INTO pest_records (farm_id, pest_name, detected_date, action_taken) VALUES
-        (1, 'Fall Armyworm', '2026-01-15', 'Applied Coragen sprayed 200ml/ha'),
-        (2, 'Birds (Quelea)', '2026-02-10', 'Bird scaring + netting deployed'),
-        (3, 'Tick Infestation', '2026-03-02', 'Dipping conducted, acaricide applied')");
+    // Pests & diseases — unified health_incidents (Phase 3 / B4).
+    $pdo->exec("INSERT INTO health_incidents (farm_id, subject_type, issue_name, issue_kind, detected_date, status, treatment_notes) VALUES
+        (1, 'crop', 'Fall Armyworm', 'pest', '2026-01-15', 'treated', 'Applied Coragen sprayed 200ml/ha'),
+        (2, 'crop', 'Birds (Quelea)', 'pest', '2026-02-10', 'treated', 'Bird scaring + netting deployed'),
+        (3, 'livestock', 'Tick Infestation', 'pest', '2026-03-02', 'treated', 'Dipping conducted, acaricide applied')");
 
     // Harvest records
     $pdo->exec("INSERT INTO harvest_records (crop_id, harvest_date, quantity, quality) VALUES

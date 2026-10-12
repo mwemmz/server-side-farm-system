@@ -26,6 +26,7 @@ class LivestockController {
             'treatments'    => $this->model->getTreatments(),
             'withdrawals'   => $withdrawals,
             'vaccSpecies'   => $this->model->getAnimalsWithSpecies(),
+            'issueCatalog'  => $this->pestModel->catalogFor('livestock'),
         ];
     }
 
@@ -256,6 +257,7 @@ class LivestockController {
                     'farm_id'       => $animal ? ($animal['farm_id'] ?: null) : null,
                     'livestock_id'  => (int) $data['livestock_id'],
                     'pest_name'     => trim($data['pest_name']),
+                    'issue_kind'    => (trim($data['issue_kind'] ?? '') !== '' ? trim($data['issue_kind']) : 'disease'),
                     'severity'      => (trim($data['severity'] ?? '') !== '' ? trim($data['severity']) : null),
                     'detected_date' => $data['detected_date'],
                     'action_taken'  => trim($data['action_taken'] ?? ''),
@@ -278,6 +280,19 @@ class LivestockController {
         }
 
         return $this->viewData();
+    }
+
+    /** Mark an animal health incident treated or resolved. */
+    public function incidentStatus() {
+        $id = (int) ($_POST['id'] ?? $_GET['id'] ?? 0);
+        $status = $_POST['status'] ?? 'resolved';
+        if ($this->pestModel->setStatus($id, $status, $_POST['notes'] ?? null)) {
+            SessionHelper::setFlash('success', 'Health incident marked ' . htmlspecialchars($status) . '.');
+        } else {
+            SessionHelper::setFlash('error', 'Could not update the health incident.');
+        }
+        header('Location: index.php?module=Livestock&action=manage');
+        exit;
     }
 }
 ?>
