@@ -165,3 +165,39 @@ Legend: ✅ done · 🟡 partial (deferred to Phase 3) · ⬜ not started.
 - Crop-variety grouping by crop name; field grouping on the Fields list; procurement grouping by supplier; weather grouping by farm.
 - Audit logs and list search/filter/pagination beyond what the above added.
 - Catalogue values (`vaccine_catalog`, `health_issue_catalog`, lookup lists) are starter data — a vet/agronomist should confirm them (`needs_review = TRUE`).
+
+## Finish-pass fixes (audit round 2)
+Each item in `tests/regression.sh` carries the named assertion(s); the suite also sweeps every
+page for PHP warning output.
+
+1. ✅ **Fix 1 — stock balances use `inventory.quantity`.** `quantity` is the single source of
+   truth; `opening_quantity` (backfilled once, guarded) keeps history explainable;
+   `stock_movements` gains `balance_after`; every ledger write goes through the row-locked,
+   below-zero-refusing `InventoryModel::move()` (nested-transaction-aware); readers
+   (reorder engine, insights, assistant, price/balance API, cron) read `inventory.quantity`;
+   procurement re-stocks via exact/contained name match; a "Balance after" column on
+   inventory history.
+2. ✅ **Fix 2 — "Report a problem" dropdowns.** Crop/Livestock issue + kind options render
+   `value=>label` maps; `FormHelper::normalizeOptions()` tolerates stray list-of-array shapes,
+   so no `>Array<` or numbered placeholder options anywhere; an issue saves its plain name.
+3. ✅ **Fix 3 — equipment spare-part picker** selects `quantity` so the option shows the live
+   figure, not a silent 0.
+4. ✅ **Fix 4 — storage always has a unit.** Blank units backfilled to `kg` (idempotent); seed
+   facilities carry units; unit is required (default kg) on add/edit; an edit action exists;
+   harvest "Store in" refuses unknown facilities and over-capacity without a 500 and without
+   leaving a partial record (single transaction).
+5. ✅ **Fix 5 — vaccine/species correctness.** The species always comes from the animal record:
+   a disease vaccine is refused for the wrong species (e.g. Newcastle → Cattle); batch
+   vaccination is single-species (mixed batches refused before any insert); Marek's is
+   single-dose and never gets a scheduled next due (server-enforced even if posted).
+6. ✅ **Fix 6 — equipment service reminders.** The interval defaults from the equipment type
+   server-side (add + service + idempotent SQL backfill); `recordService` recomputes and
+   persists `next_service_date`, so an overdue item is flagged and clears once serviced.
+7. ✅ **Fix 7 — remaining PHP warnings.** Guarded every unguarded index / `?:` read in the
+   generic landing template and `LivestockModel::addTreatment` (`quantity_used` etc.); the
+   regression page sweep now checks bodies for `Undefined array key/variable`, `Fatal error`
+   and `Deprecated:` and scans `$PHP_LOG` for the same.
+
+> Rotation reminder: the repo history predates the credential hygiene rule — any real DB/SMTP
+> credentials previously committed should be rotated, and every vaccine interval and health
+> issue stays `needs_review = TRUE` until a veterinarian confirms it.
