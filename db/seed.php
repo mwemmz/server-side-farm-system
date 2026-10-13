@@ -225,10 +225,10 @@ try {
         (3, 24.3, 40.0, NOW())");
 
     // Storage
-    $pdo->exec("INSERT INTO storage_records (name, capacity, current_stock) VALUES
-        ('Grain Silo 1', 500.0, 320.0),
-        ('Grain Silo 2', 500.0, 0.0),
-        ('Cold Store', 120.0, 40.0)");
+    $pdo->exec("INSERT INTO storage_records (name, capacity, current_stock, unit) VALUES
+        ('Grain Silo 1', 500.0, 320.0, 'kg'),
+        ('Grain Silo 2', 500.0, 0.0, 'kg'),
+        ('Cold Store', 120.0, 40.0, 'kg')");
 
     // Notifications
     $pdo->exec("INSERT INTO notifications (message, is_read) VALUES

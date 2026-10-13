@@ -263,6 +263,58 @@ check "Fix3 spare picker shows live quantity (40)" "$SP" "40"
 notcontains "$B" "Undefined array key" "Fix3 equipment page has no undefined-key warnings"
 
 # ---------------------------------------------------------------------------
+# 4f. Finish-pass Fix 4: storage facilities always carry a unit (kg default),
+#     can be edited, and "Store in" harvest is refused cleanly on bad ids or
+#     capacity (never a 500, never a partial stock change).
+# ---------------------------------------------------------------------------
+echo "-- Fix 4: storage unit + edit + harvest-to-storage --"
+ST1="StorFix$(date +%H%M%S)$RANDOM"
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data-urlencode "name=$ST1" --data "capacity=100&current_stock=0" "$BASE/index.php?module=Storage&action=add")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "Fix4 storage add without unit -> 200 (form re-render)" "$S" "200"
+contains "$B" "Unit is required." "Fix4 storage add demands a unit"
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data-urlencode "name=$ST1" --data "capacity=100&current_stock=0&unit=kg" "$BASE/index.php?module=Storage&action=add")"
+S="$(printf '%s' "$R" | tail -1)"
+check "Fix4 storage add with unit -> 302" "$S" "302"
+STPG="$(curl -s -b "$JAR" "$BASE/index.php?module=Storage&action=manage")"
+contains "$STPG" ">${ST1}<: 0 / 100 kg" "Fix4 facility created with kg unit"
+SID="$(printf '%s' "$STPG" | awk -v n="$ST1" '/name="id" value="[0-9]+"/{id=$0} $0 ~ ("value=\"" n "\""){gsub(/[^0-9]/,"",id); print id; exit}')"
+[ -n "$SID" ] && ok "Fix4 located storage facility id" || bad "Fix4 storage facility id missing"
+
+CR_ID="$(printf '%s' "$(curl -s -b "$JAR" "$BASE/index.php?module=Harvest&action=manage")" | grep -o "data-value='[0-9]*'" | head -1 | grep -o '[0-9]*')"
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "crop_id=$CR_ID&harvest_date=2020-01-01&quantity=60&storage_record_id=$SID" "$BASE/index.php?module=Harvest&action=add")"
+S="$(printf '%s' "$R" | tail -1)"
+check "Fix4 harvest into storage -> 302" "$S" "302"
+STPG="$(curl -s -b "$JAR" "$BASE/index.php?module=Storage&action=manage")"
+contains "$STPG" ">${ST1}<: 60 / 100 kg" "Fix4 harvest 60kg lands in storage"
+
+ST2="StorFixB$(date +%H%M%S)$RANDOM"
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data-urlencode "name=$ST2" --data "capacity=100&current_stock=0&unit=tonnes" "$BASE/index.php?module=Storage&action=add")"
+check "Fix4 storage B add -> 302" "$(printf '%s' "$R" | tail -1)" "302"
+STPG="$(curl -s -b "$JAR" "$BASE/index.php?module=Storage&action=manage")"
+contains "$STPG" ">${ST2}<: 0 / 100 tonnes" "Fix4 facility B tonne unit"
+SID2="$(printf '%s' "$STPG" | awk -v n="$ST2" '/name="id" value="[0-9]+"/{id=$0} $0 ~ ("value=\"" n "\""){gsub(/[^0-9]/,"",id); print id; exit}')"
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "crop_id=$CR_ID&harvest_date=2020-01-01&quantity=150&storage_record_id=$SID2" "$BASE/index.php?module=Harvest&action=add")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "Fix4 over-capacity harvest -> 200 (refused)" "$S" "200"
+contains "$B" "That would exceed" "Fix4 capacity refusal message"
+STPG="$(curl -s -b "$JAR" "$BASE/index.php?module=Storage&action=manage")"
+contains "$STPG" ">${ST2}<: 0 / 100 tonnes" "Fix4 refused harvest did not change stock"
+notcontains "$STPG" "Internal Server Error" "Fix4 over-capacity is not a 500"
+
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "crop_id=$CR_ID&harvest_date=2020-01-01&quantity=5&storage_record_id=999999" "$BASE/index.php?module=Harvest&action=add")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "Fix4 unknown storage id -> 200 (refused)" "$S" "200"
+contains "$B" "Storage facility not found." "Fix4 unknown storage id refused cleanly"
+notcontains "$B" "Internal Server Error" "Fix4 unknown storage id is not a 500"
+
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "id=$SID&name=${ST1}Renamed&capacity=200&unit=tonnes" "$BASE/index.php?module=Storage&action=edit")"
+S="$(printf '%s' "$R" | tail -1)"
+check "Fix4 storage edit -> 302" "$S" "302"
+STPG="$(curl -s -b "$JAR" "$BASE/index.php?module=Storage&action=manage")"
+contains "$STPG" ">${ST1}Renamed<: 60 / 200 tonnes" "Fix4 storage edit updates name/capacity/unit"
+
+# ---------------------------------------------------------------------------
 # 5. Page sweep: every module x view returns 200
 # ---------------------------------------------------------------------------
 echo "-- page sweep --"

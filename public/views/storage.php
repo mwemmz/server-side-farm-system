@@ -24,7 +24,7 @@ $records = $data['records'] ?? ($data ?? []);
         ['name' => 'facility_type', 'label' => 'Facility Type', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'storage_facility_type'), 'allow_custom' => true, 'category' => 'storage_facility_type', 'placeholder' => 'Grain silo, Cold store, Warehouse…', 'value' => $formData['facility_type'] ?? ''],
         ['name' => 'capacity', 'label' => 'Capacity', 'type' => 'number', 'step' => '0.01', 'min' => '0', 'value' => $formData['capacity'] ?? ''],
         ['name' => 'current_stock', 'label' => 'Current Stock', 'type' => 'number', 'step' => '0.01', 'min' => '0', 'value' => $formData['current_stock'] ?? ''],
-        ['name' => 'unit', 'label' => 'Unit', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'unit'), 'allow_custom' => true, 'category' => 'unit', 'placeholder' => 'tonne, 50 kg bag…', 'value' => $formData['unit'] ?? '']
+        ['name' => 'unit', 'label' => 'Unit', 'type' => 'combo', 'required' => true, 'options' => FormHelper::lookupOptions($pdo, 'unit'), 'allow_custom' => true, 'category' => 'unit', 'placeholder' => 'kg, tonne…', 'value' => $formData['unit'] ?? 'kg']
     ];
     echo FormHelper::generateForm($fields, '/index.php?module=Storage&action=add', 'POST', $errors);
     ?>
@@ -35,7 +35,31 @@ $records = $data['records'] ?? ($data ?? []);
     <?php if (isset($records) && !empty($records)): ?>
         <ul class="space-y-2.5">
             <?php foreach ($records as $record): ?>
-                <li class="bg-white/50 border border-white/60 rounded-xl px-3.5 sm:px-4 py-3 text-sm text-slate-700 shadow-sm"><?php echo htmlspecialchars($record['name']); ?>: <?php echo htmlspecialchars($record['current_stock']); ?> / <?php echo htmlspecialchars($record['capacity']); ?></li>
+                <li class="bg-white/50 border border-white/60 rounded-xl px-3.5 sm:px-4 py-3 text-sm text-slate-700 shadow-sm">
+                    <div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                        <span><?php echo htmlspecialchars($record['name']); ?>: <?php echo htmlspecialchars($record['current_stock']); ?> / <?php echo htmlspecialchars($record['capacity']); ?> <?php echo htmlspecialchars($record['unit'] ?? 'kg'); ?></span>
+                        <details class="text-xs">
+                            <summary class="cursor-pointer font-semibold text-green-700 hover:text-green-800 select-none">Edit</summary>
+                            <form method="POST" action="/index.php?module=Storage&action=edit" class="mt-2 grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
+                                <?php echo \SessionHelper::csrfField(); ?>
+                                <input type="hidden" name="id" value="<?php echo (int) $record['id']; ?>">
+                                <label class="block">
+                                    <span class="block text-[11px] font-semibold text-slate-500 mb-1">Name</span>
+                                    <input type="text" name="name" value="<?php echo htmlspecialchars($record['name']); ?>" class="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm" required>
+                                </label>
+                                <label class="block">
+                                    <span class="block text-[11px] font-semibold text-slate-500 mb-1">Capacity</span>
+                                    <input type="number" step="0.01" min="0" name="capacity" value="<?php echo htmlspecialchars($record['capacity']); ?>" class="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm" required>
+                                </label>
+                                <label class="block">
+                                    <span class="block text-[11px] font-semibold text-slate-500 mb-1">Unit</span>
+                                    <input type="text" name="unit" value="<?php echo htmlspecialchars($record['unit'] ?? 'kg'); ?>" class="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+                                </label>
+                                <button type="submit" class="rounded-lg bg-green-600 text-white text-xs font-bold px-3 py-2">Save</button>
+                            </form>
+                        </details>
+                    </div>
+                </li>
             <?php endforeach; ?>
         </ul>
     <?php else: ?>

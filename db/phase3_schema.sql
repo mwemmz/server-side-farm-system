@@ -120,3 +120,12 @@ SET opening_quantity = i.quantity - COALESCE((
         SELECT SUM(CASE WHEN sm.direction = 'in' THEN sm.quantity ELSE -sm.quantity END)
         FROM stock_movements sm WHERE sm.item_id = i.id), 0)
 WHERE i.opening_quantity IS NULL;
+
+-- ------------------------------------------------------------
+-- Finish-pass Fix 4 — storage facilities always state their unit, so "Store in"
+-- can convert kg<->tonnes instead of refusing. Only null/empty units reset.
+-- ------------------------------------------------------------
+ALTER TABLE storage_records ADD COLUMN IF NOT EXISTS unit VARCHAR(20);
+UPDATE storage_records
+SET unit = 'kg'
+WHERE unit IS NULL OR LENGTH(BTRIM(unit)) = 0;
