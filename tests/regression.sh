@@ -367,6 +367,30 @@ contains "$LX" "Marek's vaccine" "Fix5 Marek's recorded"
 contains "$LX" "No next date" "Fix5 single-dose Marek's has no next due date"
 
 # ---------------------------------------------------------------------------
+# 4i. Finish-pass Fix 6: service reminders — the interval is defaulted from the
+#     equipment type server-side, an overdue item is flagged, and recording a
+#     service recomputes (and clears) the schedule.
+# ---------------------------------------------------------------------------
+echo "-- Fix 6: equipment service reminders --"
+EQN="EQFix$(date +%H%M%S)$RANDOM"
+EQPUR="$(date -d '300 days ago' +%F)"
+EQSRV="$(date -d 'yesterday' +%F)"
+S="$(status -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data-urlencode "name=$EQN" --data-urlencode "status=Operational" --data-urlencode "equipment_type=Tractor" --data-urlencode "purchase_date=$EQPUR" "$BASE/index.php?module=Equipment&action=add")"
+check "Fix6 add tractor (no interval) -> 302" "$S" "302"
+LX="$(curl -s -b "$JAR" "$BASE/index.php?module=Equipment&action=manage")"
+BLK="$(printf '%s' "$LX" | grep -A45 -F -- ">$EQN<" | head -46)"
+contains "$BLK" "Serviced every 90 days" "Fix6 interval defaulted from type"
+contains "$BLK" "Service overdue" "Fix6 overdue tractor flagged"
+EID="$(printf '%s' "$BLK" | grep -o 'name="id" value="[0-9]*"' | head -1 | grep -o '[0-9]*')"
+[ -n "$EID" ] && ok "Fix6 equipment id found" || bad "Fix6 equipment id missing"
+S="$(status -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "id=$EID" --data-urlencode "service_date=$EQSRV" "$BASE/index.php?module=Equipment&action=recordService")"
+check "Fix6 record service -> 302" "$S" "302"
+LX="$(curl -s -b "$JAR" "$BASE/index.php?module=Equipment&action=manage")"
+BLK="$(printf '%s' "$LX" | grep -A45 -F -- ">$EQN<" | head -46)"
+notcontains "$BLK" "Service overdue" "Fix6 overdue badge cleared after service"
+contains "$BLK" "Service OK" "Fix6 schedule recomputed after service"
+
+# ---------------------------------------------------------------------------
 # 5. Page sweep: every module x view returns 200
 # ---------------------------------------------------------------------------
 echo "-- page sweep --"

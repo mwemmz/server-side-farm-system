@@ -37,8 +37,25 @@ class EquipmentModel {
 
     public function lastId() { return (int) $this->pdo->lastInsertId(); }
 
+    /** Sensible service interval (days) for a piece of equipment, by type. */
+    public static function intervalForType($type) {
+        static $map = [
+            'tractor'   => 90,
+            'vehicle'   => 120,
+            'truck'     => 120,
+            'pump'      => 30,
+            'generator' => 60,
+            'sprayer'   => 45,
+            'plough'    => 90,
+            'harvester' => 90,
+            'planter'   => 90,
+        ];
+        $k = strtolower(trim((string) $type));
+        return $map[$k] ?? null;
+    }
+
     public function addEquipment($name, $status, $type = null, $farm_id = null, $purchase_date = null, $service_interval_days = null) {
-        $interval = ($service_interval_days !== null && $service_interval_days !== '') ? (int) $service_interval_days : null;
+        $interval = ($service_interval_days !== null && $service_interval_days !== '') ? (int) $service_interval_days : self::intervalForType($type);
         $purchase = ($purchase_date !== null && $purchase_date !== '') ? $purchase_date : null;
         // Seed the first service date from the purchase date + interval when both exist.
         $next = ($purchase && $interval) ? date('Y-m-d', strtotime($purchase . ' +' . $interval . ' days')) : null;
@@ -78,15 +95,22 @@ class EquipmentModel {
         $eq = $this->getById($id);
         if (!$eq) return ['ok' => false, 'error' => 'Equipment not found.'];
 
-        $interval = $eq['service_interval_days'] !== null ? (int) $eq['service_interval_days'] : null;
+        $interval = $eq['service_interval_days'] !== null ? (int) $eq['service_interval_days'] : self::intervalForType($eq['equipment_type'] ?? null);
         $next = ($interval && $serviceDate) ? date('Y-m-d', strtotime($serviceDate . ' +' . $interval . ' days')) : null;
 
         try {
             $this->pdo->beginTransaction();
 
-            $this->pdo->prepare(
-                "UPDATE equipment SET last_service_date = ?, next_service_date = ?, maintenance_status = 'Operational' WHERE id = ?"
-            )->execute([$serviceDate, $next, $id]);
+            $set  = "last_service_date = ?, next_service_date = ?, maintenance_status = 'Operational'";
+            $params = [$serviceDate, $next];
+            if ($interval && empty($eq['service_interval_days'])) {
+                // The row had no schedule: adopt the type default so the clock
+                // keeps ticking after this service too.
+                $set .= ", service_interval_days = ?";
+                $params[] = $interval;
+            }
+            $params[] = $id;
+            $this->pdo->prepare("UPDATE equipment SET $set WHERE id = ?")->execute($params);
 
             $inventoryModel = null;
             if ($inventoryItemId && $quantityUsed !== null && (float) $quantityUsed > 0) {

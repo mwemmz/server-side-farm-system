@@ -148,12 +148,13 @@ try {
         (2, 'Sprinkler', 'Maintenance Required'),
         (3, 'Pivot', 'Operational')");
 
-    // Equipment
-    $pdo->exec("INSERT INTO equipment (name, maintenance_status) VALUES
-        ('John Deere 5065E Tractor', 'Operational'),
-        ('Maize Planter 4-Row', 'Operational'),
-        ('Boom Sprayer 2000L', 'Maintenance Required'),
-        ('Trailer 10-Tonne', 'Operational')");
+    // Equipment (types drive sensible service intervals; the tractor is overdue
+    // on purpose so the service-reminder badges have something to show).
+    $pdo->exec("INSERT INTO equipment (name, maintenance_status, equipment_type, service_interval_days, last_service_date, next_service_date) VALUES
+        ('John Deere 5065E Tractor', 'Operational', 'Tractor', 90, '2025-01-10', '2025-04-10'),
+        ('Maize Planter 4-Row', 'Operational', 'Planter', 90, NULL, NULL),
+        ('Boom Sprayer 2000L', 'Maintenance Required', 'Sprayer', 45, NULL, NULL),
+        ('Trailer 10-Tonne', 'Operational', 'Vehicle', 120, NULL, NULL)");
 
     // Inventory
     $pdo->exec("INSERT INTO inventory (name, quantity, unit) VALUES

@@ -129,3 +129,21 @@ ALTER TABLE storage_records ADD COLUMN IF NOT EXISTS unit VARCHAR(20);
 UPDATE storage_records
 SET unit = 'kg'
 WHERE unit IS NULL OR LENGTH(BTRIM(unit)) = 0;
+
+-- ------------------------------------------------------------
+-- Finish-pass Fix 6 — equipment with a type but no service interval adopts the
+-- type's sensible default (idempotent; never overwrites a real interval).
+-- ------------------------------------------------------------
+UPDATE equipment
+SET service_interval_days = CASE
+        WHEN LOWER(BTRIM(equipment_type)) IN ('tractor', 'plough', 'planter')          THEN 90
+        WHEN LOWER(BTRIM(equipment_type)) IN ('vehicle', 'truck')                      THEN 120
+        WHEN LOWER(BTRIM(equipment_type)) IN ('pump')                                  THEN 30
+        WHEN LOWER(BTRIM(equipment_type)) IN ('generator')                             THEN 60
+        WHEN LOWER(BTRIM(equipment_type)) IN ('sprayer')                               THEN 45
+        WHEN LOWER(BTRIM(equipment_type)) IN ('harvester')                             THEN 90
+        ELSE service_interval_days
+    END
+WHERE service_interval_days IS NULL
+  AND equipment_type IS NOT NULL
+  AND LENGTH(BTRIM(equipment_type)) > 0;
