@@ -391,7 +391,7 @@ notcontains "$BLK" "Service overdue" "Fix6 overdue badge cleared after service"
 contains "$BLK" "Service OK" "Fix6 schedule recomputed after service"
 
 # ---------------------------------------------------------------------------
-# 5. Page sweep: every module x view returns 200
+# 5. Page sweep: every module x view returns 200 with no PHP warning output
 # ---------------------------------------------------------------------------
 echo "-- page sweep --"
 for url in \
@@ -430,8 +430,33 @@ for url in \
   "module=Analytics" \
   "module=Insights" \
   ; do
-  S="$(status -b "$JAR" "$BASE/index.php?$url")"
+  R="$(bodycode -b "$JAR" "$BASE/index.php?$url")"
+  S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
   check "GET $url -> 200" "$S" "200"
+  notcontains "$B" "Undefined array key" "No 'Undefined array key' on $url"
+  notcontains "$B" "Undefined variable" "No 'Undefined variable' on $url"
+  notcontains "$B" "Fatal error" "No Fatal error on $url"
+  notcontains "$B" "Deprecated:" "No PHP deprecation on $url"
+done
+
+# module landings (GET index) must be clean too — Fix 7 touched these templates.
+for url in \
+  "module=Crop" \
+  "module=Inventory" \
+  "module=Harvest" \
+  "module=Market" \
+  "module=Supplier" \
+  "module=Procurement" \
+  "module=Sales" \
+  "module=Notifications" \
+  "module=Labour" \
+  "module=Analytics" \
+  "module=Security" \
+  ; do
+  B="$(curl -s -b "$JAR" "$BASE/index.php?$url")"
+  notcontains "$B" "Undefined array key" "Landing $url: no 'Undefined array key'"
+  notcontains "$B" "Undefined variable" "Landing $url: no 'Undefined variable'"
+  notcontains "$B" "Fatal error" "Landing $url: no Fatal error"
 done
 
 # ---------------------------------------------------------------------------
@@ -439,7 +464,11 @@ done
 # ---------------------------------------------------------------------------
 if [ -n "$PHP_LOG" ] && [ -f "$PHP_LOG" ]; then
   echo "-- PHP log scan --"
-  if grep -q "PHP Warning\|PHP Fatal" "$PHP_LOG"; then bad "PHP warnings/fatals found in $PHP_LOG"; else ok "no PHP warnings/fatals in $PHP_LOG"; fi
+  if grep -q "PHP Warning\|PHP Fatal\|Undefined array key\|Undefined variable\|Deprecated:" "$PHP_LOG"; then
+    bad "PHP warnings/notices/fatals found in $PHP_LOG"
+  else
+    ok "no PHP warnings/notices/fatals in $PHP_LOG"
+  fi
 fi
 
 rm -f "$JAR"

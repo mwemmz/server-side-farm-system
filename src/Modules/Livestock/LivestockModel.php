@@ -145,17 +145,19 @@ class LivestockModel {
                  inventory_item_id, quantity_used, cost, notes)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
+        $wd = $data['withdrawal_days'] ?? null;
+        $declared = function ($v) { return $v !== null && $v !== ''; };
         return $stmt->execute([
             (int) $data['livestock_id'],
             $data['treatment_name'],
             $data['treatment_date'],
             $data['dose'] ?? null,
             $data['dose_unit'] ?? null,
-            $data['withdrawal_days'] !== null && $data['withdrawal_days'] !== '' ? (int) $data['withdrawal_days'] : null,
+            $declared($wd) ? (int) $wd : null,
             $data['withdrawal_ends'] ?? null,
-            $data['inventory_item_id'] !== null && $data['inventory_item_id'] !== '' ? (int) $data['inventory_item_id'] : null,
-            $data['quantity_used'] !== null && $data['quantity_used'] !== '' ? (float) $data['quantity_used'] : null,
-            $data['cost'] !== null && $data['cost'] !== '' ? (float) $data['cost'] : null,
+            $declared($data['inventory_item_id'] ?? null) ? (int) $data['inventory_item_id'] : null,
+            $declared($data['quantity_used'] ?? null) ? (float) $data['quantity_used'] : null,
+            $declared($data['cost'] ?? null) ? (float) $data['cost'] : null,
             $data['notes'] ?? null,
         ]);
     }
