@@ -12,7 +12,7 @@ $items    = $data['items'] ?? (is_array($data) ? $data : []);
 // Spare parts available for stock-out during a service.
 $spareOptions = [];
 try {
-    foreach ($pdo->query("SELECT id, name, unit FROM inventory ORDER BY name")->fetchAll() as $iv) {
+    foreach ($pdo->query("SELECT id, name, unit, quantity FROM inventory ORDER BY name")->fetchAll() as $iv) {
         $spareOptions[(string) $iv['id']] = $iv['name'] . ' — ' . rtrim(rtrim(number_format((float) $iv['quantity'], 2), '0'), '.') . ' ' . ($iv['unit'] ?? '');
     }
 } catch (\Throwable $e) {

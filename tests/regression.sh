@@ -253,6 +253,16 @@ B="$(curl -s -b "$JAR" "$BASE/index.php?module=Crop&action=manage")"
 contains "$B" '>Fall armyworm<' "Fix2 saved issue name preserved (not the ' (kind)' label)"
 
 # ---------------------------------------------------------------------------
+# 4e. Finish-pass Fix 3: the equipment spare-part picker shows live quantity
+#     (was selecting id,name,unit but reading ['quantity'] -> always 0).
+# ---------------------------------------------------------------------------
+echo "-- Fix 3: equipment spare-part picker --"
+B="$(curl -s -b "$JAR" "$BASE/index.php?module=Equipment&action=manage")"
+SP="$(printf '%s' "$B" | grep -F -- "$IT_NAME" | grep -o '[0-9.]* bag' | tail -1 | sed 's/ bag//')"
+check "Fix3 spare picker shows live quantity (40)" "$SP" "40"
+notcontains "$B" "Undefined array key" "Fix3 equipment page has no undefined-key warnings"
+
+# ---------------------------------------------------------------------------
 # 5. Page sweep: every module x view returns 200
 # ---------------------------------------------------------------------------
 echo "-- page sweep --"
