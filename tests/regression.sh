@@ -315,6 +315,58 @@ STPG="$(curl -s -b "$JAR" "$BASE/index.php?module=Storage&action=manage")"
 contains "$STPG" ">${ST1}Renamed<: 60 / 200 tonnes" "Fix4 storage edit updates name/capacity/unit"
 
 # ---------------------------------------------------------------------------
+# 4g. Finish-pass Fix 5: a vaccine is only accepted for its species, a batch
+#     is one species at a time (atomic), and single-dose vaccines (Marek's)
+#     never carry a next due date.
+# ---------------------------------------------------------------------------
+echo "-- Fix 5: vaccine <-> species checks --"
+RAND5="$(date +%H%M%S)$RANDOM"
+S="$(status -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data-urlencode "farm_id=$FARM_ID" --data-urlencode "type=Cattle" --data-urlencode "breed=QCattle$RAND5" --data-urlencode "dob=2020-01-01" "$BASE/index.php?module=Livestock&action=add")"
+check "Fix5 create cattle -> 302" "$S" "302"
+S="$(status -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data-urlencode "farm_id=$FARM_ID" --data-urlencode "type=Goats" --data-urlencode "breed=QGoat$RAND5" --data-urlencode "dob=2020-01-01" "$BASE/index.php?module=Livestock&action=add")"
+check "Fix5 create goat -> 302" "$S" "302"
+S="$(status -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data-urlencode "farm_id=$FARM_ID" --data-urlencode "type=Poultry" --data-urlencode "breed=QPoultry$RAND5" --data-urlencode "dob=2020-01-01" "$BASE/index.php?module=Livestock&action=add")"
+check "Fix5 create poultry -> 302" "$S" "302"
+LX="$(curl -s -b "$JAR" "$BASE/index.php?module=Livestock&action=manage")"
+CID="$(printf '%s' "$LX" | grep -o "#[0-9]* — Cattle QCattle$RAND5" | head -1 | grep -o '[0-9]*')"
+GID="$(printf '%s' "$LX" | grep -o "#[0-9]* — Goats QGoat$RAND5" | head -1 | grep -o '[0-9]*')"
+PID="$(printf '%s' "$LX" | grep -o "#[0-9]* — Poultry QPoultry$RAND5" | head -1 | grep -o '[0-9]*')"
+[ -n "$CID" ] && ok "Fix5 cattle id found" || bad "Fix5 cattle id missing"
+[ -n "$GID" ] && ok "Fix5 goat id found" || bad "Fix5 goat id missing"
+[ -n "$PID" ] && ok "Fix5 poultry id found" || bad "Fix5 poultry id missing"
+
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data-urlencode "livestock_id=$CID" --data-urlencode "vaccine_name=Newcastle (NCD) vaccine" --data-urlencode "vaccination_date=2020-01-01" "$BASE/index.php?module=Livestock&action=vaccinate")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "Fix5 cattle + Newcastle -> 200 (refused)" "$S" "200"
+contains "$B" "Newcastle (NCD) vaccine is for Poultry" "Fix5 wrong-species message"
+contains "$B" "not this Cattle" "Fix5 wrong-species names the animal"
+notcontains "$B" "Internal Server Error" "Fix5 species mismatch not a 500"
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data-urlencode "livestock_id=$GID" --data-urlencode "vaccine_name=Newcastle (NCD) vaccine" --data-urlencode "vaccination_date=2020-01-01" "$BASE/index.php?module=Livestock&action=vaccinate")"
+check "Fix5 goat + Newcastle -> 200 (refused)" "$(printf '%s' "$R" | tail -1)" "200"
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data-urlencode "livestock_id=$GID" --data-urlencode "vaccine_name=PPR vaccine" --data-urlencode "vaccination_date=2020-01-01" "$BASE/index.php?module=Livestock&action=vaccinate")"
+check "Fix5 goat + PPR -> 302" "$(printf '%s' "$R" | tail -1)" "302"
+
+LX="$(curl -s -b "$JAR" "$BASE/index.php?module=Livestock&action=manage")"
+N1="$(printf '%s' "$LX" | grep -F -c '>PPR vaccine<')"
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data-urlencode "animal_ids[]=$CID" --data-urlencode "animal_ids[]=$GID" --data-urlencode "vaccine_name=PPR vaccine" --data-urlencode "vaccination_date=2020-01-02" "$BASE/index.php?module=Livestock&action=batchVaccinate")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "Fix5 mixed-species batch -> 200 (refused)" "$S" "200"
+contains "$B" "One vaccine batch = one species" "Fix5 mixed batch refused"
+notcontains "$B" "Internal Server Error" "Fix5 mixed batch not a 500"
+LX="$(curl -s -b "$JAR" "$BASE/index.php?module=Livestock&action=manage")"
+N2="$(printf '%s' "$LX" | grep -F -c '>PPR vaccine<')"
+check "Fix5 refused batch inserted nothing (PPR count unchanged)" "$N2" "$N1"
+
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data-urlencode "animal_ids[]=$CID" --data-urlencode "vaccine_name=PPR vaccine" --data-urlencode "vaccination_date=2020-01-02" "$BASE/index.php?module=Livestock&action=batchVaccinate")"
+check "Fix5 cattle-only batch + PPR -> 200 (refused)" "$(printf '%s' "$R" | tail -1)" "200"
+
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data-urlencode "animal_ids[]=$PID" --data-urlencode "vaccine_name=Marek's vaccine" --data-urlencode "vaccination_date=2020-01-03" --data-urlencode "next_due_date=2021-06-01" "$BASE/index.php?module=Livestock&action=batchVaccinate")"
+check "Fix5 poultry batch + Marek's -> 302" "$(printf '%s' "$R" | tail -1)" "302"
+LX="$(curl -s -b "$JAR" "$BASE/index.php?module=Livestock&action=manage")"
+contains "$LX" "Marek's vaccine" "Fix5 Marek's recorded"
+contains "$LX" "No next date" "Fix5 single-dose Marek's has no next due date"
+
+# ---------------------------------------------------------------------------
 # 5. Page sweep: every module x view returns 200
 # ---------------------------------------------------------------------------
 echo "-- page sweep --"

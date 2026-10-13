@@ -50,6 +50,59 @@ class LivestockModel {
         return $this->pdo->query("SELECT * FROM livestock ORDER BY type, id")->fetchAll();
     }
 
+    /** Normalise a species label (from livestock.type or the catalogue) to a fixed key. */
+    public function speciesKey($s) {
+        $t = strtolower(trim((string) $s));
+        if (in_array($t, ['cattle', 'cow', 'cows', 'bull', 'bulls', 'bovine', 'heifer', 'heifers', 'calf', 'calves'], true)) return 'cattle';
+        if (in_array($t, ['goat', 'goats', 'caprine', 'kid', 'kids'], true)) return 'goat';
+        if (in_array($t, ['sheep', 'ewe', 'ewes', 'ram', 'rams', 'ovine', 'lamb', 'lambs'], true)) return 'sheep';
+        if (in_array($t, ['pig', 'pigs', 'swine', 'porcine', 'hog', 'hogs', 'sow', 'sows'], true)) return 'pig';
+        if (in_array($t, ['poultry', 'chicken', 'chickens', 'hen', 'hens', 'rooster', 'layer', 'layers', 'broiler', 'broilers', 'duck', 'ducks', 'duckling', 'turkey', 'turkeys', 'goose', 'geese', 'guineafowl'], true)) return 'poultry';
+        return $t;
+    }
+
+    /** map of livestock id -> type for the given ids (missing ids are omitted). */
+    public function getAnimalTypes(array $ids) {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+        if (!$ids) return [];
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->pdo->prepare("SELECT id, type FROM livestock WHERE id IN ($in)");
+        $stmt->execute($ids);
+        $map = [];
+        foreach ($stmt->fetchAll() as $r) {
+            $map[(int) $r['id']] = (string) $r['type'];
+        }
+        return $map;
+    }
+
+    public function getAnimalType($id) {
+        $stmt = $this->pdo->prepare("SELECT type FROM livestock WHERE id = ?");
+        $stmt->execute([(int) $id]);
+        return $stmt->fetchColumn() ?: null;
+    }
+
+    /**
+     * Vaccine-catalogue rows for a vaccine name, checked against an animal's
+     * species. 'match' is false when every catalogue entry targets a different
+     * species (e.g. Newcastle on a cow). When the name isn't in the catalogue
+     * at all it is treated as a free-text vaccine and always matches.
+     */
+    public function vaccineForSpecies($name, $species) {
+        $stmt = $this->pdo->prepare("SELECT * FROM vaccine_catalog WHERE name = ? ORDER BY species");
+        $stmt->execute([$name]);
+        $rows = $stmt->fetchAll();
+        if (!$rows) return ['row' => null, 'match' => true, 'species' => []];
+        $key = $this->speciesKey($species);
+        $speciesList = [];
+        $first = null;
+        foreach ($rows as $r) {
+            $speciesList[] = (string) $r['species'];
+            if ($first === null) $first = $r;
+            if ($this->speciesKey($r['species']) === $key) return ['row' => $r, 'match' => true, 'species' => $speciesList];
+        }
+        return ['row' => $first, 'match' => false, 'species' => $speciesList];
+    }
+
     /**
      * Vaccinate many animals in one transaction (one vaccine/date for the batch).
      * Returns the number of animals recorded, or false on failure.

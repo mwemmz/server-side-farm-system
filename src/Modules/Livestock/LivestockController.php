@@ -86,12 +86,26 @@ class LivestockController {
                 $errors['next_due_date'] = "Next due date cannot be before the vaccination date.";
             }
 
+            // The species always comes from the animal record, never from the
+            // form — that stops a disease vaccine reaching the wrong species.
+            $animalType = $this->model->getAnimalType((int) ($data['livestock_id'] ?? 0));
+            $vac = $this->model->vaccineForSpecies(trim((string) ($data['vaccine_name'] ?? '')), $animalType);
+            if (!$vac['match']) {
+                $errors['vaccine_name'] = trim($data['vaccine_name'])
+                    . ' is for ' . implode(' / ', $vac['species'])
+                    . ' — not this ' . ($animalType ? ucfirst($animalType) : 'animal') . '.';
+            }
+            $catalog = $vac['row'];
+
             if (empty($errors)) {
                 // Auto-compute the next due date from the catalogue interval when
                 // the user leaves it blank (server-side backstop for the JS helper).
                 $nextDue = !empty($data['next_due_date']) ? $data['next_due_date'] : null;
-                $catalog = $this->model->getVaccineCatalogByName(trim($data['vaccine_name']));
-                if ($nextDue === null && $catalog && !empty($catalog['dose_interval_days']) && !empty($data['vaccination_date'])) {
+                if ($catalog && empty($catalog['dose_interval_days']) && empty($catalog['booster_after_days'])) {
+                    // Single-dose vaccine (Marek's is given at day-old, no booster)
+                    // — it must never carry a scheduled next dose.
+                    $nextDue = null;
+                } elseif ($nextDue === null && $catalog && !empty($catalog['dose_interval_days']) && !empty($data['vaccination_date'])) {
                     $nextDue = date('Y-m-d', strtotime($data['vaccination_date'] . ' +' . (int) $catalog['dose_interval_days'] . ' days'));
                 }
                 $extra = [
@@ -132,9 +146,27 @@ class LivestockController {
             }
 
             if (empty($errors)) {
-                $catalog = $this->model->getVaccineCatalogByName(trim($data['vaccine_name']));
+                $types = $this->model->getAnimalTypes(array_map('intval', $ids));
+                $keys = [];
+                foreach ($types as $t) {
+                    $k = $this->model->speciesKey($t);
+                    if ($k !== '') $keys[$k] = true;
+                }
+                if (count($keys) > 1) {
+                    $errors['animal_ids'] = "One vaccine batch = one species. Remove the animals that aren't " . ucfirst(array_keys($keys)[0]) . '.';
+                }
+                $firstType = $types ? reset($types) : '';
+                $vac = $this->model->vaccineForSpecies(trim((string) ($data['vaccine_name'] ?? '')), $firstType);
+                if (!$vac['match']) {
+                    $errors['general'] = trim($data['vaccine_name'])
+                        . ' is for ' . implode(' / ', $vac['species'])
+                        . ' — not this ' . ($firstType ? ucfirst($firstType) : 'animal') . '.';
+                }
+                $catalog = $vac['row'];
                 $nextDue = !empty($data['next_due_date']) ? $data['next_due_date'] : null;
-                if ($nextDue === null && $catalog && !empty($catalog['dose_interval_days'])) {
+                if ($catalog && empty($catalog['dose_interval_days']) && empty($catalog['booster_after_days'])) {
+                    $nextDue = null;
+                } elseif ($nextDue === null && $catalog && !empty($catalog['dose_interval_days'])) {
                     $nextDue = date('Y-m-d', strtotime($data['vaccination_date'] . ' +' . (int) $catalog['dose_interval_days'] . ' days'));
                 }
                 $count = $this->model->batchVaccinate(
