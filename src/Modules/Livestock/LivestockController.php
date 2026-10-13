@@ -135,8 +135,21 @@ class LivestockController {
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ids = $data['animal_ids'] ?? [];
-            if (!is_array($ids) || empty($ids)) {
+            $ids = is_array($ids) ? $ids : [];
+            $idList = [];
+            $rejected = 0;
+            foreach ($ids as $v) {
+                $id = ValidationHelper::id($v);
+                if ($id === null) { $rejected++; continue; }
+                $idList[$id] = true;
+            }
+            $idList = array_keys($idList);
+            if ($rejected > 0) {
+                $errors['animal_ids'] = $rejected . ' invalid animal id(s) were submitted. Try again.';
+            } elseif (!$idList) {
                 $errors['animal_ids'] = "Select at least one animal.";
+            } elseif (count($idList) > 500) {
+                $errors['animal_ids'] = "A batch is limited to 500 animals — please split it.";
             }
             $errors = array_merge($errors, ValidationHelper::validateRequired(['vaccine_name', 'vaccination_date'], $data));
 
@@ -145,32 +158,45 @@ class LivestockController {
                 if ($e) $errors['vaccination_date'] = $e;
             }
 
+            // The species and vaccine checks run over a validated id list, and the
+            // insert below only ever runs when the whole batch validated — the old
+            // bug stored the batch while a species error was still on display.
+            if (empty($errors) && $idList) {
+                $types = $this->model->getAnimalTypes($idList);
+                if (count($types) !== count($idList)) {
+                    $errors['animal_ids'] = (count($idList) - count($types)) . ' selected animal(s) are no longer available. Remove them and try again.';
+                } else {
+                    $keys = [];
+                    foreach ($types as $type) {
+                        $k = $this->model->speciesKey($type);
+                        if ($k !== '') $keys[$k] = true;
+                    }
+                    $speciesLabels = array_keys($keys);
+                    if (count($keys) > 1) {
+                        $errors['animal_ids'] = "One vaccine batch = one species. Remove the animals that aren't " . ucfirst($speciesLabels[0]) . '.';
+                    }
+                    $firstType = $types ? reset($types) : '';
+                    $vac = $this->model->vaccineForSpecies(trim((string) ($data['vaccine_name'] ?? '')), $firstType);
+                    if (!$vac['match']) {
+                        $errors['general'] = trim($data['vaccine_name'])
+                            . ' is for ' . implode(' / ', $vac['species'])
+                            . ' — not this ' . ($firstType ? ucfirst($firstType) : 'animal') . '.';
+                    }
+                }
+            }
+            $catalog = isset($vac['row']) ? $vac['row'] : null;
+
             if (empty($errors)) {
-                $types = $this->model->getAnimalTypes(array_map('intval', $ids));
-                $keys = [];
-                foreach ($types as $t) {
-                    $k = $this->model->speciesKey($t);
-                    if ($k !== '') $keys[$k] = true;
-                }
-                if (count($keys) > 1) {
-                    $errors['animal_ids'] = "One vaccine batch = one species. Remove the animals that aren't " . ucfirst(array_keys($keys)[0]) . '.';
-                }
-                $firstType = $types ? reset($types) : '';
-                $vac = $this->model->vaccineForSpecies(trim((string) ($data['vaccine_name'] ?? '')), $firstType);
-                if (!$vac['match']) {
-                    $errors['general'] = trim($data['vaccine_name'])
-                        . ' is for ' . implode(' / ', $vac['species'])
-                        . ' — not this ' . ($firstType ? ucfirst($firstType) : 'animal') . '.';
-                }
-                $catalog = $vac['row'];
                 $nextDue = !empty($data['next_due_date']) ? $data['next_due_date'] : null;
                 if ($catalog && empty($catalog['dose_interval_days']) && empty($catalog['booster_after_days'])) {
+                    // Single-dose vaccine (Marek's is given at day-old, no booster)
+                    // — it must never carry a scheduled next dose.
                     $nextDue = null;
                 } elseif ($nextDue === null && $catalog && !empty($catalog['dose_interval_days'])) {
                     $nextDue = date('Y-m-d', strtotime($data['vaccination_date'] . ' +' . (int) $catalog['dose_interval_days'] . ' days'));
                 }
                 $count = $this->model->batchVaccinate(
-                    array_map('intval', $ids),
+                    $idList,
                     trim($data['vaccine_name']),
                     $data['vaccination_date'],
                     $nextDue,

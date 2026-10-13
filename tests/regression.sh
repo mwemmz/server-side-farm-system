@@ -366,6 +366,20 @@ LX="$(curl -s -b "$JAR" "$BASE/index.php?module=Livestock&action=manage")"
 contains "$LX" "Marek's vaccine" "Fix5 Marek's recorded"
 contains "$LX" "No next date" "Fix5 single-dose Marek's has no next due date"
 
+# hostile/unknown ids in a batch are refused, never 500, never stored
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data-urlencode "animal_ids[]=$CID" --data-urlencode "animal_ids[]=999999" --data-urlencode "vaccine_name=PPR vaccine" --data-urlencode "vaccination_date=2020-01-04" "$BASE/index.php?module=Livestock&action=batchVaccinate")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "Fix5 batch with a missing animal id -> 200 (refused)" "$S" "200"
+notcontains "$B" "Internal Server Error" "Fix5 missing-id batch not a 500"
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data-urlencode "animal_ids[]=abc" --data-urlencode "vaccine_name=PPR vaccine" --data-urlencode "vaccination_date=2020-01-05" "$BASE/index.php?module=Livestock&action=batchVaccinate")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "Fix5 batch with a non-integer id -> 200 (refused)" "$S" "200"
+contains "$B" "invalid animal id" "Fix5 non-integer id names the problem"
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data-urlencode "animal_ids[$GID]=$CID" --data-urlencode "vaccine_name=PPR vaccine" --data-urlencode "vaccination_date=2020-01-06" "$BASE/index.php?module=Livestock&action=batchVaccinate")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "Fix5 batch with a jagged id array -> 200 (not 500)" "$S" "200"
+notcontains "$B" "Internal Server Error" "Fix5 jagged id array not a 500"
+
 # ---------------------------------------------------------------------------
 # 4i. Finish-pass Fix 6: service reminders — the interval is defaulted from the
 #     equipment type server-side, an overdue item is flagged, and recording a

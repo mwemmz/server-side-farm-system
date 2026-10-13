@@ -74,6 +74,20 @@ class ValidationHelper {
         return true;
     }
 
+    /**
+     * Coerce a submitted id to a safe positive integer, or null when invalid.
+     * Rejects 0, negatives, floats, values over INT_MAX, arrays and non-digits,
+     * so callers can never feed raw (int) casts of hostile input to the DB.
+     */
+    public static function id($v) {
+        if (!is_scalar($v)) return null;
+        $s = trim((string) $v);
+        if ($s === '' || !ctype_digit($s)) return null;
+        if (strlen($s) > 10) return null; // > 2147483647 would overflow an integer id column
+        $n = (int) $s;
+        return $n >= 1 ? $n : null;
+    }
+
     /** True when $v is one of the allowed values (loose string compare). */
     public static function inList($v, $allowed) {
         foreach ($allowed as $a) {
