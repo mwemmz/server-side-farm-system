@@ -309,12 +309,12 @@ $vaccineIntervals = LookupHelper::vaccineIntervals($pdo);
     }
     $issueOptions = [];
     foreach (($data['issueCatalog'] ?? []) as $ic) {
-        $issueOptions[] = ['value' => $ic['name'], 'label' => $ic['name'] . (!empty($ic['kind']) ? ' (' . $ic['kind'] . ')' : '')];
+        $issueOptions[$ic['name']] = $ic['name'] . (!empty($ic['kind']) ? ' (' . $ic['kind'] . ')' : '');
     }
     $pestFields = [
         ['name' => 'livestock_id', 'label' => 'Animal', 'type' => 'combo', 'options' => $livestockPestOptions, 'allow_custom' => false, 'placeholder' => 'Type an animal #, type or breed…', 'value' => $pestData['livestock_id'] ?? '', 'help' => 'The animal ID is the "#" number shown in the list.'],
         ['name' => 'pest_name', 'label' => 'Pest / Disease', 'type' => 'combo', 'options' => $issueOptions, 'allow_custom' => true, 'category' => 'disease_name', 'placeholder' => 'e.g. Foot rot, Ticks, or type another…', 'help' => 'Pick a common problem or type your own.', 'value' => $pestData['pest_name'] ?? ''],
-        ['name' => 'issue_kind', 'label' => 'Type', 'type' => 'combo', 'required' => false, 'allow_custom' => true, 'options' => [['value' => 'disease', 'label' => 'Disease'], ['value' => 'parasite', 'label' => 'Parasite'], ['value' => 'injury', 'label' => 'Injury'], ['value' => 'deficiency', 'label' => 'Deficiency'], ['value' => 'other', 'label' => 'Other']], 'value' => $pestData['issue_kind'] ?? 'disease'],
+        ['name' => 'issue_kind', 'label' => 'Type', 'type' => 'combo', 'required' => false, 'allow_custom' => true, 'options' => ['disease' => 'Disease', 'parasite' => 'Parasite', 'injury' => 'Injury', 'deficiency' => 'Deficiency', 'other' => 'Other'], 'value' => $pestData['issue_kind'] ?? 'disease'],
         ['name' => 'severity', 'label' => 'Severity', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'pest_severity'), 'allow_custom' => true, 'category' => 'pest_severity', 'placeholder' => 'Low, Moderate, High…', 'value' => $pestData['severity'] ?? ''],
         ['name' => 'detected_date', 'label' => 'Detected Date', 'type' => 'date', 'max' => date('Y-m-d'), 'value' => $pestData['detected_date'] ?? date('Y-m-d')],
         ['name' => 'action_taken', 'label' => 'Action Taken', 'type' => 'textarea', 'value' => $pestData['action_taken'] ?? ''],

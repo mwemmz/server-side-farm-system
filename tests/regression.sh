@@ -236,6 +236,23 @@ CNT="$(printf '%s' "$PAGE" | grep -F -- "$IT_NAME" | grep -F -c 'data-value=')"
 check "Fix1(g) no duplicate inventory row for the item (count=1)" "$CNT" "1"
 
 # ---------------------------------------------------------------------------
+# 4d. Finish-pass Fix 2: "Report a problem" dropdowns render labels, not Array.
+#     Acceptance: no >Array<, no numbered placeholder options, and picking an
+#     issue saves the plain issue name rather than the "name (kind)" label.
+# ---------------------------------------------------------------------------
+echo "-- Fix 2: report-a-problem dropdowns --"
+B="$(curl -s -b "$JAR" "$BASE/index.php?module=Crop&action=manage")"
+notcontains "$B" '>Array<' "Fix2 crop page has no >Array<"
+notcontains "$B" "value='0'>Pest" "Fix2 crop Type combo has no numbered options"
+B="$(curl -s -b "$JAR" "$BASE/index.php?module=Livestock&action=manage")"
+notcontains "$B" '>Array<' "Fix2 livestock page has no >Array<"
+notcontains "$B" "value='0'>Disease" "Fix2 livestock Type combo has no numbered options"
+S="$(status -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "crop_id=1" --data-urlencode "pest_name=Fall armyworm" --data "issue_kind=pest&severity=Moderate&detected_date=2020-01-01&action_taken=Scouting" "$BASE/index.php?module=Crop&action=addPest")"
+check "Fix2 report problem -> redirect" "$S" "302"
+B="$(curl -s -b "$JAR" "$BASE/index.php?module=Crop&action=manage")"
+contains "$B" '>Fall armyworm<' "Fix2 saved issue name preserved (not the ' (kind)' label)"
+
+# ---------------------------------------------------------------------------
 # 5. Page sweep: every module x view returns 200
 # ---------------------------------------------------------------------------
 echo "-- page sweep --"

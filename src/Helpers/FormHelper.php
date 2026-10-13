@@ -66,6 +66,7 @@ class FormHelper {
             if ($type === 'textarea') {
                 $html .= "<textarea name='$name' id='$name' rows='3' placeholder='" . htmlspecialchars($placeholder) . "'$req $base>" . htmlspecialchars($value) . "</textarea>";
             } elseif ($type === 'select') {
+                $selectOptions = self::normalizeOptions($field['options'] ?? []);
                 $html .= "<select name='$name' id='$name'$req $base>";
                 if ($placeholder !== '') {
                     $html .= "<option value=''>" . htmlspecialchars($placeholder) . "</option>";
@@ -73,14 +74,14 @@ class FormHelper {
                 if (!empty($field['optgroups'])) {
                     foreach ($field['optgroups'] as $group => $opts) {
                         $html .= "<optgroup label='" . htmlspecialchars((string) $group) . "'>";
-                        foreach ($opts as $optVal => $optLabel) {
+                        foreach (self::normalizeOptions($opts) as $optVal => $optLabel) {
                             $sel = ((string) $optVal === (string) $value) ? ' selected' : '';
                             $html .= "<option value='" . htmlspecialchars((string) $optVal) . "'$sel>" . htmlspecialchars((string) $optLabel) . "</option>";
                         }
                         $html .= "</optgroup>";
                     }
                 } else {
-                    foreach (($field['options'] ?? []) as $optVal => $optLabel) {
+                    foreach ($selectOptions as $optVal => $optLabel) {
                         $sel = ((string) $optVal === (string) $value) ? ' selected' : '';
                         $html .= "<option value='" . htmlspecialchars((string) $optVal) . "'$sel>" . htmlspecialchars((string) $optLabel) . "</option>";
                     }
@@ -124,10 +125,33 @@ class FormHelper {
 
     private static $comboJsIncluded = false;
 
+    /**
+     * Normalise $options into a scalar value => label map. Tolerates the
+     * legacy "list of ['value'=>,'label'=>]" shape and silently drops any
+     * non-scalar entries so an "Array to string conversion" warning can never
+     * be emitted while rendering options.
+     */
+    private static function normalizeOptions($options) {
+        $out = [];
+        foreach ((array) $options as $key => $value) {
+            if (is_array($value)) {
+                if (array_key_exists('value', $value)) {
+                    $k = (string) $value['value'];
+                    $out[$k] = array_key_exists('label', $value) ? $value['label'] : $k;
+                }
+                continue;
+            }
+            if (is_scalar($value)) {
+                $out[$key] = $value;
+            }
+        }
+        return $out;
+    }
+
     /** Build a pick-or-type combobox (text + hidden value + datalist + no-JS select). */
     private static function renderCombo($field, $value, $required, $border) {
         $name       = $field['name'];
-        $options    = $field['options'] ?? [];
+        $options    = self::normalizeOptions($field['options'] ?? []);
         $allowCustom = !empty($field['allow_custom']);
         $category   = $field['category'] ?? '';
         $dependsOn  = $field['depends_on'] ?? '';
