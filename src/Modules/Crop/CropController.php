@@ -118,10 +118,12 @@ class CropController {
     public function incidentStatus() {
         $id = (int) ($_POST['id'] ?? $_GET['id'] ?? 0);
         $status = $_POST['status'] ?? 'resolved';
-        if ($this->pestModel->setStatus($id, $status, $_POST['notes'] ?? null)) {
+        $stockItemId = ($_POST['inventory_item_id'] ?? '') !== '' ? (int) $_POST['inventory_item_id'] : null;
+        $stockQty = ($_POST['quantity_used'] ?? '') !== '' ? (float) $_POST['quantity_used'] : null;
+        if ($this->pestModel->setStatus($id, $status, $_POST['notes'] ?? null, $stockItemId, $stockQty)) {
             SessionHelper::setFlash('success', 'Health incident marked ' . htmlspecialchars($status) . '.');
         } else {
-            SessionHelper::setFlash('error', 'Could not update the health incident.');
+            SessionHelper::setFlash('error', 'Could not update the health incident, or there is not enough stock for the treatment.');
         }
         header('Location: index.php?module=Crop&action=manage');
         exit;

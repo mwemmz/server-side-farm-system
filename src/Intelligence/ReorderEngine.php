@@ -2,11 +2,13 @@
 require_once __DIR__ . '/../Helpers/JwtHelper.php';
 require_once __DIR__ . '/../Helpers/AuditHelper.php';
 require_once __DIR__ . '/IntelligenceUtils.php';
+require_once __DIR__ . '/../Modules/Inventory/InventoryModel.php';
 
 /**
  * Feature 1 — Automated Inventory Reorder Engine.
  *
- * Computes live balances from stock_movements and, when an item falls below its
+ * Reads live balances straight from inventory.quantity (the single source of
+ * truth that every stock movement updates) and, when an item falls below its
  * reorder threshold, creates a draft purchase order (if auto_create_po) and
  * always emits a notification. Draft POs are never auto-submitted — they wait
  * for human approval (see the purchase-order approval flow).
@@ -48,9 +50,7 @@ class ReorderEngine {
         $rows = $this->pdo->query("
             SELECT rr.id, rr.item_id, i.name AS item_name, rr.threshold_qty, rr.reorder_qty,
                    rr.preferred_supplier_id, s.name AS supplier_name, rr.auto_create_po,
-                   COALESCE( (SELECT COALESCE(SUM(CASE WHEN direction='in' THEN quantity ELSE 0 END),0)
-                                - COALESCE(SUM(CASE WHEN direction='out' THEN quantity ELSE 0 END),0)
-                              FROM stock_movements sm WHERE sm.item_id = rr.item_id), i.quantity) AS current_balance
+                   i.quantity AS current_balance
             FROM reorder_rules rr
             JOIN inventory i ON i.id = rr.item_id
             LEFT JOIN suppliers s ON s.id = rr.preferred_supplier_id
@@ -105,8 +105,7 @@ class ReorderEngine {
 
     /**
      * GET /api/v1/inventory-items/{id}/balance
-     * Real-time balance = (in - out) from stock_movements, falling back to the
-     * inventory opening quantity when no movements exist.
+     * Real-time balance = the authoritative on-hand value on the inventory row.
      */
     public function balance($itemId) {
         $item = $this->fetchItem($itemId);
@@ -122,19 +121,16 @@ class ReorderEngine {
         $movements->execute([(int) $itemId]);
         $m = $movements->fetch();
 
-        $opening = (float) $item['quantity'];
-        $balance = (int) $m['movement_count'] > 0
-            ? (int) $m['total_in'] - (int) $m['total_out']
-            : $opening;
+        $balance = (float) $item['quantity'];
 
         api_ok([
             'item_id'    => (int) $itemId,
             'item_name'  => $item['name'],
-            'opening_qty'=> $opening,
+            'opening_qty'=> (float) ($item['opening_quantity'] ?? $item['quantity']),
             'total_in'   => (int) $m['total_in'],
             'total_out'  => (int) $m['total_out'],
             'balance'    => $balance,
-            'inputs'     => ['method' => (int) $m['movement_count'] > 0 ? 'stock_movements' : 'opening_fallback'],
+            'inputs'     => ['method' => 'inventory.quantity'],
         ]);
     }
 
@@ -188,16 +184,12 @@ class ReorderEngine {
         api_ok($summary);
     }
 
-    /** Compute an item's balance from movements (fallback to opening qty). */
-    private function itemBalance($itemId, $openingQty) {
-        $stmt = $this->pdo->prepare(
-            "SELECT COALESCE(SUM(CASE WHEN direction='in' THEN quantity ELSE 0 END),0) AS ti,
-                    COALESCE(SUM(CASE WHEN direction='out' THEN quantity ELSE 0 END),0) AS to,
-                    COUNT(*) AS c FROM stock_movements WHERE item_id = ?"
-        );
+    /** Current on-hand balance = the authoritative inventory.quantity value. */
+    private function itemBalance($itemId, $onHand) {
+        $stmt = $this->pdo->prepare("SELECT quantity FROM inventory WHERE id = ?");
         $stmt->execute([(int) $itemId]);
-        $m = $stmt->fetch();
-        return (int) $m['c'] > 0 ? (int) $m['ti'] - (int) $m['to'] : (int) $openingQty;
+        $q = $stmt->fetchColumn();
+        return $q !== false ? (float) $q : (float) $onHand;
     }
 
     private function createDraftPo($rule) {
@@ -223,14 +215,10 @@ class ReorderEngine {
         return $stmt->fetch();
     }
 
-    /** Convenience: record a stock movement (used by callers/tests). */
+    /** Convenience: record a stock movement (used by callers/tests). Routes
+     * through InventoryModel::move() so the on-hand balance stays authoritative. */
     public function recordMovement($itemId, $direction, $quantity) {
-        if (!in_array($direction, ['in', 'out'], true)) {
-            return false;
-        }
-        $stmt = $this->pdo->prepare(
-            "INSERT INTO stock_movements (item_id, direction, quantity) VALUES (?, ?, ?)"
-        );
-        return $stmt->execute([(int) $itemId, $direction, $quantity]);
+        $inv = new InventoryModel($this->pdo);
+        return $inv->move((int) $itemId, $direction, (float) $quantity, 'Reorder engine', null, 'ReorderEngine');
     }
 }

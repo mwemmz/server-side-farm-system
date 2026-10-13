@@ -152,6 +152,90 @@ B="$(printf '%s' "$R" | sed '$d')"
 notcontains "$B" "Internal Server Error" "B7 harvest storage never 500s"
 
 # ---------------------------------------------------------------------------
+# 4c. Finish-pass Fix 1: inventory.quantity is authoritative.
+#     Acceptance: (a) 120 -> out 50 -> 70; (b) out 71 refused, still 70;
+#     (c) in 10 -> 80; (d) direction=sideways rejected, no row; (e) two parallel
+#     stock-outs cannot overdraw; (f) low-stock badge/insight match the API
+#     balance; (g) procurement of an existing item name increases it (no dup).
+# ---------------------------------------------------------------------------
+echo "-- Fix 1: stock balance honours opening quantity --"
+
+# API helper: login for a JWT, then read the authoritative balance.
+JWT="$(curl -s -X POST -H 'Content-Type: application/json' -d "{\"username\":\"$USER_NAME\",\"password\":\"$USER_PASS\"}" "$BASE/api/v1/auth/token" | grep -o '"token":"[^"]*"' | head -1 | sed 's/.*"token":"//; s/"$//')"
+if [ -n "$JWT" ]; then ok "Fix1 API JWT issued"; else bad "Fix1 API JWT missing"; fi
+apibal() { curl -s -H "Authorization: Bearer $JWT" "$BASE/api/v1/inventory-items/$IT_ID/balance"; }
+apibal_num() { printf '%s' "$(apibal)" | grep -o '"balance":[0-9.]*' | sed 's/"balance"://; s/\.0$//'; }
+inv_label() { curl -s -b "$JAR" "$BASE/index.php?module=Inventory&action=manage" | grep -F -- "$IT_NAME" | grep -F 'data-value=' | head -1 | grep -o '[0-9.]* bag' | tail -1 | sed 's/ bag//'; }
+
+# create a dedicated item (opening quantity 120)
+IT_NAME="BalTest$(date +%H%M%S)$RANDOM"
+S="$(status -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data-urlencode "name=$IT_NAME" --data "quantity=120&unit=bag" "$BASE/index.php?module=Inventory&action=add")"
+check "Fix1(a) create item -> redirect" "$S" "302"
+PAGE="$(curl -s -b "$JAR" "$BASE/index.php?module=Inventory&action=manage")"
+IT_ID="$(printf '%s' "$PAGE" | grep -F -- "$IT_NAME" | grep -o "data-value='[0-9]*'" | head -1 | grep -o '[0-9]*')"
+if [ -n "$IT_ID" ]; then ok "Fix1(a) dedicated item created (id=$IT_ID)"; else bad "Fix1(a) could not find created item"; fi
+check "Fix1(a) opening 120 is authoritative (API balance = 120)" "$(apibal_num)" "120"
+check "Fix1(a) UI label shows 120 as well" "$(inv_label)" "120"
+
+# (a) stock out 50 -> 70
+S="$(status -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "item_id=$IT_ID&direction=out&quantity=50&reason=Test" "$BASE/index.php?module=Inventory&action=move")"
+check "Fix1(a) out 50 -> redirect" "$S" "302"
+check "Fix1(a) balance after out 50 -> 70" "$(apibal_num)" "70"
+check "Fix1(a) UI label after out 50 -> 70" "$(inv_label)" "70"
+
+# (b) stock out 71 refused, still 70
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "item_id=$IT_ID&direction=out&quantity=71&reason=Test" "$BASE/index.php?module=Inventory&action=move")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "Fix1(b) out 71 -> form re-render (200)" "$S" "200"
+contains "$B" "Not enough stock" "Fix1(b) refusal message shown"
+check "Fix1(b) balance still 70" "$(apibal_num)" "70"
+
+# (c) stock in 10 -> 80
+S="$(status -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "item_id=$IT_ID&direction=in&quantity=10&reason=Test" "$BASE/index.php?module=Inventory&action=move")"
+check "Fix1(c) in 10 -> redirect" "$S" "302"
+check "Fix1(c) balance after in 10 -> 80" "$(apibal_num)" "80"
+
+# (d) sideways direction rejected, no row written
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "item_id=$IT_ID&direction=sideways&quantity=5&reason=Test" "$BASE/index.php?module=Inventory&action=move")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "Fix1(d) sideways -> form re-render (200)" "$S" "200"
+contains "$B" "Direction must be" "Fix1(d) sideways rejected"
+check "Fix1(d) balance unchanged at 80" "$(apibal_num)" "80"
+H="$(curl -s -b "$JAR" "$BASE/index.php?module=Inventory&action=history&id=$IT_ID")"
+notcontains "$H" "sideways" "Fix1(d) no sideways movement row written"
+
+# (e) two parallel stock-outs of 45 against 80 cannot overdraw -> ends at 35
+( curl -s -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "item_id=$IT_ID&direction=out&quantity=45&reason=Parallel" "$BASE/index.php?module=Inventory&action=move" > /tmp/ffms_c1.$$ ) &
+P1=$!
+( curl -s -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "item_id=$IT_ID&direction=out&quantity=45&reason=Parallel" "$BASE/index.php?module=Inventory&action=move" > /tmp/ffms_c2.$$ ) &
+P2=$!
+wait "$P1"; wait "$P2"
+C1="$(cat /tmp/ffms_c1.$$)"; C2="$(cat /tmp/ffms_c2.$$)"
+rm -f /tmp/ffms_c1.$$ /tmp/ffms_c2.$$
+case "$C1$C2" in *"Not enough stock"*) ok "Fix1(e) one parallel stock-out refused";; *) bad "Fix1(e) neither parallel stock-out was refused";; esac
+check "Fix1(e) final balance 35 (no overdraft)" "$(apibal_num)" "35"
+
+# (f) low-stock reorder rule below current level -> badge, insight and API agree
+R="$(curl -s -X POST -H "Authorization: Bearer $JWT" -H 'Content-Type: application/json' -d "{\"item_id\":$IT_ID,\"threshold_qty\":100,\"reorder_qty\":10}" "$BASE/api/v1/reorder-rules")"
+contains "$R" '"success":true' "Fix1(f) reorder rule created"
+R="$(curl -s -X POST -H "Authorization: Bearer $JWT" "$BASE/api/v1/reorder-check/run")"
+contains "$R" '"balance":35' "Fix1(f) reorder check reads authoritative balance"
+contains "$R" "$IT_NAME" "Fix1(f) reorder check flags the low-stock item"
+PAGE="$(curl -s -b "$JAR" "$BASE/index.php?module=Inventory&action=manage")"
+contains "$PAGE" "$IT_NAME" "Fix1(f) inventory page still lists item"
+check "Fix1(f) UI badge number equals API balance (35)" "$(inv_label)" "35"
+contains "$PAGE" "Low (min 100)" "Fix1(f) low-stock badge threshold shown"
+
+# (g) procurement of the existing item name increases that item, no duplicate
+S="$(status -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "supplier_id=1" --data-urlencode "item_name=${IT_NAME,,}" --data "quantity=5&cost=10&purchase_date=2020-01-01" "$BASE/index.php?module=Procurement&action=add")"
+check "Fix1(g) procurement redirects" "$S" "302"
+check "Fix1(g) balance after purchase of existing item -> 40" "$(apibal_num)" "40"
+PAGE="$(curl -s -b "$JAR" "$BASE/index.php?module=Inventory&action=manage")"
+# the closed picker lists each matched item exactly once
+CNT="$(printf '%s' "$PAGE" | grep -F -- "$IT_NAME" | grep -F -c 'data-value=')"
+check "Fix1(g) no duplicate inventory row for the item (count=1)" "$CNT" "1"
+
+# ---------------------------------------------------------------------------
 # 5. Page sweep: every module x view returns 200
 # ---------------------------------------------------------------------------
 echo "-- page sweep --"

@@ -102,3 +102,21 @@ ALTER TABLE equipment ADD COLUMN IF NOT EXISTS next_service_date DATE;
 -- B7 — Harvest to storage link
 -- ------------------------------------------------------------
 ALTER TABLE harvest_records ADD COLUMN IF NOT EXISTS storage_record_id INT;
+
+-- ------------------------------------------------------------
+-- Finish-pass Fix 1 — inventory.quantity is the single source of truth.
+-- Every movement updates inventory.quantity in the same transaction and
+-- records the resulting balance on the movement for an explainable audit.
+-- ------------------------------------------------------------
+ALTER TABLE inventory ADD COLUMN IF NOT EXISTS opening_quantity NUMERIC(14,2);
+ALTER TABLE stock_movements ADD COLUMN IF NOT EXISTS balance_after NUMERIC(14,2);
+
+-- One-off, guarded backfill so history stays explainable: opening_quantity is
+-- set once to (current quantity - net ledger), which preserves the existing
+-- on-hand figure while giving every movement a baseline. Re-running never
+-- overwrites a value that is already set, and never rewrites quantity.
+UPDATE inventory i
+SET opening_quantity = i.quantity - COALESCE((
+        SELECT SUM(CASE WHEN sm.direction = 'in' THEN sm.quantity ELSE -sm.quantity END)
+        FROM stock_movements sm WHERE sm.item_id = i.id), 0)
+WHERE i.opening_quantity IS NULL;

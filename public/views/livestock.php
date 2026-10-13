@@ -355,6 +355,13 @@ $vaccineIntervals = LookupHelper::vaccineIntervals($pdo);
                                     <?php echo \SessionHelper::csrfField(); ?>
                                     <input type="hidden" name="id" value="<?php echo (int) $p['id']; ?>">
                                     <input type="hidden" name="status" value="treated">
+                                    <select name="inventory_item_id" class="border border-slate-300 rounded px-2 py-1 text-xs bg-white">
+                                        <option value="">No stock used</option>
+                                        <?php foreach (FormHelper::options($pdo, "SELECT id, name FROM inventory ORDER BY name") as $iv => $ivl): ?>
+                                            <option value="<?php echo (int) $iv; ?>"><?php echo htmlspecialchars($ivl); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <input type="number" name="quantity_used" min="0.01" step="0.01" placeholder="Qty" class="border border-slate-300 rounded px-2 py-1 text-xs w-20 bg-white">
                                     <button type="submit" class="text-xs font-semibold px-3 py-1 rounded-lg bg-amber-500 text-white hover:bg-amber-600">Mark treated</button>
                                 </form>
                             <?php endif; ?>

@@ -83,15 +83,42 @@ class PestModel extends BaseModuleModel {
         return $this->pdo->query("SELECT * FROM health_issue_catalog ORDER BY applies_to, name")->fetchAll();
     }
 
-    /** Mark an incident treated or resolved. */
-    public function setStatus($id, $status, $notes = null) {
-        $status = in_array($status, ['open', 'treated', 'resolved'], true) ? $status : 'open';
-        $resolvedDate = ($status === 'resolved') ? date('Y-m-d') : null;
-        $st = $this->pdo->prepare(
-            "UPDATE health_incidents
-             SET status = ?, treatment_notes = COALESCE(?, treatment_notes), resolved_date = ?
-             WHERE id = ?"
-        );
-        return $st->execute([$status, ($notes !== null && trim($notes) !== '' ? trim($notes) : null), $resolvedDate, (int) $id]);
+    /**
+     * Mark an incident treated or resolved. Optional $stockItemId + $stockQty
+     * deduct the treatment chemical from inventory (via InventoryModel::move) in
+     * the same transaction; a shortage refuses the whole update atomically.
+     */
+    public function setStatus($id, $status, $notes = null, $stockItemId = null, $stockQty = null) {
+        $this->pdo->beginTransaction();
+        try {
+            $status = in_array($status, ['open', 'treated', 'resolved'], true) ? $status : 'open';
+            $resolvedDate = ($status === 'resolved') ? date('Y-m-d') : null;
+            $st = $this->pdo->prepare(
+                "UPDATE health_incidents
+                 SET status = ?, treatment_notes = COALESCE(?, treatment_notes), resolved_date = ?
+                 WHERE id = ?"
+            );
+            $st->execute([$status, ($notes !== null && trim($notes) !== '' ? trim($notes) : null), $resolvedDate, (int) $id]);
+            if ((int) $st->rowCount() === 0) {
+                $this->pdo->rollBack();
+                return false;
+            }
+            if ($stockItemId && $stockQty !== null && (float) $stockQty > 0) {
+                require_once __DIR__ . '/../Inventory/InventoryModel.php';
+                $mv = (new InventoryModel($this->pdo))->move(
+                    (int) $stockItemId, 'out', (float) $stockQty,
+                    'Treatment', 'Health incident #' . (int) $id, 'HealthIncident', (int) $id
+                );
+                if ($mv !== true) {
+                    throw new RuntimeException((string) $mv);
+                }
+            }
+            $this->pdo->commit();
+            return true;
+        } catch (\Throwable $e) {
+            if ($this->pdo->inTransaction()) { $this->pdo->rollBack(); }
+            error_log('Health incident status update failed: ' . $e->getMessage());
+            return false;
+        }
     }
 }

@@ -136,7 +136,7 @@ foreach ($items as $it) { $grouped[$it['category'] ?: 'Uncategorised'][] = $it; 
         <div class="overflow-x-auto">
             <table class="w-full text-left text-sm text-slate-700">
                 <thead><tr class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
-                    <th class="py-2 pr-3">Date</th><th class="py-2 pr-3">Direction</th><th class="py-2 pr-3 text-right">Qty</th><th class="py-2 pr-3">Reason</th><th class="py-2">Note</th>
+                    <th class="py-2 pr-3">Date</th><th class="py-2 pr-3">Direction</th><th class="py-2 pr-3 text-right">Qty</th><th class="py-2 pr-3 text-right">Balance after</th><th class="py-2 pr-3">Reason</th><th class="py-2">Note</th>
                 </tr></thead>
                 <tbody>
                 <?php foreach ($hist as $h): ?>
@@ -144,6 +144,7 @@ foreach ($items as $it) { $grouped[$it['category'] ?: 'Uncategorised'][] = $it; 
                         <td class="py-2 pr-3"><?php echo htmlspecialchars($h['created_at'] ?? ''); ?></td>
                         <td class="py-2 pr-3"><span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full <?php echo $h['direction'] === 'in' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'; ?>"><?php echo htmlspecialchars($h['direction']); ?></span></td>
                         <td class="py-2 pr-3 text-right font-mono"><?php echo htmlspecialchars($h['quantity']); ?></td>
+                        <td class="py-2 pr-3 text-right font-mono"><?php echo $h['balance_after'] !== null ? htmlspecialchars(rtrim(rtrim(number_format((float) $h['balance_after'], 2), '0'), '.')) : '—'; ?></td>
                         <td class="py-2 pr-3"><?php echo htmlspecialchars($h['reason'] ?? '—'); ?></td>
                         <td class="py-2"><?php echo htmlspecialchars($h['note'] ?? '—'); ?></td>
                     </tr>

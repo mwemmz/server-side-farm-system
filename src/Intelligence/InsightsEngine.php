@@ -346,14 +346,11 @@ class InsightsEngine {
         return round($deficitMm * $ha * 10000, 2);
     }
 
-    private function itemBalance($itemId, $openingQty) {
-        $stmt = $this->pdo->prepare(
-            "SELECT COALESCE(SUM(CASE WHEN direction='in' THEN quantity ELSE 0 END),0) AS ti,
-                    COALESCE(SUM(CASE WHEN direction='out' THEN quantity ELSE 0 END),0) AS to,
-                    COUNT(*) AS c FROM stock_movements WHERE item_id = ?");
+    private function itemBalance($itemId, $onHand) {
+        $stmt = $this->pdo->prepare("SELECT quantity FROM inventory WHERE id = ?");
         $stmt->execute([(int)$itemId]);
-        $m = $stmt->fetch();
-        return (int) $m['c'] > 0 ? ((int) $m['ti'] - (int) $m['to']) : (int) $openingQty;
+        $q = $stmt->fetchColumn();
+        return $q !== false ? (float) $q : (float) $onHand;
     }
 
     private function daysInStorage($start) {

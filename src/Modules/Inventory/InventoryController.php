@@ -53,8 +53,11 @@ class InventoryController {
         $errors = [];
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = $_POST;
-            $direction = ($data['direction'] ?? 'in') === 'out' ? 'out' : 'in';
+            $direction = $data['direction'] ?? '';
             $errors = ValidationHelper::validateRequired(['item_id', 'quantity'], $data);
+            if (!in_array($direction, ['in', 'out'], true)) {
+                $errors['direction'] = 'Direction must be "in" (stock received) or "out" (stock issued).';
+            }
             if (!isset($errors['item_id'])) {
                 $e = ValidationHelper::exists($this->pdo, 'inventory', $data['item_id'], 'inventory item');
                 if ($e) $errors['item_id'] = $e;

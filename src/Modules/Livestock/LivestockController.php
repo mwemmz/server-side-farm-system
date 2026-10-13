@@ -4,6 +4,7 @@ require_once __DIR__ . '/../Pest/PestModel.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
 require_once __DIR__ . '/../Finance/FinanceService.php';
+require_once __DIR__ . '/../Inventory/InventoryModel.php';
 
 class LivestockController {
     private $model;
@@ -190,16 +191,13 @@ class LivestockController {
                         throw new PDOException('insert failed');
                     }
                     if (!empty($data['inventory_item_id']) && ($data['quantity_used'] ?? '') !== '') {
-                        $mv = $this->pdo->prepare(
-                            "INSERT INTO stock_movements (item_id, direction, quantity, reason, ref_module, ref_id, note)
-                             VALUES (?, 'out', ?, 'Treated livestock', 'Livestock', ?, ?)"
+                        $mv = (new InventoryModel($this->pdo))->move(
+                            (int) $data['inventory_item_id'], 'out', (float) $data['quantity_used'],
+                            'Treatment', 'Treatment: ' . trim($data['treatment_name']), 'Livestock', (int) $data['livestock_id']
                         );
-                        $mv->execute([
-                            (int) $data['inventory_item_id'],
-                            (float) $data['quantity_used'],
-                            (int) $data['livestock_id'],
-                            'Treatment: ' . trim($data['treatment_name']),
-                        ]);
+                        if ($mv !== true) {
+                            throw new RuntimeException('Could not deduct stock: ' . $mv);
+                        }
                     }
                     $treatmentId = $this->model->lastId();
                     $this->pdo->commit();
@@ -215,12 +213,12 @@ class LivestockController {
                     SessionHelper::flashCreated('Livestock', $treatmentId, trim($data['treatment_name']), ['Date' => $data['treatment_date'], 'Withdrawal ends' => ($data['withdrawal_ends'] ?: '—')]);
                     header('Location: index.php?module=Livestock&action=manage');
                     exit;
-                } catch (PDOException $e) {
+                } catch (\Throwable $e) {
                     if ($this->pdo->inTransaction()) {
                         $this->pdo->rollBack();
                     }
                     error_log('Add treatment failed: ' . $e->getMessage());
-                    $errors['general'] = "Could not save the treatment: the selected animal or item may no longer exist.";
+                    $errors['general'] = "Could not save the treatment: the selected animal or item may no longer exist, or there is not enough stock for the treatment.";
                 }
             }
 
@@ -286,10 +284,12 @@ class LivestockController {
     public function incidentStatus() {
         $id = (int) ($_POST['id'] ?? $_GET['id'] ?? 0);
         $status = $_POST['status'] ?? 'resolved';
-        if ($this->pestModel->setStatus($id, $status, $_POST['notes'] ?? null)) {
+        $stockItemId = ($_POST['inventory_item_id'] ?? '') !== '' ? (int) $_POST['inventory_item_id'] : null;
+        $stockQty = ($_POST['quantity_used'] ?? '') !== '' ? (float) $_POST['quantity_used'] : null;
+        if ($this->pestModel->setStatus($id, $status, $_POST['notes'] ?? null, $stockItemId, $stockQty)) {
             SessionHelper::setFlash('success', 'Health incident marked ' . htmlspecialchars($status) . '.');
         } else {
-            SessionHelper::setFlash('error', 'Could not update the health incident.');
+            SessionHelper::setFlash('error', 'Could not update the health incident, or there is not enough stock for the treatment.');
         }
         header('Location: index.php?module=Livestock&action=manage');
         exit;

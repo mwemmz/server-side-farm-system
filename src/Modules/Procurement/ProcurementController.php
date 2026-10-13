@@ -61,11 +61,9 @@ class ProcurementController {
                         // Cross-module: received purchase increases stock (match or create the item).
                         try {
                             $inv = new InventoryModel($this->pdo);
-                            $find = $this->pdo->prepare("SELECT id FROM inventory WHERE LOWER(name) = LOWER(?) LIMIT 1");
-                            $find->execute([trim($data['item_name'])]);
-                            $itemId = $find->fetchColumn();
-                            if ($itemId === false) {
-                                $ins = $this->pdo->prepare("INSERT INTO inventory (name, quantity, unit, category) VALUES (?, 0, 'pcs', ?) RETURNING id");
+                            $itemId = $inv->findByNameOrClosest($data['item_name']);
+                            if ($itemId === null) {
+                                $ins = $this->pdo->prepare("INSERT INTO inventory (name, quantity, opening_quantity, unit, category) VALUES (?, 0, 0, 'pcs', ?) RETURNING id");
                                 $ins->execute([trim($data['item_name']), $expCat]);
                                 $itemId = (int) $ins->fetchColumn();
                             }
