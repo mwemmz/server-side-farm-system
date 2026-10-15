@@ -43,10 +43,10 @@ class EquipmentController {
 
     /** Record a service: reset the schedule, optional cost + optional spare part. */
     public function recordService() {
-        $id = (int) ($_POST['id'] ?? 0);
+        $id = ValidationHelper::id($_POST['id'] ?? '');
         $data = $_POST;
         $errors = [];
-        if (!$id) $errors['general'] = 'Missing equipment.';
+        if ($id === null) $errors['general'] = 'Missing equipment.';
         if (!isset($errors['general'])) {
             $e = ValidationHelper::dateNotFuture($data, 'service_date', 'Service date');
             if ($e) $errors['service_date'] = $e;

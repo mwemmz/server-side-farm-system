@@ -129,15 +129,17 @@ class LabourController {
     // ---- Sub-action handlers (approve/reject resolve, mark paid) -----
     public function handleAction($sub, $action) {
         $officerId = (int) ($_SESSION['user_id'] ?? 0);
+        $id = ValidationHelper::id($_GET['id'] ?? '');
+        if ($id === null) return null; // missing/hostile id: nothing to act on
         switch ($sub . ':' . $action) {
             case 'leave:approve':
-                return $this->hr->approveLeave((int) $_GET['id'], $officerId);
+                return $this->hr->approveLeave($id, $officerId);
             case 'leave:reject':
-                return $this->hr->rejectLeave((int) $_GET['id'], $officerId);
+                return $this->hr->rejectLeave($id, $officerId);
             case 'grievances:resolve':
-                return $this->hr->resolveGrievance((int) $_GET['id'], trim($_POST['resolution_notes'] ?? 'Resolved'));
+                return $this->hr->resolveGrievance($id, trim($_POST['resolution_notes'] ?? 'Resolved'));
             case 'payroll:paid':
-                $payrollId = (int) $_GET['id'];
+                $payrollId = $id;
                 $result = $this->hr->markPaid($payrollId);
                 // Cross-module: a paid payroll run posts a Labour expense (idempotent).
                 try {

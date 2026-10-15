@@ -116,11 +116,13 @@ class CropController {
 
     /** Mark a crop health incident treated or resolved. */
     public function incidentStatus() {
-        $id = (int) ($_POST['id'] ?? $_GET['id'] ?? 0);
+        $id = ValidationHelper::id($_POST['id'] ?? $_GET['id'] ?? '');
         $status = $_POST['status'] ?? 'resolved';
         $stockItemId = ($_POST['inventory_item_id'] ?? '') !== '' ? (int) $_POST['inventory_item_id'] : null;
         $stockQty = ($_POST['quantity_used'] ?? '') !== '' ? (float) $_POST['quantity_used'] : null;
-        if ($this->pestModel->setStatus($id, $status, $_POST['notes'] ?? null, $stockItemId, $stockQty)) {
+        if ($id === null) {
+            SessionHelper::setFlash('error', 'Invalid or missing health incident id.');
+        } elseif ($this->pestModel->setStatus($id, $status, $_POST['notes'] ?? null, $stockItemId, $stockQty)) {
             SessionHelper::setFlash('success', 'Health incident marked ' . htmlspecialchars($status) . '.');
         } else {
             SessionHelper::setFlash('error', 'Could not update the health incident, or there is not enough stock for the treatment.');

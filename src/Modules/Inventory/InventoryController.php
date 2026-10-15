@@ -92,10 +92,10 @@ class InventoryController {
 
     /** Item movement history (JSON-free, rendered by the view via ?action=history&id=). */
     public function history() {
-        $itemId = (int) ($_GET['id'] ?? 0);
+        $itemId = ValidationHelper::id($_GET['id'] ?? '');
         return array_merge($this->index(), [
-            'historyItem' => $this->model->getItem($itemId),
-            'history'     => $this->model->getMovements($itemId, 100),
+            'historyItem' => $itemId !== null ? $this->model->getItem($itemId) : null,
+            'history'     => $itemId !== null ? $this->model->getMovements($itemId, 100) : [],
         ]);
     }
 

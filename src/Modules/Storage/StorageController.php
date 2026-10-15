@@ -46,31 +46,63 @@ class StorageController {
     /** Edit a storage facility's name, capacity or unit (inline edit). */
     public function edit() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $id = (int) ($_POST['id'] ?? 0);
             $data = $_POST;
+            $id = ValidationHelper::id($data['id'] ?? '');
+            if ($id === null) {
+                $errors = ['general' => "Invalid or missing storage facility id."];
+                return ['errors' => $errors, 'data' => $data, 'records' => $this->model->getAll()];
+            }
             $errors = ValidationHelper::validateRequired(['name', 'capacity'], $data);
             if (!isset($errors['capacity'])) {
                 $e = ValidationHelper::number($data, 'capacity', ['label' => 'Capacity', 'min' => 0]);
                 if ($e) $errors['capacity'] = $e;
             }
+
+            $exists = $this->model->getById($id);
+            if (!$exists) {
+                $errors['general'] = "Storage facility not found.";
+                return ['errors' => $errors, 'data' => $data, 'records' => $this->model->getAll()];
+            }
+
             if (empty($errors)) {
                 $unit = trim((string) ($data['unit'] ?? ''));
+                $unit = ($unit !== '' ? $unit : 'kg');
+                $stored = (float) ($exists['current_stock'] ?? 0);
+                // Never shrink capacity below what the facility already holds.
+                if ((float) $data['capacity'] < $stored) {
+                    $errors['capacity'] = 'Capacity cannot be lower than the current stock of '
+                        . self::fmtQty($stored) . ' ' . ($exists['unit'] ?? 'kg') . '.';
+                }
+                // Changing the unit with stock inside would silently relabel the quantity.
+                if (strcasecmp($unit, (string) ($exists['unit'] ?? 'kg')) !== 0 && $stored > 0) {
+                    $errors['unit'] = 'Empty the facility before changing its unit ('
+                        . self::fmtQty($stored) . ' ' . ($exists['unit'] ?? 'kg') . ' stored).';
+                }
+            }
+
+            if (empty($errors)) {
                 $row = [
                     'name' => trim($data['name']),
                     'capacity' => $data['capacity'],
-                    'unit' => ($unit !== '' ? $unit : 'kg'),
+                    'unit' => ($unit ?? 'kg'),
                 ];
-                $exists = $this->model->getById($id);
-                if ($exists && $this->model->update($id, $row)) {
+                if ($this->model->update($id, $row)) {
                     SessionHelper::setFlash('success', 'Storage facility updated!');
                     header('Location: /index.php?module=Storage&action=index');
                     exit;
                 }
-                $errors['general'] = $exists ? "Failed to update storage facility." : "Storage facility not found.";
+                $errors['general'] = "Failed to update storage facility.";
             }
             return ['errors' => $errors, 'data' => $data, 'records' => $this->model->getAll()];
         }
         return ['records' => $this->model->getAll()];
+    }
+
+    /** Pretty-print a quantity: 60.00 -> "60", avoid floating point noise. */
+    private static function fmtQty($v) {
+        $s = number_format((float) $v, 2, '.', '');
+        $s = rtrim(rtrim($s, '0'), '.');
+        return $s !== '' ? $s : '0';
     }
 }
 ?>

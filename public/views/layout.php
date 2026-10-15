@@ -236,7 +236,7 @@
                 if ($created):
                     $refSafe = htmlspecialchars($created['ref']);
                 ?>
-                <div id="ff-created-modal" class="fixed inset-0 z-[120] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="ff-created-title">
+                <div id="ff-created-modal" data-created-module="<?php echo htmlspecialchars((string) ($created['module'] ?? '')); ?>" data-created-id="<?php echo isset($created['id']) ? (int) $created['id'] : ''; ?>" class="fixed inset-0 z-[120] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="ff-created-title">
                     <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" data-ff-created-close></div>
                     <div class="relative w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
                         <div class="px-6 pt-6 pb-4 text-center">

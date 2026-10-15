@@ -42,6 +42,15 @@ $records = $data['records'] ?? ($data ?? []);
                             <summary class="cursor-pointer font-semibold text-green-700 hover:text-green-800 select-none">Edit</summary>
                             <form method="POST" action="/index.php?module=Storage&action=edit" class="mt-2 grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
                                 <?php echo \SessionHelper::csrfField(); ?>
+                                <?php if (!empty($errors['general'])): ?>
+                                    <p class="col-span-full text-xs text-red-600"><?php echo htmlspecialchars($errors['general']); ?></p>
+                                <?php endif; ?>
+                                <?php if (!empty($errors['capacity'])): ?>
+                                    <p class="col-span-full text-xs text-red-600"><?php echo htmlspecialchars($errors['capacity']); ?></p>
+                                <?php endif; ?>
+                                <?php if (!empty($errors['unit'])): ?>
+                                    <p class="col-span-full text-xs text-red-600"><?php echo htmlspecialchars($errors['unit']); ?></p>
+                                <?php endif; ?>
                                 <input type="hidden" name="id" value="<?php echo (int) $record['id']; ?>">
                                 <label class="block">
                                     <span class="block text-[11px] font-semibold text-slate-500 mb-1">Name</span>

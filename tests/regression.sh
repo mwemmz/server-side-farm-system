@@ -32,6 +32,10 @@ notcontains(){ if printf '%s' "$1" | grep -qF -- "$2"; then bad "$3 (unexpected:
 status() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 # bodycode: prints "STATUS\nBODY"
 bodycode() { curl -s -w '\n%{http_code}' "$@"; }
+# created_id: the id of the record just created, read from the one-shot
+# "Saved successfully" modal (data-created-id) on the redirect target. Must be
+# the first fetch after the create POST — the modal is consumed once rendered.
+created_id() { curl -s -L -b "$JAR" -c "$JAR" "$@" | grep -o 'data-created-id="[0-9]*"' | head -1 | grep -o '[0-9]*'; }
 
 echo "== FFMS regression @ $BASE =="
 
@@ -276,10 +280,10 @@ contains "$B" "Unit is required." "Fix4 storage add demands a unit"
 R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data-urlencode "name=$ST1" --data "capacity=100&current_stock=0&unit=kg" "$BASE/index.php?module=Storage&action=add")"
 S="$(printf '%s' "$R" | tail -1)"
 check "Fix4 storage add with unit -> 302" "$S" "302"
+SID="$(created_id "$BASE/index.php?module=Storage&action=manage")"
+[ -n "$SID" ] && ok "Fix4 located storage facility id ($SID)" || bad "Fix4 storage facility id missing"
 STPG="$(curl -s -b "$JAR" "$BASE/index.php?module=Storage&action=manage")"
 contains "$STPG" ">${ST1}<: 0 / 100 kg" "Fix4 facility created with kg unit"
-SID="$(printf '%s' "$STPG" | awk -v n="$ST1" '/name="id" value="[0-9]+"/{id=$0} $0 ~ ("value=\"" n "\""){gsub(/[^0-9]/,"",id); print id; exit}')"
-[ -n "$SID" ] && ok "Fix4 located storage facility id" || bad "Fix4 storage facility id missing"
 
 CR_ID="$(printf '%s' "$(curl -s -b "$JAR" "$BASE/index.php?module=Harvest&action=manage")" | grep -o "data-value='[0-9]*'" | head -1 | grep -o '[0-9]*')"
 R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "crop_id=$CR_ID&harvest_date=2020-01-01&quantity=60&storage_record_id=$SID" "$BASE/index.php?module=Harvest&action=add")"
@@ -291,9 +295,10 @@ contains "$STPG" ">${ST1}<: 60 / 100 kg" "Fix4 harvest 60kg lands in storage"
 ST2="StorFixB$(date +%H%M%S)$RANDOM"
 R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data-urlencode "name=$ST2" --data "capacity=100&current_stock=0&unit=tonnes" "$BASE/index.php?module=Storage&action=add")"
 check "Fix4 storage B add -> 302" "$(printf '%s' "$R" | tail -1)" "302"
+SID2="$(created_id "$BASE/index.php?module=Storage&action=manage")"
+[ -n "$SID2" ] && ok "Fix4 located storage facility B id ($SID2)" || bad "Fix4 storage facility B id missing"
 STPG="$(curl -s -b "$JAR" "$BASE/index.php?module=Storage&action=manage")"
 contains "$STPG" ">${ST2}<: 0 / 100 tonnes" "Fix4 facility B tonne unit"
-SID2="$(printf '%s' "$STPG" | awk -v n="$ST2" '/name="id" value="[0-9]+"/{id=$0} $0 ~ ("value=\"" n "\""){gsub(/[^0-9]/,"",id); print id; exit}')"
 R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "crop_id=$CR_ID&harvest_date=2020-01-01&quantity=150&storage_record_id=$SID2" "$BASE/index.php?module=Harvest&action=add")"
 S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
 check "Fix4 over-capacity harvest -> 200 (refused)" "$S" "200"
@@ -308,11 +313,37 @@ check "Fix4 unknown storage id -> 200 (refused)" "$S" "200"
 contains "$B" "Storage facility not found." "Fix4 unknown storage id refused cleanly"
 notcontains "$B" "Internal Server Error" "Fix4 unknown storage id is not a 500"
 
-R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "id=$SID&name=${ST1}Renamed&capacity=200&unit=tonnes" "$BASE/index.php?module=Storage&action=edit")"
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "id=$SID&name=${ST1}Renamed&capacity=200&unit=kg" "$BASE/index.php?module=Storage&action=edit")"
 S="$(printf '%s' "$R" | tail -1)"
 check "Fix4 storage edit -> 302" "$S" "302"
 STPG="$(curl -s -b "$JAR" "$BASE/index.php?module=Storage&action=manage")"
-contains "$STPG" ">${ST1}Renamed<: 60 / 200 tonnes" "Fix4 storage edit updates name/capacity/unit"
+contains "$STPG" ">${ST1}Renamed<: 60 / 200 kg" "Fix4 storage edit updates name/capacity"
+
+# ---------------------------------------------------------------------------
+# 4h. Item 2 (review pass): storage edit refuses hostile ids, a capacity below
+#     the stored stock, and a unit change while stock is inside — never 500.
+# ---------------------------------------------------------------------------
+echo "-- storage edit guards --"
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "id=$SID&name=${ST1}Renamed&capacity=10&unit=kg" "$BASE/index.php?module=Storage&action=edit")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "capacity below stock -> 200 (refused)" "$S" "200"
+contains "$B" "Capacity cannot be lower than the current stock of 60 kg" "capacity-below-stock message"
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "id=$SID&name=${ST1}Renamed&capacity=200&unit=tonnes" "$BASE/index.php?module=Storage&action=edit")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "unit change with stock stored -> 200 (refused)" "$S" "200"
+contains "$B" "Empty the facility before changing its unit" "unit-change-while-stored message"
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "id=$SID2&name=$ST2&capacity=100&unit=kg" "$BASE/index.php?module=Storage&action=edit")"
+check "unit change with empty facility -> 302" "$(printf '%s' "$R" | tail -1)" "302"
+STPG="$(curl -s -b "$JAR" "$BASE/index.php?module=Storage&action=manage")"
+contains "$STPG" ">${ST2}<: 0 / 100 kg" "empty-facility unit swap applied"
+for HID in 0 -1 abc 1e3 99999 9223372036854775807; do
+  R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "id=$HID&name=X&capacity=200&unit=kg" "$BASE/index.php?module=Storage&action=edit")"
+  S="$(printf '%s' "$R" | tail -1)"
+  case "$S" in 200|302) ok "storage edit id=$HID -> $S (no 500)";; *) bad "storage edit id=$HID -> $S";; esac
+done
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "id[]=1&name=X&capacity=200&unit=kg" "$BASE/index.php?module=Storage&action=edit")"
+S="$(printf '%s' "$R" | tail -1)"
+case "$S" in 200|302) ok "storage edit id[]=1 -> $S (no 500)";; *) bad "storage edit id[]=1 -> $S";; esac
 
 # ---------------------------------------------------------------------------
 # 4g. Finish-pass Fix 5: a vaccine is only accepted for its species, a batch
