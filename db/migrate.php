@@ -41,6 +41,12 @@ try {
         $pdo->exec($animalsSchema);
     }
 
+    // Inventory: allow fractional quantities (idempotent)
+    $invNum = file_get_contents(__DIR__ . '/inventory_numeric.sql');
+    if ($invNum !== false) {
+        $pdo->exec($invNum);
+    }
+
     // Phase 3 (B2) — one-off, idempotent backfill of blank finance categories.
     // Never overwrites a category the user has already set.
     try {

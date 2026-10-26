@@ -30,11 +30,17 @@ class InventoryController {
             $fields = ['name', 'quantity', 'unit'];
             $errors = ValidationHelper::validateRequired($fields, $data);
             if (!isset($errors['quantity'])) {
-                $e = ValidationHelper::number($data, 'quantity', ['label' => 'Quantity', 'min' => 0]);
+                $e = ValidationHelper::number($data, 'quantity', ['label' => 'Quantity', 'min' => 0, 'max' => 999999999]);
                 if ($e) $errors['quantity'] = $e;
             }
             if (empty($errors)) {
-                if ($this->model->addItem(trim($data['name']), $data['quantity'], trim($data['unit']), trim($data['category'] ?? ''))) {
+                $ok = false;
+                try {
+                    $ok = $this->model->addItem(trim($data['name']), $data['quantity'], trim($data['unit']), trim($data['category'] ?? ''));
+                } catch (Throwable $e) {
+                    error_log('Inventory add failed: ' . $e->getMessage());
+                }
+                if ($ok) {
                     SessionHelper::setFlash('success', 'Item added successfully!');
                     SessionHelper::flashCreated('Inventory', $this->model->lastId(), trim($data['name']), ['Quantity' => $data['quantity'] . ' ' . $data['unit']]);
                     header('Location: /index.php?module=Inventory&action=index');
