@@ -8,6 +8,38 @@ ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 require_once __DIR__ . '/../config/database.php';
 
+// Hostile-input guard: only known fields may be arrays (e.g. animal_ids[]); any other
+// array value is blanked so controllers never receive an array where text is expected.
+foreach (['_POST' => $_POST, '_GET' => $_GET] as $__k => $__v) {
+    foreach ($__v as $__name => $__val) {
+        if (is_array($__val) && !in_array($__name, ['animal_ids'], true)) {
+            if ($__k === '_POST') { $_POST[$__name] = ''; } else { $_GET[$__name] = ''; }
+        }
+    }
+}
+
+// Last-resort handler: bad data (too long, out of range, missing parent record) becomes a
+// friendly message on the page the user came from, never a blank 500.
+set_exception_handler(function ($e) {
+    error_log('FFMS unhandled: ' . get_class($e) . ': ' . $e->getMessage());
+    $state = ($e instanceof PDOException) ? substr((string) $e->getCode(), 0, 2) : '';
+    $userData = in_array($state, ['22', '23'], true) || $e instanceof TypeError || $e instanceof ValueError;
+    $msg = $userData
+        ? 'That could not be saved. Check the values (length, numbers, and that linked records exist) and try again.'
+        : 'Something went wrong on our side. Please try again.';
+    if (!headers_sent() && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+        $_SESSION['flash']['error'] = $msg;
+        $ref = parse_url($_SERVER['HTTP_REFERER'] ?? '', PHP_URL_QUERY);
+        $host = parse_url($_SERVER['HTTP_REFERER'] ?? '', PHP_URL_HOST);
+        $sameHost = ($host === null) || ($host === preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
+        $back = ($ref && $sameHost) ? 'index.php?' . $ref : 'index.php?module=Dashboard';
+        header('Location: ' . $back);
+        exit;
+    }
+    if (!headers_sent()) { http_response_code($userData ? 422 : 500); }
+    echo '<!doctype html><meta charset="utf-8"><title>Error</title><p style="font-family:sans-serif;margin:2rem">' . htmlspecialchars($msg) . ' <a href="index.php?module=Dashboard">Back to dashboard</a></p>';
+});
+
 // Run migrations + seeding automatically
 require_once __DIR__ . '/../db/migrate.php';
 

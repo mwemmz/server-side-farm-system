@@ -37,7 +37,7 @@ $records = $data['records'] ?? ($data ?? []);
             <?php foreach ($records as $record): ?>
                 <li class="bg-white/50 border border-white/60 rounded-xl px-3.5 sm:px-4 py-3 text-sm text-slate-700 shadow-sm">
                     <div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-                        <span><?php echo htmlspecialchars($record['name']); ?>: <?php echo htmlspecialchars($record['current_stock']); ?> / <?php echo htmlspecialchars($record['capacity']); ?> <?php echo htmlspecialchars($record['unit'] ?? 'kg'); ?></span>
+                        <span><?php echo htmlspecialchars($record['name']); ?>: <?php echo htmlspecialchars(strpos((string) $record['current_stock'], '.') !== false ? rtrim(rtrim((string) $record['current_stock'], '0'), '.') : $record['current_stock']); ?> / <?php echo htmlspecialchars(strpos((string) $record['capacity'], '.') !== false ? rtrim(rtrim((string) $record['capacity'], '0'), '.') : $record['capacity']); ?> <?php echo htmlspecialchars($record['unit'] ?? 'kg'); ?></span>
                         <details class="text-xs">
                             <summary class="cursor-pointer font-semibold text-green-700 hover:text-green-800 select-none">Edit</summary>
                             <form method="POST" action="/index.php?module=Storage&action=edit" class="mt-2 grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
@@ -58,7 +58,7 @@ $records = $data['records'] ?? ($data ?? []);
                                 </label>
                                 <label class="block">
                                     <span class="block text-[11px] font-semibold text-slate-500 mb-1">Capacity</span>
-                                    <input type="number" step="0.01" min="0" name="capacity" value="<?php echo htmlspecialchars($record['capacity']); ?>" class="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm" required>
+                                    <input type="number" step="0.01" min="0" name="capacity" value="<?php echo htmlspecialchars(strpos((string) $record['capacity'], '.') !== false ? rtrim(rtrim((string) $record['capacity'], '0'), '.') : $record['capacity']); ?>" class="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm" required>
                                 </label>
                                 <label class="block">
                                     <span class="block text-[11px] font-semibold text-slate-500 mb-1">Unit</span>

@@ -228,6 +228,10 @@
             <div class="relative z-10">
                 <?php
                 require_once __DIR__ . '/../../src/Helpers/SessionHelper.php';
+                $errFlash = SessionHelper::getFlash('error');
+                if ($errFlash): ?>
+                    <div class="glass-card bg-red-50/80 p-4 mb-6 text-red-800 flex items-center gap-3" role="alert"><span><?php echo htmlspecialchars((string) $errFlash); ?></span></div>
+                <?php endif;
                 $success = SessionHelper::getFlash('success');
                 if ($success): ?>
                     <div class="glass-card card-glow bg-emerald-50/80 p-4 mb-6 text-emerald-800 flex items-center gap-3" role="alert">
