@@ -76,7 +76,11 @@
             // under the Insights predictive-analytics view; Users / Audit Log
             // live under the Security module) and whether it's active.
             $currentAction = $_GET['action'] ?? 'index';
+            require_once __DIR__ . '/../../src/Helpers/RoleHelper.php';
             if (($_SESSION['role'] ?? '') !== 'admin') unset($modules['Users']);
+            foreach (array_keys($modules) as $__m) {
+                if (!RoleHelper::canSee($_SESSION['role'] ?? 'worker', $__m)) unset($modules[$__m]);
+            }
             $specialHref = [
                 'Market Analysis' => 'index.php?module=Insights&amp;view=market',
                 'Users'           => 'index.php?module=Security&amp;action=users',

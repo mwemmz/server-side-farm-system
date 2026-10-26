@@ -3,6 +3,10 @@ require_once __DIR__ . '/../../src/Modules/Analytics/AnalyticsModel.php';
 require_once __DIR__ . '/../../src/Services/WeatherService.php';
 require_once __DIR__ . '/../../src/Intelligence/AttentionService.php';
 require_once __DIR__ . '/../../config/env.php';
+require_once __DIR__ . '/../../src/Helpers/RoleHelper.php';
+$__role = RoleHelper::normalise($_SESSION['role'] ?? 'worker');
+$__compact = ($__role === 'worker') || (($_GET['view'] ?? '') === 'today');
+$__money = RoleHelper::seesFinance($__role);
 
 $analyticsModel = new AnalyticsModel($pdo);
 $totalCost = $analyticsModel->getTotalProcurementCost() ?? 0;
@@ -61,7 +65,7 @@ function weatherIcon($code) {
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 animate-fade-in">
         <div>
-            <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900">Dashboard</h1>
+            <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900"><?php echo $__compact ? 'My day' : 'Dashboard'; ?></h1>
             <p class="text-sm text-slate-500 mt-1.5 max-w-3xl">Welcome to the Intelligent Farm Management System.</p>
         </div>
     </div>
@@ -96,8 +100,24 @@ function weatherIcon($code) {
     <div class="text-xs text-slate-400 px-1 -mt-2">Nothing needs attention right now.</div>
     <?php endif; ?>
 
+    <?php if ($__compact): ?>
+    <div class="glass-card p-4 sm:p-6 animate-fade-in">
+        <h2 class="text-lg font-bold text-slate-800 mb-3">Quick actions</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <a href="index.php?module=Livestock&amp;action=manage#vaccinate" class="text-center px-3 py-3 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 transition">Record vaccination</a>
+            <a href="index.php?module=Livestock&amp;action=manage#treatment" class="text-center px-3 py-3 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 transition">Record treatment</a>
+            <a href="index.php?module=Crop&amp;action=manage" class="text-center px-3 py-3 rounded-xl bg-amber-500 text-white text-sm font-bold hover:bg-amber-600 transition">Report a problem</a>
+            <a href="index.php?module=Inventory&amp;action=manage" class="text-center px-3 py-3 rounded-xl bg-slate-700 text-white text-sm font-bold hover:bg-slate-800 transition">Stock out</a>
+            <a href="index.php?module=Harvest&amp;action=add" class="text-center px-3 py-3 rounded-xl bg-slate-700 text-white text-sm font-bold hover:bg-slate-800 transition">Record harvest</a>
+            <a href="index.php?module=Livestock&amp;action=manage" class="text-center px-3 py-3 rounded-xl bg-white/70 border border-slate-200 text-slate-700 text-sm font-bold hover:bg-white transition">Animal register</a>
+        </div>
+    </div>
+    </div>
+    <?php return; endif; ?>
+
     <!-- KPI Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 stagger">
+        <?php if ($__money): ?>
         <div class="glass-card card-glow p-4 md:p-5 group">
             <div class="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-rose-500 to-pink-500 opacity-70 rounded-t-2xl"></div>
             <div class="flex items-start justify-between gap-2">
@@ -125,6 +145,7 @@ function weatherIcon($code) {
                 </div>
             </div>
         </div>
+        <?php endif; ?>
 
         <div class="glass-card card-glow p-4 md:p-5 group">
             <div class="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 to-blue-500 opacity-70 rounded-t-2xl"></div>

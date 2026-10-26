@@ -81,7 +81,9 @@ if ($module === 'Security' && in_array($action, ['login', 'logout'], true)) {
 
 // --- Auth gate: every other page requires a logged-in user ---
 if (!isset($_SESSION['user_id'])) {
-    header('Location: index.php?module=Security&action=login');
+    require_once __DIR__ . '/../src/Helpers/RoleHelper.php';
+    $back = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET' ? RoleHelper::safeReturn($_SERVER['REQUEST_URI'] ?? '') : null;
+    header('Location: index.php?module=Security&action=login' . ($back ? '&return_to=' . urlencode($back) : ''));
     exit;
 }
 
@@ -95,6 +97,16 @@ if (isset($_SESSION['last_activity']) && (time() - (int) $_SESSION['last_activit
     exit;
 }
 $_SESSION['last_activity'] = time();
+
+// --- Role home: a bare index.php sends each role to its own landing screen ---
+require_once __DIR__ . '/../src/Helpers/RoleHelper.php';
+if (!isset($_GET['module']) && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+    $home = RoleHelper::homeFor($_SESSION['role'] ?? 'worker');
+    if ($home !== 'index.php?module=Dashboard') {
+        header('Location: ' . $home);
+        exit;
+    }
+}
 
 // --- Role-Based Access Control (RBAC) ---
 $role = $_SESSION['role'] ?? 'worker';
@@ -471,7 +483,7 @@ if (in_array($module, $panelModules, true)) {
     }
 
     // Module landing (tap) -> panel view, unless an explicit CRUD action is requested.
-    $isCrudAction = in_array($action, ['add', 'edit', 'delete', 'manage'], true)
+    $isCrudAction = in_array($action, ['add', 'edit', 'delete', 'manage', 'profile', 'nextTag'], true)
         || ($_SERVER['REQUEST_METHOD'] === 'POST');
     $panelView = __DIR__ . "/views/" . strtolower($module) . "_panel.php";
 

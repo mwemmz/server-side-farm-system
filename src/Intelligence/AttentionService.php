@@ -21,10 +21,12 @@
 class AttentionService {
     private $pdo;
     private $isManager;
+    private $seesFinance;
 
     public function __construct($pdo, $role = 'worker') {
         $this->pdo = $pdo;
         $this->isManager = in_array($role, ['admin', 'manager', 'superadmin'], true);
+        $this->seesFinance = in_array($role, ['admin', 'accountant', 'superadmin'], true);
     }
 
     /** All attention items, most urgent first. */
@@ -37,9 +39,11 @@ class AttentionService {
         $this->push($items, $this->lowStock());
         $this->push($items, $this->equipmentService());
         $this->push($items, $this->harvestsDue());
-        if ($this->isManager) {
+        if ($this->seesFinance) {
             $this->push($items, $this->unpaidFinance());
             $this->push($items, $this->loansDue());
+        }
+        if ($this->isManager) {
             $this->push($items, $this->pendingLeave());
         }
         $rank = ['red' => 0, 'amber' => 1, 'slate' => 2];
@@ -91,7 +95,7 @@ class AttentionService {
         $rows = $this->rows(
             "SELECT v.next_due_date, v.vaccine_name, l.type, l.tag_no
              FROM vaccinations v
-             JOIN livestock l ON l.id = v.livestock_id
+             JOIN livestock l ON l.id = v.livestock_id AND COALESCE(l.status,'active') = 'active'
              WHERE v.next_due_date IS NOT NULL AND v.next_due_date < CURRENT_DATE
              ORDER BY v.next_due_date ASC LIMIT 50"
         );
@@ -110,7 +114,7 @@ class AttentionService {
         $rows = $this->rows(
             "SELECT v.next_due_date, v.vaccine_name, l.type, l.tag_no
              FROM vaccinations v
-             JOIN livestock l ON l.id = v.livestock_id
+             JOIN livestock l ON l.id = v.livestock_id AND COALESCE(l.status,'active') = 'active'
              WHERE v.next_due_date IS NOT NULL
                AND v.next_due_date >= CURRENT_DATE AND v.next_due_date <= CURRENT_DATE + INTERVAL '14 days'
              ORDER BY v.next_due_date ASC LIMIT 50"
@@ -142,7 +146,7 @@ class AttentionService {
         $rows = $this->rows(
             "SELECT a.withdrawal_ends, a.treatment_name, l.type, l.tag_no
              FROM animal_treatments a
-             JOIN livestock l ON l.id = a.livestock_id
+             JOIN livestock l ON l.id = a.livestock_id AND COALESCE(l.status,'active') = 'active'
              WHERE a.withdrawal_ends IS NOT NULL AND a.withdrawal_ends >= CURRENT_DATE
              ORDER BY a.withdrawal_ends ASC LIMIT 50"
         );

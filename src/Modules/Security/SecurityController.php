@@ -24,11 +24,13 @@ class SecurityController {
                 $_SESSION['role'] = $user['role'];
                 $_SESSION['last_activity'] = time();
                 $this->model->logEvent((int) $user['id'], 'login_success');
-                header('Location: index.php?module=Dashboard');
+                require_once __DIR__ . '/../../Helpers/RoleHelper.php';
+                $dest = RoleHelper::safeReturn($_POST['return_to'] ?? '') ?? RoleHelper::homeFor($user['role']);
+                header('Location: ' . $dest);
                 exit;
             }
             $this->model->logEvent($user['id'] ?? null, 'login_failed' . ($username !== '' ? ' (' . $username . ')' : ''));
-            return ['error' => 'Invalid username or password'];
+            return ['error' => 'Invalid username or password', 'return_to' => $_POST['return_to'] ?? ''];
         }
         return [];
     }

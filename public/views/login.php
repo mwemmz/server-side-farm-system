@@ -71,6 +71,7 @@
 
         <form method="POST" action="index.php?module=Security&action=login" class="space-y-4">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
+            <input type="hidden" name="return_to" value="<?php echo htmlspecialchars((string) ($_GET['return_to'] ?? ($loginData['return_to'] ?? ''))); ?>">
             <div>
                 <label for="username" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Username</label>
                 <input id="username" name="username" type="text" required autofocus placeholder="admin"
