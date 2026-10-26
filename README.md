@@ -66,6 +66,12 @@ dropdown rendering, storage units + harvest-to-storage, vaccine/species rules,
 equipment service reminders, a full page sweep for HTTP 200 with no PHP warning
 output, and an optional PHP log scan (set `PHP_LOG=/path/to/server.log`).
 
+## Manual test — animal tags and roles
+1. Add an animal with the Tag box empty: it gets `COW-00N` (species prefix + next number on that farm). Add one with your own ear tag (e.g. `KE-4471`); adding the same tag again on the same farm is refused.
+2. Open the Animal Register, filter by species/status, click a tag to open the animal profile, press Edit and mark one animal Sold/Dead — it disappears from the vaccination, batch, treatment and problem pickers but keeps its history.
+3. Record a vaccination by typing part of a tag, breed or name in the Animal box.
+4. Log in as each role: admin and manager land on the Dashboard (manager sees no finance totals), accountant lands on Finance, worker lands on "My day" (attention card + quick actions, no money or HR).
+
 ## Manual test (6 flows)
 
 1. **Stock in/out & reorder.** Inventory → add an item with a `min_level`;

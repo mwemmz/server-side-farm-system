@@ -21,7 +21,7 @@ class LivestockController {
         return [
             'animals'       => $animals,
             'vaccinations'  => $this->model->getVaccinations(),
-            'vaccAnimals'   => $animals,
+            'vaccAnimals'   => $this->model->getActiveAnimals(),
             'pests'         => $this->pestModel->getLivestockPests(),
             'vaccineCatalog'=> $this->model->getVaccineCatalog(),
             'treatments'    => $this->model->getTreatments(),
@@ -33,34 +33,128 @@ class LivestockController {
 
     public function index() { return $this->viewData(); }
 
+    /** Shared validation for add + edit. Returns [errors, clean]. */
+    private function validateAnimal(array $data, $exceptId = 0, $isEdit = false) {
+        // Array-valued fields (name[]=x) are never valid: treat them as empty.
+        $bad = [];
+        foreach ($data as $k => $v) { if (is_array($v)) { $data[$k] = ''; $bad[] = $k; } }
+        $errors = ValidationHelper::validateRequired(['farm_id', 'type', 'breed', 'dob'], $data);
+        $farmId = null;
+        if (!isset($errors['farm_id'])) {
+            $farmId = ValidationHelper::id($data['farm_id']);
+            $e = $farmId === null ? 'Please choose a valid farm.' : ValidationHelper::exists($this->pdo, 'farms', $farmId, 'farm');
+            if ($e) $errors['farm_id'] = $e;
+        }
+        foreach (['type' => 'Type', 'breed' => 'Breed'] as $k => $lab) {
+            if (isset($data[$k]) && is_array($data[$k])) $errors[$k] = $lab . ' is invalid.';
+        }
+        if (!isset($errors['dob']) && (is_array($data['dob']) || !ValidationHelper::dateNotFuture($data['dob'] ?? ''))) {
+            $errors['dob'] = "Date of birth cannot be in the future.";
+        }
+        $tag = is_array($data['tag_no'] ?? '') ? "\0" : trim((string) ($data['tag_no'] ?? ''));
+        if ($tag !== '' && !LivestockModel::tagValid($tag)) {
+            $errors['tag_no'] = 'Tag may use letters, digits, dashes and spaces only (max 30 characters).';
+        } elseif ($tag !== '' && $farmId !== null && $this->model->tagTaken($farmId, $tag, $exceptId)) {
+            $errors['tag_no'] = 'Tag ' . $tag . ' is already used on this farm.';
+        } elseif ($isEdit && $tag === '') {
+            $errors['tag_no'] = 'An animal must keep a tag number.';
+        }
+        $name = is_array($data['name'] ?? '') ? "\0" : trim((string) ($data['name'] ?? ''));
+        if ($name !== '' && (strlen($name) > 80 || preg_match('/[\x00-\x1f<>]/', $name))) $errors['name'] = 'Name is too long or has invalid characters (max 80).';
+        $sex = is_array($data['sex'] ?? '') ? 'x' : strtolower(trim((string) ($data['sex'] ?? '')));
+        if ($sex !== '' && !in_array($sex, ['male', 'female'], true)) $errors['sex'] = 'Choose male or female.';
+        $status = strtolower(trim((string) ($data['status'] ?? 'active'))) ?: 'active';
+        if (!in_array($status, ['active', 'sold', 'dead', 'culled'], true)) $errors['status'] = 'Choose a valid status.';
+        $notes = is_array($data['notes'] ?? '') ? '' : trim((string) ($data['notes'] ?? ''));
+        if (strlen($notes) > 2000) $errors['notes'] = 'Notes are too long (max 2000).';
+        foreach ($bad as $k) { if (in_array($k, ['tag_no', 'name', 'sex', 'status', 'notes', 'farm_id', 'type', 'breed', 'dob'], true)) $errors[$k] = 'Invalid value submitted.'; }
+        return [$errors, [
+            'farm_id' => $farmId, 'type' => is_array($data['type'] ?? '') ? '' : trim((string) ($data['type'] ?? '')),
+            'breed' => is_array($data['breed'] ?? '') ? '' : trim((string) ($data['breed'] ?? '')), 'dob' => is_array($data['dob'] ?? '') ? '' : trim((string) ($data['dob'] ?? '')),
+            'tag_no' => $tag, 'name' => $name, 'sex' => $sex, 'status' => $status, 'notes' => $notes,
+        ]];
+    }
+
     public function add() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = $_POST;
-            $fields = ['farm_id', 'type', 'breed', 'dob'];
-            $errors = ValidationHelper::validateRequired($fields, $data);
-            if (!isset($errors['farm_id'])) {
-                $e = ValidationHelper::exists($this->pdo, 'farms', $data['farm_id'], 'farm');
-                if ($e) $errors['farm_id'] = $e;
-            }
-            if (!isset($errors['dob']) && !ValidationHelper::dateNotFuture($data['dob'] ?? '')) {
-                $errors['dob'] = "Date of birth cannot be in the future.";
-            }
+            list($errors, $c) = $this->validateAnimal($data);
             if (empty($errors)) {
                 try {
-                    if ($this->model->createAnimal((int) $data['farm_id'], trim($data['type']), trim($data['breed']), trim($data['dob']))) {
+                    if ($this->model->createAnimal($c['farm_id'], $c['type'], $c['breed'], $c['dob'], $c['tag_no'], $c['name'], $c['sex'], $c['notes'])) {
                         SessionHelper::setFlash('success', 'Animal added successfully!');
-                        SessionHelper::flashCreated('Livestock', $this->model->lastId(), trim($data['type']) . ' ' . trim($data['breed']), ['Type' => trim($data['type']), 'Breed' => trim($data['breed'])]);
+                        SessionHelper::flashCreated('Livestock', $this->model->lastId(), $c['type'] . ' ' . $c['breed'], ['Tag' => $this->model->lastTag, 'Type' => $c['type'], 'Breed' => $c['breed']]);
                         header('Location: index.php?module=Livestock&action=manage');
                         exit;
                     }
                     $errors['general'] = "Failed to add animal.";
                 } catch (PDOException $e) {
-                    $errors['general'] = "Could not save animal: the selected farm may no longer exist.";
+                    error_log('Livestock add failed: ' . $e->getMessage());
+                    if ($e->getCode() === '23505') {
+                        $errors['tag_no'] = 'That tag is already used on this farm. Leave it empty to auto-generate one.';
+                    } else {
+                        $errors['general'] = "Could not save animal: the selected farm may no longer exist.";
+                    }
                 }
             }
             return array_merge(['errors' => $errors, 'data' => $data], $this->viewData());
         }
         return $this->viewData();
+    }
+
+    /** Edit an animal (GET shows the form, POST saves). */
+    public function edit() {
+        $id = ValidationHelper::id($_GET['id'] ?? ($_POST['id'] ?? ''));
+        $animal = $id !== null ? $this->model->getAnimal($id) : null;
+        if (!$animal) {
+            return array_merge(['mode' => 'edit', 'notFound' => true], $this->viewData());
+        }
+        $errors = [];
+        $data = $animal;
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data = array_merge($animal, $_POST);
+            list($errors, $c) = $this->validateAnimal($_POST, $id, true);
+            if (empty($errors)) {
+                try {
+                    $this->model->updateAnimal($id, $c);
+                    SessionHelper::setFlash('success', 'Animal updated.');
+                    SessionHelper::flashCreated('Livestock', $id, $c['tag_no'] . ' ' . $c['breed'], ['Tag' => $c['tag_no'], 'Status' => ucfirst($c['status'])]);
+                    header('Location: index.php?module=Livestock&action=profile&id=' . $id);
+                    exit;
+                } catch (PDOException $e) {
+                    error_log('Livestock edit failed: ' . $e->getMessage());
+                    $errors['general'] = $e->getCode() === '23505' ? 'That tag is already used on this farm.' : 'Could not save the animal.';
+                }
+            }
+        }
+        return array_merge(['mode' => 'edit', 'animal' => $animal, 'errors' => $errors, 'data' => $data], $this->viewData());
+    }
+
+    /** Animal profile: details + vaccinations, treatments and health incidents. */
+    public function profile() {
+        $id = ValidationHelper::id($_GET['id'] ?? '');
+        $animal = $id !== null ? $this->model->getAnimal($id) : null;
+        if (!$animal) {
+            return array_merge(['mode' => 'profile', 'notFound' => true], $this->viewData());
+        }
+        $same = function ($r) use ($id) { return (int) ($r['livestock_id'] ?? 0) === $id; };
+        $v = $this->viewData();
+        return array_merge($v, [
+            'mode' => 'profile', 'animal' => $animal,
+            'pVacc' => array_values(array_filter($v['vaccinations'], $same)),
+            'pTreat' => array_values(array_filter($v['treatments'], $same)),
+            'pIncidents' => array_values(array_filter($v['pests'], $same)),
+        ]);
+    }
+
+    /** JSON: the tag the next animal of this type on this farm would get. */
+    public function nextTag() {
+        header('Content-Type: application/json; charset=UTF-8');
+        $farm = ValidationHelper::id($_GET['farm_id'] ?? '');
+        $type = is_array($_GET['type'] ?? '') ? '' : trim((string) ($_GET['type'] ?? ''));
+        if ($type === '') { echo json_encode(['success' => true, 'tag' => '']); exit; }
+        echo json_encode(['success' => true, 'tag' => $this->model->nextTag($farm ?? 0, $type)]);
+        exit;
     }
 
     public function vaccinate() {

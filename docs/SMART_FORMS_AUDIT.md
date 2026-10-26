@@ -198,6 +198,15 @@ page for PHP warning output.
    regression page sweep now checks bodies for `Undefined array key/variable`, `Fatal error`
    and `Deprecated:` and scans `$PHP_LOG` for the same.
 
+## Animal tags and role landing
+
+- `livestock` gains `name`, `sex`, `status`, `notes`; `tag_no` is now generated (`COW-001`, `GOAT-001`, `CHK-001`…, numbered per farm and species under an advisory lock) or typed by the user; unique per farm, case-insensitive; existing animals are back-filled idempotently (`db/animals_schema.sql`).
+- New Livestock actions: `edit`, `profile` (history page) and `nextTag` (JSON); all ids pass `ValidationHelper::id`; array-valued fields are rejected, never 500.
+- Every animal picker/list shows `TAG · Breed · Name`; the old "#7 — Cattle Brahman" labels are gone; sold/dead/culled animals leave the pickers and attention counts.
+- `RoleHelper` decides the landing screen (admin/manager → Dashboard, accountant → Finance, worker → "My day"), the sidebar items per role, and which `return_to` targets are safe. Finance and leave rows in "Needs attention" are role-filtered; manager no longer sees finance totals.
+- Also fixed: reorder-rule API bound PHP booleans (HTTP 500 when `auto_create_po` was missing); `FormHelper` no longer fatals on array-valued field values.
+- Known deferred: server-side access checks are unchanged (menus hide what a role cannot use, but only Finance, Labour and Users/Audit are blocked server-side); `tests/regression.sh` Fix1/3/4 still scrape the first `data-value` on long dropdown lines and fail on a fresh DB.
+
 > Rotation reminder: the repo history predates the credential hygiene rule — any real DB/SMTP
 > credentials previously committed should be rotated, and every vaccine interval and health
 > issue stays `needs_review = TRUE` until a veterinarian confirms it.

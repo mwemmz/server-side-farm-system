@@ -359,9 +359,9 @@ check "Fix5 create goat -> 302" "$S" "302"
 S="$(status -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data-urlencode "farm_id=$FARM_ID" --data-urlencode "type=Poultry" --data-urlencode "breed=QPoultry$RAND5" --data-urlencode "dob=2020-01-01" "$BASE/index.php?module=Livestock&action=add")"
 check "Fix5 create poultry -> 302" "$S" "302"
 LX="$(curl -s -b "$JAR" "$BASE/index.php?module=Livestock&action=manage")"
-CID="$(printf '%s' "$LX" | grep -o "#[0-9]* — Cattle QCattle$RAND5" | head -1 | grep -o '[0-9]*')"
-GID="$(printf '%s' "$LX" | grep -o "#[0-9]* — Goats QGoat$RAND5" | head -1 | grep -o '[0-9]*')"
-PID="$(printf '%s' "$LX" | grep -o "#[0-9]* — Poultry QPoultry$RAND5" | head -1 | grep -o '[0-9]*')"
+CID="$(printf '%s' "$LX" | grep -o "QCattle$RAND5[^>]*data-value='[0-9]*'" | head -1 | grep -o "data-value='[0-9]*'" | grep -o '[0-9]*')"
+GID="$(printf '%s' "$LX" | grep -o "QGoat$RAND5[^>]*data-value='[0-9]*'" | head -1 | grep -o "data-value='[0-9]*'" | grep -o '[0-9]*')"
+PID="$(printf '%s' "$LX" | grep -o "QPoultry$RAND5[^>]*data-value='[0-9]*'" | head -1 | grep -o "data-value='[0-9]*'" | grep -o '[0-9]*')"
 [ -n "$CID" ] && ok "Fix5 cattle id found" || bad "Fix5 cattle id missing"
 [ -n "$GID" ] && ok "Fix5 goat id found" || bad "Fix5 goat id missing"
 [ -n "$PID" ] && ok "Fix5 poultry id found" || bad "Fix5 poultry id missing"
@@ -503,6 +503,60 @@ for url in \
   notcontains "$B" "Undefined variable" "Landing $url: no 'Undefined variable'"
   notcontains "$B" "Fatal error" "Landing $url: no Fatal error"
 done
+
+# ---------------------------------------------------------------------------
+# 5b. Animal tags + role landing screens
+# ---------------------------------------------------------------------------
+echo "-- Animal tags --"
+TOKA="$(curl -s -b "$JAR" "$BASE/index.php?module=Dashboard" | grep -oE 'csrf-token" content="[a-f0-9]+' | sed 's/.*content="//')"
+FARM_T="$(curl -s -b "$JAR" "$BASE/index.php?module=Livestock&action=manage" | grep -oE "data-value='[0-9]+'" | head -1 | grep -o '[0-9]*')"
+add_animal() { curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST "$BASE/index.php?module=Livestock&action=add" --data-urlencode "csrf_token=$TOKA" -d "farm_id=$FARM_T&type=Cattle&breed=Boran&dob=2024-01-01" "$@"; }
+reg() { curl -s -b "$JAR" "$BASE/index.php?module=Livestock&action=manage"; }
+check "animal add without tag -> redirect" "$(add_animal)" "302"
+check "animal add with manual tag UAT-4471 -> redirect" "$(add_animal -d tag_no=UAT-4471 -d name=Bella)" "302"
+R="$(reg)"
+contains "$R" "UAT-4471" "register shows the manual tag"
+contains "$R" "COW-" "register shows an auto-generated COW- tag"
+check "duplicate tag (case-insensitive) rejected" "$(add_animal -d tag_no=uat-4471)" "200"
+check "tag with markup rejected" "$(add_animal --data-urlencode 'tag_no=bad<script>')" "200"
+check "array tag rejected, not 500" "$(add_animal -d 'tag_no[]=x')" "200"
+check "array name/sex rejected, not 500" "$(add_animal -d 'name[]=x' -d 'sex[]=y')" "200"
+notcontains "$R" "#1 —" "no '#N —' animal labels"
+notcontains "$R" ">Array<" "no 'Array' option text on Livestock page"
+check "nextTag JSON ok" "$(status -b "$JAR" "$BASE/index.php?module=Livestock&action=nextTag&farm_id=$FARM_T&type=Cattle")" "200"
+for bad_id in 0 -1 abc 1e3 99999 9223372036854775807 'id[]=1'; do
+  for act in edit profile; do
+    c="$(status -b "$JAR" "$BASE/index.php?module=Livestock&action=$act&id=$bad_id")"
+    if [ "$c" = "500" ]; then bad "animal $act id=$bad_id returned 500"; else ok "animal $act id=$bad_id -> $c (not 500)"; fi
+  done
+done
+
+echo "-- Role landing --"
+role_login() { # $1 jar $2 user $3 pass -> prints redirect target
+  rm -f "$1"
+  T="$(curl -s -c "$1" -b "$1" "$BASE/index.php?module=Security&action=login" | grep -oE 'name="csrf_token" value="[a-f0-9]+' | head -1 | sed 's/.*value="//')"
+  curl -s -c "$1" -b "$1" -o /dev/null -w '%{redirect_url}' -d "username=$2&password=$3&csrf_token=$T" ${4:+--data-urlencode "return_to=$4"} "$BASE/index.php?module=Security&action=login" | sed "s#^$BASE/##"
+}
+for r in manager accountant worker; do
+  curl -s -o /dev/null -b "$JAR" -c "$JAR" -X POST "$BASE/index.php?module=Security&action=users" --data-urlencode "csrf_token=$TOKA" -d "username=rl_$r&email=rl_$r@example.com&password=abc12345&role=$r"
+done
+J2="$(mktemp)"
+check "admin lands on Dashboard"       "$(role_login "$J2" admin "$USER_PASS")" "index.php?module=Dashboard"
+check "manager lands on Dashboard"     "$(role_login "$J2" rl_manager abc12345)" "index.php?module=Dashboard"
+check "accountant lands on Finance"    "$(role_login "$J2" rl_accountant abc12345)" "index.php?module=Finance"
+check "worker lands on My day"         "$(role_login "$J2" rl_worker abc12345)" "index.php?module=Dashboard&view=today"
+check "bare index.php sends worker home" "$(curl -s -o /dev/null -b "$J2" -w '%{redirect_url}' "$BASE/index.php" | sed "s#^$BASE/##")" "index.php?module=Dashboard&view=today"
+W="$(curl -s -b "$J2" "$BASE/index.php?module=Dashboard")"
+for w in "Total Costs" "Total Sales" "module=Finance" "module=Labour" "action=users"; do notcontains "$W" "$w" "worker dashboard hides: $w"; done
+contains "$W" "My day" "worker dashboard is the My day view"
+role_login "$J2" rl_manager abc12345 >/dev/null
+M="$(curl -s -b "$J2" "$BASE/index.php?module=Dashboard")"
+notcontains "$M" "Total Costs" "manager dashboard hides finance totals"
+check "worker blocked from Finance" "$(role_login "$J2" rl_worker abc12345 >/dev/null; curl -s -b "$J2" "$BASE/index.php?module=Finance" | grep -c 'Access Denied')" "1"
+check "return_to https://evil ignored" "$(role_login "$J2" "$USER_NAME" "$USER_PASS" 'https://evil.example')" "index.php?module=Dashboard"
+check "return_to //evil ignored"       "$(role_login "$J2" "$USER_NAME" "$USER_PASS" '//evil.example')" "index.php?module=Dashboard"
+check "return_to internal page honoured" "$(role_login "$J2" "$USER_NAME" "$USER_PASS" 'index.php?module=Livestock&action=manage')" "index.php?module=Livestock&action=manage"
+rm -f "$J2"
 
 # ---------------------------------------------------------------------------
 # 6. Optional: no new PHP warnings (when PHP_LOG points at the server log)

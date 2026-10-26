@@ -35,6 +35,12 @@ try {
         $pdo->exec($phase3Schema);
     }
 
+    // Animal identification: tag numbers, names, sex, status (idempotent)
+    $animalsSchema = file_get_contents(__DIR__ . '/animals_schema.sql');
+    if ($animalsSchema !== false) {
+        $pdo->exec($animalsSchema);
+    }
+
     // Phase 3 (B2) — one-off, idempotent backfill of blank finance categories.
     // Never overwrites a category the user has already set.
     try {

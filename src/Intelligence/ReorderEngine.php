@@ -73,7 +73,7 @@ class ReorderEngine {
             INSERT INTO reorder_rules (item_id, threshold_qty, reorder_qty, preferred_supplier_id, auto_create_po)
             VALUES (?, ?, ?, ?, ?) RETURNING id
         ");
-        $stmt->execute([(int) $item, $threshold, $reorder, $supplier ? (int) $supplier : null, $auto]);
+        $stmt->execute([(int) $item, $threshold, $reorder, $supplier ? (int) $supplier : null, $auto ? "t" : "f"]);
         $id = (int) $stmt->fetchColumn();
         IntelligenceUtils::auditSystem($this->pdo, 'create_reorder_rule', 'reorder_rules', $id, $data);
         api_ok(['id' => $id], 201);
@@ -93,7 +93,7 @@ class ReorderEngine {
         }
         if (array_key_exists('auto_create_po', $data)) {
             $fields[] = "auto_create_po = ?";
-            $params[] = !empty($data['auto_create_po']);
+            $params[] = !empty($data["auto_create_po"]) ? "t" : "f";
         }
         if ($fields) {
             $params[] = (int) $id;

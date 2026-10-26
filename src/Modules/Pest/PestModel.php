@@ -27,7 +27,7 @@ class PestModel extends BaseModuleModel {
     public function getLivestockPests() {
         return $this->pdo->query(
             "SELECT h.*, h.issue_name AS pest_name, h.treatment_notes AS action_taken,
-                    l.type AS animal_type, l.breed AS animal_breed, l.tag_no
+                    l.type AS animal_type, l.breed AS animal_breed, l.tag_no, l.name AS animal_name
              FROM health_incidents h
              JOIN livestock l ON l.id = h.livestock_id
              WHERE h.subject_type = 'livestock'

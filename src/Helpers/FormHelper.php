@@ -35,6 +35,7 @@ class FormHelper {
             $label = $field['label'] ?? ucfirst(str_replace('_', ' ', $name));
             $type  = $field['type'] ?? 'text';
             $value = $field['value'] ?? '';
+            if (!is_scalar($value)) $value = '';
             if ($value === '' && isset($field['default'])) $value = $field['default'];
             $required    = array_key_exists('required', $field) ? (bool) $field['required'] : true;
             $placeholder = $field['placeholder'] ?? '';
@@ -229,7 +230,14 @@ class FormHelper {
     }
 
     public static function livestockOptions($pdo) {
-        return self::recordOptions($pdo, "SELECT l.id, COALESCE(NULLIF(l.tag_no,''), l.type || ' #' || l.id), l.type, l.breed FROM livestock l ORDER BY l.id");
+        $options = [];
+        foreach ($pdo->query("SELECT id, type, breed, tag_no, name FROM livestock WHERE COALESCE(status,'active') = 'active' ORDER BY type, tag_no NULLS LAST, id")->fetchAll() as $a) {
+            $parts = [trim((string) $a['tag_no']) !== '' ? $a['tag_no'] : ucfirst((string) $a['type']) . ' #' . $a['id']];
+            if (!empty($a['breed'])) $parts[] = $a['breed'];
+            if (!empty($a['name'])) $parts[] = $a['name'];
+            $options[(string) $a['id']] = implode(' · ', $parts);
+        }
+        return $options;
     }
 
     /** LookupHelper-backed options for a category. */
