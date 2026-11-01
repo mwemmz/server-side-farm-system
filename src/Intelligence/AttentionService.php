@@ -22,16 +22,34 @@ class AttentionService {
     private $pdo;
     private $isManager;
     private $seesFinance;
+    private $role;
+    private $userId;
+    private $ttl = 300; // seconds
 
     public function __construct($pdo, $role = 'worker') {
         $this->pdo = $pdo;
-        $this->isManager = in_array($role, ['admin', 'manager', 'superadmin'], true);
-        $this->seesFinance = in_array($role, ['admin', 'accountant', 'farm-owner', 'superadmin'], true);
+        $this->role = (string) $role;
+        $this->isManager = in_array($this->role, ['admin', 'manager', 'superadmin'], true);
+        $this->seesFinance = in_array($this->role, ['admin', 'accountant', 'farm-owner', 'superadmin'], true);
+        if (session_status() === PHP_SESSION_NONE) {
+            @session_start();
+        }
+        $this->userId = (int) ($_SESSION['user_id'] ?? 0);
     }
 
-    /** All attention items, most urgent first. */
+    /** All attention items, most urgent first. Cached briefly per user to avoid
+     *  re-running ~20 queries on every dashboard/assistant request. */
     public function collect() {
+        $cache = $_SESSION['attention_cache'] ?? null;
+        if (is_array($cache)
+            && ($cache['user'] ?? 0) === $this->userId
+            && ($cache['role'] ?? '') === $this->role
+            && (time() - (int) ($cache['ts'] ?? 0)) < $this->ttl) {
+            return (array) ($cache['items'] ?? []);
+        }
+
         $items = [];
+        $this->push($items, $this->overdueVaccinations());
         $this->push($items, $this->overdueVaccinations());
         $this->push($items, $this->dueSoonVaccinations());
         $this->push($items, $this->openHealthIncidents());
@@ -62,6 +80,12 @@ class AttentionService {
         usort($items, function ($a, $b) use ($rank) {
             return ($rank[$a['severity']] ?? 9) <=> ($rank[$b['severity']] ?? 9);
         });
+        $_SESSION['attention_cache'] = [
+            'user'  => $this->userId,
+            'role'  => $this->role,
+            'ts'    => time(),
+            'items' => $items,
+        ];
         return $items;
     }
 

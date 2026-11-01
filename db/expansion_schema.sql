@@ -580,3 +580,34 @@ ALTER TABLE finance_records ADD COLUMN IF NOT EXISTS customer_id INT REFERENCES 
 CREATE INDEX IF NOT EXISTS idx_finance_crop ON finance_records (crop_id);
 CREATE INDEX IF NOT EXISTS idx_finance_equipment ON finance_records (equipment_id);
 CREATE INDEX IF NOT EXISTS idx_finance_date_type ON finance_records (date, type);
+
+-- ------------------------------------------------------------
+-- Performance indexes (idempotent)
+-- ------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_livestock_farm_id ON livestock(farm_id);
+CREATE INDEX IF NOT EXISTS idx_livestock_status ON livestock(status);
+CREATE INDEX IF NOT EXISTS idx_livestock_type ON livestock(type);
+CREATE INDEX IF NOT EXISTS idx_health_incidents_status ON health_incidents(status);
+CREATE INDEX IF NOT EXISTS idx_health_incidents_detected_date ON health_incidents(detected_date);
+CREATE INDEX IF NOT EXISTS idx_health_incidents_followup_due ON health_incidents(followup_due);
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date);
+CREATE INDEX IF NOT EXISTS idx_inventory_expiry_date ON inventory(expiry_date);
+CREATE INDEX IF NOT EXISTS idx_finance_records_date ON finance_records(date);
+CREATE INDEX IF NOT EXISTS idx_finance_records_type ON finance_records(type);
+CREATE INDEX IF NOT EXISTS idx_finance_records_crop_id ON finance_records(crop_id);
+CREATE INDEX IF NOT EXISTS idx_finance_records_livestock_id ON finance_records(livestock_id);
+CREATE INDEX IF NOT EXISTS idx_finance_records_equipment_id ON finance_records(equipment_id);
+CREATE INDEX IF NOT EXISTS idx_finance_records_field_id ON finance_records(field_id);
+CREATE INDEX IF NOT EXISTS idx_sales_records_sale_date ON sales_records(sale_date);
+CREATE INDEX IF NOT EXISTS idx_sales_records_crop_id ON sales_records(crop_id);
+CREATE INDEX IF NOT EXISTS idx_sales_records_livestock_id ON sales_records(livestock_id);
+CREATE INDEX IF NOT EXISTS idx_stored_produce_storage_end ON stored_produce(storage_end_date);
+CREATE INDEX IF NOT EXISTS idx_stored_produce_in_storage ON stored_produce(is_in_storage);
+CREATE INDEX IF NOT EXISTS idx_spray_schedules_planned_date ON spray_schedules(planned_date);
+CREATE INDEX IF NOT EXISTS idx_spray_schedules_status ON spray_schedules(status);
+CREATE INDEX IF NOT EXISTS idx_crops_status ON crops(status);
+CREATE INDEX IF NOT EXISTS idx_crops_farm_id ON crops(farm_id);
+CREATE INDEX IF NOT EXISTS idx_fields_farm_id ON fields(farm_id);
+CREATE INDEX IF NOT EXISTS idx_vaccinations_livestock_id ON vaccinations(livestock_id);
+CREATE INDEX IF NOT EXISTS idx_vaccinations_next_due ON vaccinations(next_due_date);
