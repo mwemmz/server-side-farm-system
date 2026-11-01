@@ -639,7 +639,7 @@ if ($module === 'Ops') {
     require_once __DIR__ . '/../src/Modules/Ops/OpsController.php';
     $ops = new OpsController($pdo);
     $opsView = trim((string) ($_GET['view'] ?? ''));
-    if (in_array($action, ['add', 'edit', 'delete'], true)) {
+    if (in_array($action, ['add', 'edit', 'delete', 'restore'], true)) {
         $data = $ops->$action();
         $opsFile = 'ops_records.php';
     } elseif ($opsView !== '') {

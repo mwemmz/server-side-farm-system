@@ -118,6 +118,64 @@ $statusCls = ['active' => 'bg-emerald-100 text-emerald-800', 'sold' => 'bg-sky-1
             <a href="index.php?module=Livestock&amp;action=manage" class="text-sm font-semibold px-3 py-2 text-slate-500 underline">Back to register</a>
         </div>
     </div>
+    <?php
+        // ---- Full lifecycle record: birth -> sale / death ----
+        $st = $an['status'] ?? 'active';
+    ?>
+    <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+        <div class="bg-white/50 border border-white/60 rounded-xl px-3.5 py-2.5">
+            <div class="text-[10px] font-bold uppercase text-slate-400">Birth</div>
+            <div class="font-semibold text-slate-700"><?php echo $esc($an['dob'] ?? '—'); ?></div>
+        </div>
+        <div class="bg-white/50 border border-white/60 rounded-xl px-3.5 py-2.5">
+            <div class="text-[10px] font-bold uppercase text-slate-400">Status</div>
+            <div class="font-semibold text-slate-700"><?php echo $esc(ucfirst($st)); ?></div>
+        </div>
+        <?php if (!empty($data['pSale'])): $s = $data['pSale']; ?>
+        <div class="bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 sm:col-span-2">
+            <div class="text-[10px] font-bold uppercase text-emerald-700">Sold</div>
+            <div class="font-semibold text-emerald-800">
+                <?php echo $esc($s['sale_date'] ?? '—'); ?> · K<?php echo number_format((float) ($s['amount'] ?? 0), 2); ?>
+                <?php if (!empty($s['customer_name'])): ?> to <?php echo $esc($s['customer_name']); ?><?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+        <?php if ($st === 'dead' && !empty($data['pMortality'])): $m = $data['pMortality'][0]; ?>
+        <div class="bg-slate-100 border border-slate-300 rounded-xl px-3.5 py-2.5 sm:col-span-2">
+            <div class="text-[10px] font-bold uppercase text-slate-600">Death</div>
+            <div class="font-semibold text-slate-700">
+                <?php echo $esc($m['death_date'] ?? '—'); ?>
+                <?php if (!empty($m['cause'])): ?> — <?php echo $esc($m['cause']); ?><?php endif; ?>
+                <?php if (!empty($m['diagnosis'])): ?> (<?php echo $esc($m['diagnosis']); ?>)<?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <?php
+    $lifecycleSections = [
+        'Weights' => [$data['pWeights'] ?? [], function ($r) { return [($r['weight_kg'] ?? '—') . ' kg', $r['measured_date'] ?? '—', $r['notes'] ?? '']; }],
+        'Breeding' => [$data['pBreeding'] ?? [], function ($r) { return [ucfirst($r['method'] ?? 'service'), $r['service_date'] ?? '—', 'Result: ' . ($r['result'] ?? '—') . (!empty($r['offspring_count']) ? ' · ' . $r['offspring_count'] . ' offspring' : '')]; }],
+        'Production' => [$data['pProduction'] ?? [], function ($r) { return [ucfirst($r['production_type'] ?? '—'), ($r['quantity'] ?? '—') . ' ' . ($r['unit'] ?? ''), $r['record_date'] ?? '—']; }],
+        'Feed' => [$data['pFeed'] ?? [], function ($r) { return [$r['feed_name'] ?? '—', ($r['quantity'] ?? '—') . ' ' . ($r['unit'] ?? ''), $r['feed_date'] ?? '—']; }],
+    ];
+    foreach ($lifecycleSections as $title => $sec):
+        if (empty($sec[0])) continue;
+    ?>
+    <div class="glass-card p-4 sm:p-6 mb-6 mt-4">
+        <h3 class="text-lg font-semibold mb-3"><?php echo $esc($title); ?> (<?php echo count($sec[0]); ?>)</h3>
+        <ul class="space-y-2">
+            <?php foreach ($sec[0] as $r): $c = $sec[1]($r); ?>
+            <li class="bg-white/50 border border-white/60 rounded-xl px-4 py-2.5 text-sm flex flex-wrap gap-x-3">
+                <span class="font-semibold"><?php echo $esc($c[0]); ?></span>
+                <span class="text-slate-500"><?php echo $esc($c[1]); ?></span>
+                <span class="text-slate-400 text-xs"><?php echo $esc($c[2]); ?></span>
+            </li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+    <?php endforeach; ?>
+
     <?php foreach ([
         'Vaccinations' => [$data['pVacc'] ?? [], function ($r) { return [$r['vaccine_name'], $r['vaccination_date'], 'Next due: ' . ($r['next_due_date'] ?: '—')]; }],
         'Treatments' => [$data['pTreat'] ?? [], function ($r) { return [$r['treatment_name'], $r['treatment_date'], !empty($r['withdrawal_ends']) ? 'Withdrawal ends ' . $r['withdrawal_ends'] : '—']; }],

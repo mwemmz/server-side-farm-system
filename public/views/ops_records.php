@@ -110,6 +110,16 @@ $opsAction = $opsEditId
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
                 Add <?php echo htmlspecialchars((string) ($opsDef['label'] ?? 'record')); ?>
             </a>
+            <?php if (!empty($data['undo_available'])): ?>
+            <form method="post" action="index.php?module=Ops&amp;view=<?php echo urlencode($opsKey); ?>&amp;action=restore" class="inline"
+                  onsubmit="return confirm('Restore the last deleted record?');">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
+                <input type="hidden" name="view" value="<?php echo htmlspecialchars($opsKey); ?>">
+                <button type="submit" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-bold shadow-lg hover:opacity-90 transition">
+                    Undo last delete
+                </button>
+            </form>
+            <?php endif; ?>
             <span class="text-xs text-slate-500"><?php echo count($opsRecords); ?> recent record<?php echo count($opsRecords) === 1 ? '' : 's'; ?></span>
         </div>
     <?php endif; ?>
@@ -146,7 +156,7 @@ $opsAction = $opsEditId
                                         <a href="index.php?module=Ops&amp;view=<?php echo urlencode($opsKey); ?>&amp;action=edit&amp;id=<?php echo (int) $row['id']; ?>"
                                            class="text-[11px] font-bold text-emerald-700 hover:text-emerald-800">Edit</a>
                                         <form method="post" action="index.php?module=Ops&amp;view=<?php echo urlencode($opsKey); ?>&amp;action=delete" class="inline"
-                                              onsubmit="return confirm('Delete this record? This cannot be undone.');">
+                                              onsubmit="return confirm('Delete this record? You can undo within 5 minutes.');">
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
                                             <input type="hidden" name="view" value="<?php echo htmlspecialchars($opsKey); ?>">
                                             <input type="hidden" name="id" value="<?php echo (int) $row['id']; ?>">

@@ -139,12 +139,39 @@ class LivestockController {
         }
         $same = function ($r) use ($id) { return (int) ($r['livestock_id'] ?? 0) === $id; };
         $v = $this->viewData();
+
+        // Full lifecycle records for this animal (birth -> sale/death).
+        $weights = $this->safeRows("SELECT weight_kg, measured_date, notes FROM animal_weights WHERE livestock_id = ? ORDER BY measured_date DESC, id DESC", [$id]);
+        $breeding = $this->safeRows("SELECT service_date, method, pregnancy_check_date, result, expected_birth_date, actual_birth_date, offspring_count, notes FROM breeding_records WHERE livestock_id = ? ORDER BY service_date DESC, id DESC", [$id]);
+        $production = $this->safeRows("SELECT production_type, quantity, unit, record_date, quality FROM production_records WHERE livestock_id = ? ORDER BY record_date DESC, id DESC", [$id]);
+        $feed = $this->safeRows("SELECT feed_date, feed_name, quantity, unit, cost FROM feed_records WHERE livestock_id = ? ORDER BY feed_date DESC, id DESC", [$id]);
+        $mortality = $this->safeRows("SELECT death_date, cause, diagnosis, notes FROM mortality_records WHERE livestock_id = ? ORDER BY death_date DESC, id DESC", [$id]);
+        $sale = $this->safeRows("SELECT id, customer_name, amount, sale_date FROM sales_records WHERE livestock_id = ? ORDER BY sale_date DESC, id DESC LIMIT 1", [$id]);
+
         return array_merge($v, [
             'mode' => 'profile', 'animal' => $animal,
             'pVacc' => array_values(array_filter($v['vaccinations'], $same)),
             'pTreat' => array_values(array_filter($v['treatments'], $same)),
             'pIncidents' => array_values(array_filter($v['pests'], $same)),
+            'pWeights' => $weights,
+            'pBreeding' => $breeding,
+            'pProduction' => $production,
+            'pFeed' => $feed,
+            'pMortality' => $mortality,
+            'pSale' => $sale ? $sale[0] : null,
         ]);
+    }
+
+    /** Defensive query helper for the profile page. */
+    private function safeRows($sql, $params) {
+        try {
+            $st = $this->pdo->prepare($sql);
+            $st->execute($params);
+            return $st->fetchAll() ?: [];
+        } catch (\Throwable $e) {
+            error_log('Livestock profile query failed: ' . $e->getMessage());
+            return [];
+        }
     }
 
     /** JSON: the tag the next animal of this type on this farm would get. */

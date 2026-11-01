@@ -102,7 +102,14 @@ class OpsController
             $formData = $row;
         }
 
-        return $this->viewData($key, $def, $mode, [], $formData, $editId);
+        $undoAvailable = false;
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $undo = $_SESSION['ops_undo'] ?? null;
+        if (is_array($undo) && ($undo['key'] ?? '') === $key && (time() - (int) ($undo['ts'] ?? 0)) <= 300) {
+            $undoAvailable = true;
+        }
+
+        return $this->viewData($key, $def, $mode, [], $formData, $editId) + ['undo_available' => $undoAvailable];
     }
 
     // ------------------------------------------------------------------
@@ -160,10 +167,61 @@ class OpsController
             ], $this->userId());
             $this->pdo->commit();
             SessionHelper::setFlash('success', $def['label'] . ' record deleted.');
+
+            // Stash the deleted row so the user can undo within 5 minutes.
+            if (session_status() === PHP_SESSION_NONE) session_start();
+            $_SESSION['ops_undo'] = [
+                'key' => $key,
+                'row' => $row,
+                'ts'  => time(),
+            ];
         } catch (PDOException $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();
             error_log('Ops delete failed (' . $def['table'] . '): ' . $e->getMessage());
             SessionHelper::setFlash('error', 'Could not delete this record. It may still be referenced elsewhere.');
+        }
+        $this->redirect($key);
+        return [];
+    }
+
+    /** Restore the most recently deleted Ops record (best-effort undo). */
+    public function restore(): array
+    {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            http_response_code(405);
+            exit('This action must be submitted as a POST request.');
+        }
+        $key = $this->requestedKey();
+        $def = $this->definition($key);
+        RbacHelper::requirePermission((string) $def['permission']);
+
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $undo = $_SESSION['ops_undo'] ?? null;
+        if (!is_array($undo) || ($undo['key'] ?? '') !== $key || (time() - (int) ($undo['ts'] ?? 0)) > 300) {
+            SessionHelper::setFlash('error', 'Nothing to undo (or the undo window expired).');
+            $this->redirect($key);
+            return [];
+        }
+        $row = (array) ($undo['row'] ?? []);
+        // Drop the primary key so the DB assigns a fresh one.
+        unset($row['id']);
+
+        $this->pdo->beginTransaction();
+        try {
+            $newId = $this->model->create($def, $row);
+            if ($newId < 1) throw new PDOException('Restore insert failed.');
+            $this->runHooks($def, $key, $newId, $row, 'create');
+            $this->syncFinance($def, $key, $newId, $row);
+            AuditHelper::log($this->pdo, 'human', 'ops_' . $key . '_restored', $def['table'], $newId, [
+                'label' => $def['label'],
+            ], $this->userId());
+            $this->pdo->commit();
+            unset($_SESSION['ops_undo']);
+            SessionHelper::setFlash('success', $def['label'] . ' record restored.');
+        } catch (PDOException $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            error_log('Ops restore failed (' . $def['table'] . '): ' . $e->getMessage());
+            SessionHelper::setFlash('error', 'Could not restore this record.');
         }
         $this->redirect($key);
         return [];
