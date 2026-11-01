@@ -11,11 +11,36 @@ class RbacHelper
 
     private const PERMISSIONS = [
         'admin' => ['*'],
-        'manager' => ['farm.read', 'field.read', 'crop.read', 'livestock.read', 'inventory.read', 'sales.write', 'qr.use', 'assistant.use', 'alerts.read'],
-        'accountant' => ['finance.read', 'sales.read', 'sales.write', 'profit.read', 'alerts.read'],
-        'worker' => ['farm.read', 'field.read', 'inventory.read', 'livestock.read', 'qr.use', 'assistant.use', 'alerts.read'],
-        'farm-owner' => ['farm.read', 'field.read', 'crop.read', 'livestock.read', 'inventory.read', 'equipment.read', 'finance.read', 'sales.read', 'profit.read', 'reports.read', 'alerts.read', 'qr.use', 'assistant.use'],
-        'agronomist' => ['farm.read', 'field.read', 'crop.read', 'irrigation.read', 'pest.read', 'insights.read', 'livestock.read', 'qr.use', 'assistant.use', 'alerts.read'],
+        'manager' => [
+            'farm.read', 'field.read', 'field.write', 'crop.read', 'crop.write',
+            'livestock.read', 'livestock.write', 'inventory.read', 'inventory.write',
+            'equipment.read', 'equipment.write', 'finance.read', 'sales.read', 'sales.write',
+            'labour.read', 'labour.write', 'harvest.read', 'harvest.write',
+            'pest.read', 'pest.write', 'procurement.read', 'procurement.write',
+            'reports.read', 'analytics.read', 'profit.read', 'qr.use', 'assistant.use', 'alerts.read',
+        ],
+        'accountant' => [
+            'finance.read', 'sales.read', 'sales.write', 'procurement.read',
+            'profit.read', 'reports.read', 'analytics.read', 'alerts.read',
+        ],
+        'worker' => [
+            'farm.read', 'field.read', 'field.write', 'crop.read', 'livestock.read', 'livestock.write',
+            'inventory.read', 'labour.read', 'labour.write', 'harvest.read', 'harvest.write',
+            'qr.use', 'assistant.use', 'alerts.read',
+        ],
+        'farm-owner' => [
+            'farm.read', 'field.read', 'field.write', 'crop.read', 'crop.write',
+            'livestock.read', 'livestock.write', 'inventory.read', 'inventory.write',
+            'equipment.read', 'equipment.write', 'finance.read', 'sales.read', 'sales.write',
+            'labour.read', 'labour.write', 'harvest.read', 'harvest.write',
+            'pest.read', 'pest.write', 'procurement.read', 'procurement.write',
+            'profit.read', 'reports.read', 'analytics.read', 'alerts.read', 'qr.use', 'assistant.use',
+        ],
+        'agronomist' => [
+            'farm.read', 'field.read', 'field.write', 'crop.read', 'crop.write',
+            'irrigation.read', 'pest.read', 'pest.write', 'harvest.read', 'harvest.write',
+            'insights.read', 'livestock.read', 'analytics.read', 'qr.use', 'assistant.use', 'alerts.read',
+        ],
     ];
 
     public static function can(string $role, string $permission): bool

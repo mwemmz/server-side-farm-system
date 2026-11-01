@@ -10,6 +10,13 @@ automatic schedules, cross-module auto-posting and "needs attention" alerts).
 - PHP 8.2 (Apache), PostgreSQL
 - Vanilla PHP views + Tailwind (CDN) + a small combobox/panel JS layer
 - Deployed on Render via Docker (`Dockerfile`); config comes from environment variables
+- Optional metadata-driven "Ops" record engine exposing ~35 operational tables
+  (soil, planting, fertilizer, sprays, chemical applications, treatment follow-ups,
+  animal weights, breeding, production, mortality, feed, equipment allocations,
+  fuel, hours, repairs, depreciation, daily tasks, harvest schedules/losses,
+  packaging, quality, dispatches, customers, markets, orders, invoices, contracts,
+  supplier quotations/reviews, field history, land-use plans, seed records) via
+  `module=Ops` and `module=Ops&view=<key>`.
 
 ## Configuration
 
@@ -63,8 +70,11 @@ BASE=http://localhost:8000 bash tests/regression.sh
 The suite logs in, then asserts CSRF/validation guards, stock-movement maths
 (in/out, below-zero refusal, parallel races), reorder + procurement behaviour,
 dropdown rendering, storage units + harvest-to-storage, vaccine/species rules,
-equipment service reminders, a full page sweep for HTTP 200 with no PHP warning
-output, and an optional PHP log scan (set `PHP_LOG=/path/to/server.log`).
+equipment service reminders, Ops metadata-engine validation (required fields,
+numbers, dates, FKs, cross-field ordering, invoice overpayment, POST-only
+deletes, unknown views, RBAC denial), analytics landing + range filter, report
+exports (CSV/printable) for the new datasets, a full page sweep for HTTP 200
+with no PHP warning output, and an optional PHP log scan (set `PHP_LOG=/path/to/server.log`).
 
 ## Manual test — animal tags and roles
 1. Add an animal with the Tag box empty: it gets `COW-00N` (species prefix + next number on that farm). Add one with your own ear tag (e.g. `KE-4471`); adding the same tag again on the same farm is refused.

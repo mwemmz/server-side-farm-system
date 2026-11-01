@@ -161,6 +161,12 @@ if ($module === 'Security' && $action !== 'login' && $role !== 'admin') {
     http_response_code(403);
     exit('Access Denied: Security administration is restricted to admins.');
 }
+if ($module === 'Analytics') {
+    RbacHelper::requirePermission('analytics.read');
+}
+if ($module === 'Reports') {
+    RbacHelper::requirePermission('reports.read');
+}
 
 // Authenticated server-side feature actions.
 if (in_array($action, ['backup', 'profitability', 'qr_resolve', 'qr_label', 'quick_action', 'assistant_sale_draft', 'assistant_sale_confirm', 'sms_digest', 'trace_create', 'trace_query', 'planner', 'sync_push', 'payment_add', 'receipt', 'translate'], true)) {
@@ -625,6 +631,29 @@ if ($module === 'Labour') {
         require __DIR__ . "/views/layout.php";
         exit;
     }
+}
+
+// --- Ops: metadata-driven operational records (fields, crops, livestock,
+// equipment, labour, harvest, market, suppliers) ---------------------------
+if ($module === 'Ops') {
+    require_once __DIR__ . '/../src/Modules/Ops/OpsController.php';
+    $ops = new OpsController($pdo);
+    $opsView = trim((string) ($_GET['view'] ?? ''));
+    if (in_array($action, ['add', 'edit', 'delete'], true)) {
+        $data = $ops->$action();
+        $opsFile = 'ops_records.php';
+    } elseif ($opsView !== '') {
+        $data = $ops->records();
+        $opsFile = 'ops_records.php';
+    } else {
+        $data = $ops->landing();
+        $opsFile = 'ops_landing.php';
+    }
+    ob_start();
+    require __DIR__ . '/views/' . $opsFile;
+    $content = ob_get_clean();
+    require __DIR__ . '/views/layout.php';
+    exit;
 }
 
 // --- Finance: loans & budgets (sub-views demoted behind panel buttons) ---

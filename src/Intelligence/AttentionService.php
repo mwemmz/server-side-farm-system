@@ -26,7 +26,7 @@ class AttentionService {
     public function __construct($pdo, $role = 'worker') {
         $this->pdo = $pdo;
         $this->isManager = in_array($role, ['admin', 'manager', 'superadmin'], true);
-        $this->seesFinance = in_array($role, ['admin', 'accountant', 'superadmin'], true);
+        $this->seesFinance = in_array($role, ['admin', 'accountant', 'farm-owner', 'superadmin'], true);
     }
 
     /** All attention items, most urgent first. */
@@ -37,12 +37,24 @@ class AttentionService {
         $this->push($items, $this->openHealthIncidents());
         $this->push($items, $this->activeWithdrawals());
         $this->push($items, $this->lowStock());
+        $this->push($items, $this->expiringStock());
         $this->push($items, $this->equipmentService());
         $this->push($items, $this->harvestsDue());
+        $this->push($items, $this->spraysDue());
+        $this->push($items, $this->tasksDue());
+        $this->push($items, $this->outbreaks());
+        $this->push($items, $this->followupsDue());
+        $this->push($items, $this->spoilageRisk());
+        $this->push($items, $this->weatherRisk());
         if ($this->seesFinance) {
             $this->push($items, $this->unpaidFinance());
             $this->push($items, $this->loansDue());
         }
+        if ($this->seesFinance || $this->isManager) {
+            $this->push($items, $this->invoicesDue());
+            $this->push($items, $this->contractsExpiring());
+        }
+        $this->push($items, $this->marketOpportunity());
         if ($this->isManager) {
             $this->push($items, $this->pendingLeave());
         }
@@ -265,6 +277,245 @@ class AttentionService {
             'title' => $n . ' leave request' . ($n > 1 ? 's' : '') . ' awaiting approval',
             'detail' => 'Approve or reject them.',
             'count' => $n, 'module' => 'Labour', 'link' => 'index.php?module=Labour&action=leave',
+        ]];
+    }
+
+    /** Stock that will expire within 30 days (already expired included). */
+    private function expiringStock() {
+        $rows = $this->rows(
+            "SELECT name, quantity, unit, expiry_date FROM inventory
+             WHERE expiry_date IS NOT NULL AND expiry_date <= CURRENT_DATE + INTERVAL '30 days'
+             ORDER BY expiry_date ASC LIMIT 50"
+        );
+        if (!$rows) return [];
+        $n = count($rows);
+        $today = date('Y-m-d');
+        $expired = 0;
+        foreach ($rows as $r) {
+            if ((string) $r['expiry_date'] < $today) $expired++;
+        }
+        $first = $rows[0];
+        return [[
+            'key' => 'stock_expiry', 'severity' => $expired > 0 ? 'red' : 'amber',
+            'title' => $n . ' stock item' . ($n > 1 ? 's' : '') . ' expiring'
+                . ($expired > 0 ? " ($expired already expired)" : ' within 30 days'),
+            'detail' => 'Earliest: ' . $first['name'] . ' on ' . $first['expiry_date'] . '. Use or dispose of it first.',
+            'count' => $n, 'module' => 'Inventory', 'link' => 'index.php?module=Inventory&action=manage',
+        ]];
+    }
+
+    /** Scheduled crop-protection sprays that are overdue or due in 3 days. */
+    private function spraysDue() {
+        $rows = $this->rows(
+            "SELECT planned_date, product, target FROM spray_schedules
+             WHERE COALESCE(status,'scheduled') = 'scheduled'
+               AND planned_date <= CURRENT_DATE + INTERVAL '3 days'
+             ORDER BY planned_date ASC LIMIT 50"
+        );
+        if (!$rows) return [];
+        $n = count($rows);
+        $today = date('Y-m-d');
+        $overdue = 0;
+        foreach ($rows as $r) {
+            if ((string) $r['planned_date'] < $today) $overdue++;
+        }
+        $first = $rows[0];
+        $what = trim((string) ($first['product'] ?? ''));
+        if ($what === '') $what = 'Spray';
+        return [[
+            'key' => 'spray_due', 'severity' => $overdue > 0 ? 'red' : 'amber',
+            'title' => $n . ' spray' . ($n > 1 ? 's' : '') . ' scheduled'
+                . ($overdue > 0 ? " ($overdue overdue)" : ' in the next 3 days'),
+            'detail' => 'Next: ' . $what . ' on ' . $first['planned_date']
+                . (trim((string) ($first['target'] ?? '')) !== '' ? ' for ' . $first['target'] : '') . '.',
+            'count' => $n, 'module' => 'Ops', 'link' => 'index.php?module=Ops&view=spray_schedules',
+        ]];
+    }
+
+    /** Open tasks that are overdue or due in 3 days. */
+    private function tasksDue() {
+        $rows = $this->rows(
+            "SELECT title, due_date, priority FROM tasks
+             WHERE COALESCE(status,'open') NOT IN ('completed','cancelled')
+               AND due_date IS NOT NULL AND due_date <= CURRENT_DATE + INTERVAL '3 days'
+             ORDER BY due_date ASC LIMIT 50"
+        );
+        if (!$rows) return [];
+        $n = count($rows);
+        $today = date('Y-m-d');
+        $overdue = 0;
+        foreach ($rows as $r) {
+            if ((string) $r['due_date'] < $today) $overdue++;
+        }
+        return [[
+            'key' => 'tasks_due', 'severity' => $overdue > 0 ? 'red' : 'amber',
+            'title' => $n . ' task' . ($n > 1 ? 's' : '') . ' due'
+                . ($overdue > 0 ? " ($overdue overdue)" : ' in the next 3 days'),
+            'detail' => 'Next: ' . $rows[0]['title'] . ' by ' . $rows[0]['due_date'] . '.',
+            'count' => $n, 'module' => 'Ops', 'link' => 'index.php?module=Ops&view=tasks',
+        ]];
+    }
+
+    /** Pest/disease incidents explicitly flagged as an outbreak. */
+    private function outbreaks() {
+        $n = (int) $this->scalar(
+            "SELECT COUNT(*) FROM health_incidents
+             WHERE COALESCE(outbreak_flag, FALSE) = TRUE
+               AND LOWER(COALESCE(status,'')) NOT IN ('resolved','closed')"
+        );
+        if ($n < 1) return [];
+        return [[
+            'key' => 'outbreak', 'severity' => 'red',
+            'title' => $n . ' outbreak' . ($n > 1 ? 's' : '') . ' flagged',
+            'detail' => 'Isolate the affected area and confirm the control plan.',
+            'count' => $n, 'module' => 'Ops', 'link' => 'index.php?module=Ops&view=treatment_followups',
+        ]];
+    }
+
+    /** Pest/disease follow-up checks that are due. */
+    private function followupsDue() {
+        $rows = $this->rows(
+            "SELECT issue_name, followup_due FROM health_incidents
+             WHERE followup_due IS NOT NULL
+               AND followup_due <= CURRENT_DATE + INTERVAL '3 days'
+               AND LOWER(COALESCE(status,'')) NOT IN ('resolved','closed')
+             ORDER BY followup_due ASC LIMIT 50"
+        );
+        if (!$rows) return [];
+        $n = count($rows);
+        return [[
+            'key' => 'followup_due', 'severity' => 'amber',
+            'title' => $n . ' treatment follow-up' . ($n > 1 ? 's' : '') . ' due',
+            'detail' => 'Check effectiveness for ' . ($rows[0]['issue_name'] ?? 'an incident')
+                . ' by ' . $rows[0]['followup_due'] . '.',
+            'count' => $n, 'module' => 'Ops', 'link' => 'index.php?module=Ops&view=treatment_followups',
+        ]];
+    }
+
+    /** Stored produce approaching the end of its safe storage window. */
+    private function spoilageRisk() {
+        $rows = $this->rows(
+            "SELECT quantity, grade, storage_end_date FROM stored_produce
+             WHERE COALESCE(is_in_storage, TRUE) = TRUE
+               AND storage_end_date IS NOT NULL
+               AND storage_end_date <= CURRENT_DATE + INTERVAL '14 days'
+             ORDER BY storage_end_date ASC LIMIT 50"
+        );
+        if (!$rows) return [];
+        $n = count($rows);
+        return [[
+            'key' => 'spoilage_risk', 'severity' => 'amber',
+            'title' => $n . ' stored batch' . ($n > 1 ? 'es' : '') . ' nearing end of storage life',
+            'detail' => 'Sell, process or dispatch before ' . $rows[0]['storage_end_date'] . '.',
+            'count' => $n, 'module' => 'Storage', 'link' => 'index.php?module=Storage&action=manage',
+        ]];
+    }
+
+    /** Latest recorded weather, when it is hot/cold/wet enough to act on. */
+    private function weatherRisk() {
+        $rows = $this->rows(
+            "SELECT temperature, humidity, weather_date FROM weather_records
+             ORDER BY weather_date DESC LIMIT 1"
+        );
+        if (!$rows) return [];
+        $w = $rows[0];
+        $when = strtotime((string) ($w['weather_date'] ?? ''));
+        if ($when === false || $when < strtotime('-2 days')) return [];
+
+        $temp = $w['temperature'] !== null ? (float) $w['temperature'] : null;
+        $humidity = $w['humidity'] !== null ? (float) $w['humidity'] : null;
+        $out = [];
+        if ($temp !== null && $temp >= 38) {
+            $out[] = [
+                'key' => 'weather_heat', 'severity' => 'red',
+                'title' => 'Heat stress risk (' . rtrim(rtrim(number_format($temp, 1), '0'), '.') . '°C)',
+                'detail' => 'Irrigate early/late and check livestock water and shade.',
+                'count' => 1, 'module' => 'Weather', 'link' => 'index.php?module=Weather&action=manage',
+            ];
+        } elseif ($temp !== null && $temp <= 2) {
+            $out[] = [
+                'key' => 'weather_cold', 'severity' => 'red',
+                'title' => 'Frost risk (' . rtrim(rtrim(number_format($temp, 1), '0'), '.') . '°C)',
+                'detail' => 'Protect seedlings and vulnerable livestock overnight.',
+                'count' => 1, 'module' => 'Weather', 'link' => 'index.php?module=Weather&action=manage',
+            ];
+        }
+        if ($humidity !== null && $humidity >= 90 && $temp !== null && $temp >= 18 && $temp <= 32) {
+            $out[] = [
+                'key' => 'weather_disease', 'severity' => 'amber',
+                'title' => 'High disease pressure (humidity ' . rtrim(rtrim(number_format($humidity, 0), '0'), '.') . '%)',
+                'detail' => 'Warm, humid conditions favour fungal disease — scout crops today.',
+                'count' => 1, 'module' => 'Crop', 'link' => 'index.php?module=Crop&action=manage',
+            ];
+        }
+        return $out;
+    }
+
+    /** Invoices that are unpaid and due within 7 days. */
+    private function invoicesDue() {
+        $rows = $this->rows(
+            "SELECT COUNT(*) AS n, MIN(due_date) AS soonest FROM invoices
+             WHERE COALESCE(status,'unpaid') IN ('unpaid','partial','overdue')
+               AND COALESCE(total_amount,0) > COALESCE(amount_paid,0)
+               AND due_date IS NOT NULL AND due_date <= CURRENT_DATE + INTERVAL '7 days'"
+        );
+        $n = $rows ? (int) $rows[0]['n'] : 0;
+        if ($n < 1) return [];
+        return [[
+            'key' => 'invoice_due', 'severity' => 'amber',
+            'title' => $n . ' invoice' . ($n > 1 ? 's' : '') . ' due within 7 days',
+            'detail' => 'Earliest due date: ' . $rows[0]['soonest'] . '. Follow up on payment.',
+            'count' => $n, 'module' => 'Ops', 'link' => 'index.php?module=Ops&view=invoices',
+        ]];
+    }
+
+    /** Active contracts ending within 30 days. */
+    private function contractsExpiring() {
+        $rows = $this->rows(
+            "SELECT COUNT(*) AS n, MIN(end_date) AS soonest FROM contracts
+             WHERE COALESCE(status,'active') = 'active'
+               AND end_date IS NOT NULL
+               AND end_date <= CURRENT_DATE + INTERVAL '30 days'"
+        );
+        $n = $rows ? (int) $rows[0]['n'] : 0;
+        if ($n < 1) return [];
+        return [[
+            'key' => 'contract_expiry', 'severity' => 'amber',
+            'title' => $n . ' contract' . ($n > 1 ? 's' : '') . ' ending within 30 days',
+            'detail' => 'Earliest end date: ' . $rows[0]['soonest'] . '. Renew or close it out.',
+            'count' => $n, 'module' => 'Ops', 'link' => 'index.php?module=Ops&view=contracts',
+        ]];
+    }
+
+    /** Latest market quote that has risen meaningfully since the previous one. */
+    private function marketOpportunity() {
+        $rows = $this->rows(
+            "SELECT m.crop_name, m.price,
+                    (SELECT m2.price FROM market_data m2
+                     WHERE m2.crop_name = m.crop_name AND m2.market_date < m.market_date
+                     ORDER BY m2.market_date DESC LIMIT 1) AS prev_price
+             FROM market_data m
+             WHERE m.market_date = (SELECT MAX(m3.market_date) FROM market_data m3 WHERE m3.crop_name = m.crop_name)
+             ORDER BY m.crop_name ASC LIMIT 100"
+        );
+        if (!$rows) return [];
+        $risers = [];
+        foreach ($rows as $r) {
+            $price = (float) ($r['price'] ?? 0);
+            $prev = (float) ($r['prev_price'] ?? 0);
+            if ($price > 0 && $prev > 0 && $price >= $prev * 1.05) {
+                $risers[] = ['name' => (string) $r['crop_name'], 'price' => $price, 'pct' => (($price - $prev) / $prev) * 100];
+            }
+        }
+        if (!$risers) return [];
+        usort($risers, function ($a, $b) { return $b['pct'] <=> $a['pct']; });
+        $top = $risers[0];
+        return [[
+            'key' => 'market_opportunity', 'severity' => 'slate',
+            'title' => count($risers) . ' crop' . (count($risers) > 1 ? 's' : '') . ' trading higher',
+            'detail' => $top['name'] . ' is up ' . number_format($top['pct'], 1) . '% to '
+                . number_format($top['price'], 2) . ' — consider selling.',
+            'count' => count($risers), 'module' => 'Market', 'link' => 'index.php?module=Market&action=manage',
         ]];
     }
 }

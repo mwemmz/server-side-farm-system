@@ -44,6 +44,13 @@ try {
         $pdo->exec($phase3Schema);
     }
 
+    // Operations expansion: fields, crops, livestock, equipment, labour,
+    // harvest, market and supplier depth (idempotent, additive only).
+    $expansionSchema = file_get_contents(__DIR__ . '/expansion_schema.sql');
+    if ($expansionSchema !== false) {
+        $pdo->exec($expansionSchema);
+    }
+
     // Animal identification: tag numbers, names, sex, status (idempotent)
     $animalsSchema = file_get_contents(__DIR__ . '/animals_schema.sql');
     if ($animalsSchema !== false) {

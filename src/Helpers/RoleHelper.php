@@ -32,16 +32,16 @@ class RoleHelper {
                 return ['!Finance', '!Users', '!Audit Log'];
             case 'accountant':
                 return ['Dashboard', 'Finance', 'Sales', 'Procurement', 'Supplier', 'Market', 'Market Analysis',
-                        'Analytics', 'Reports', 'Traceability', 'Notifications'];
+                        'Analytics', 'Ops', 'Reports', 'Traceability', 'Notifications'];
             case 'farm-owner':
                 return ['Dashboard', 'Farm', 'Field', 'Crop', 'Livestock', 'Inventory', 'Equipment', 'Finance',
-                        'Sales', 'Market', 'Market Analysis', 'Analytics', 'Reports', 'Insights', 'Notifications'];
+                        'Sales', 'Market', 'Market Analysis', 'Analytics', 'Ops', 'Reports', 'Insights', 'Notifications'];
             case 'agronomist':
                 return ['Dashboard', 'Farm', 'Field', 'Crop', 'Irrigation', 'Livestock', 'Pest', 'Weather',
-                        'Harvest', 'Insights', 'Market Analysis', 'Traceability', 'Notifications'];
+                        'Harvest', 'Ops', 'Analytics', 'Insights', 'Market Analysis', 'Traceability', 'Notifications'];
             default:
                 return ['Dashboard', 'Farm', 'Field', 'Crop', 'Irrigation', 'Livestock', 'Inventory', 'Equipment',
-                        'Harvest', 'Storage', 'Weather', 'Traceability', 'Notifications'];
+                        'Harvest', 'Ops', 'Storage', 'Weather', 'Traceability', 'Notifications'];
         }
     }
 

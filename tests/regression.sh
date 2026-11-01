@@ -573,6 +573,110 @@ check "translation endpoint -> 200" "$(printf '%s' "$R" | tail -1)" "200"
 contains "$(printf '%s' "$R" | sed '$d')" '"translation"' "translation returns a value"
 
 # ---------------------------------------------------------------------------
+# 5c. Ops engine: metadata-driven operational records
+# ---------------------------------------------------------------------------
+echo "-- Ops engine --"
+R="$(bodycode -b "$JAR" "$BASE/index.php?module=Ops")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "Ops landing -> 200" "$S" "200"
+contains "$B" "Soil Conditions" "Ops landing lists soil records"
+contains "$B" "Equipment" "Ops landing lists equipment records"
+notcontains "$B" "Fatal error" "Ops landing has no fatal error"
+
+R="$(bodycode -b "$JAR" "$BASE/index.php?module=Ops&view=soil_conditions")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "Ops records (soil) -> 200" "$S" "200"
+contains "$B" "Soil Conditions" "soil records page shows its title"
+
+# The add form lists the real field ids for the FK picker.
+R="$(bodycode -b "$JAR" "$BASE/index.php?module=Ops&view=soil_conditions&action=add")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "Ops add form -> 200" "$S" "200"
+OPS_FIELD="$(printf '%s' "$B" | grep -o "data-value='[0-9]*'" | head -1 | grep -o '[0-9]*')"
+if [ -n "$OPS_FIELD" ]; then ok "Ops add form offers a field FK (id=$OPS_FIELD)"; else bad "Ops add form has no field options"; fi
+
+# Required-field validation.
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "notes=x" "$BASE/index.php?module=Ops&view=soil_conditions&action=add")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "Ops missing required -> 200 (form re-render)" "$S" "200"
+contains "$B" "Field is required" "Ops requires the field"
+contains "$B" "Sample date is required" "Ops requires the sample date"
+
+# Numeric validation.
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "field_id=$OPS_FIELD&sample_date=$(date +%F)&ph=banana" "$BASE/index.php?module=Ops&view=soil_conditions&action=add")"
+B="$(printf '%s' "$R" | sed '$d')"
+contains "$B" "pH must be a number" "Ops rejects a non-numeric pH"
+
+# Future date validation.
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "field_id=$OPS_FIELD&sample_date=2099-01-01" "$BASE/index.php?module=Ops&view=soil_conditions&action=add")"
+B="$(printf '%s' "$R" | sed '$d')"
+contains "$B" "cannot be in the future" "Ops rejects a future sample date"
+
+# Non-existent FK validation.
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "field_id=999999&sample_date=$(date +%F)" "$BASE/index.php?module=Ops&view=soil_conditions&action=add")"
+B="$(printf '%s' "$R" | sed '$d')"
+contains "$B" "no longer exists" "Ops rejects a missing FK target"
+
+# Cross-field date ordering.
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "field_id=$OPS_FIELD&start_date=2024-05-01&end_date=2024-04-01" "$BASE/index.php?module=Ops&view=field_history&action=add")"
+B="$(printf '%s' "$R" | sed '$d')"
+contains "$B" "cannot be before" "Ops rejects an end date before the start date"
+
+# Invoice payment cannot exceed the total.
+R="$(bodycode -b "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "invoice_date=$(date +%F)&total_amount=100&amount_paid=150" "$BASE/index.php?module=Ops&view=invoices&action=add")"
+B="$(printf '%s' "$R" | sed '$d')"
+contains "$B" "Amount paid cannot exceed the total amount" "Ops rejects overpayment"
+
+# A valid record is created and then visible in the list.
+S="$(status -b "$JAR" -c "$JAR" --data-urlencode "csrf_token=$TOKEN" --data "field_id=$OPS_FIELD&sample_date=$(date +%F)&ph=6.5&organic_matter_pct=3.2" "$BASE/index.php?module=Ops&view=soil_conditions&action=add")"
+check "Ops valid create -> redirect" "$S" "302"
+contains "$(curl -s -b "$JAR" "$BASE/index.php?module=Ops&view=soil_conditions")" "6.5" "created soil record is listed"
+
+# Destructive actions stay POST-only, unknown views 404.
+check "Ops delete via GET -> 405" "$(status -b "$JAR" "$BASE/index.php?module=Ops&view=soil_conditions&action=delete&id=1")" "405"
+check "Ops unknown view -> 404" "$(status -b "$JAR" "$BASE/index.php?module=Ops&view=does_not_exist")" "404"
+
+echo "-- Ops RBAC --"
+OW="$(mktemp)"
+curl -s -o /dev/null -b "$JAR" -c "$JAR" -X POST "$BASE/index.php?module=Security&action=users" --data-urlencode "csrf_token=$TOKA" -d "username=ops_worker&email=ops_worker@example.com&password=abc12345&role=worker"
+role_login "$OW" ops_worker abc12345 >/dev/null
+check "worker can open Ops landing" "$(status -b "$OW" "$BASE/index.php?module=Ops")" "200"
+check "worker denied crop-write Ops view" "$(status -b "$OW" "$BASE/index.php?module=Ops&view=planting_records")" "403"
+check "worker denied Analytics" "$(status -b "$OW" "$BASE/index.php?module=Analytics")" "403"
+check "worker denied Reports" "$(status -b "$OW" "$BASE/index.php?module=Reports")" "403"
+rm -f "$OW"
+
+# ---------------------------------------------------------------------------
+# 5d. Analytics landing, report exports and new KPI integration
+# ---------------------------------------------------------------------------
+echo "-- Analytics & reports --"
+R="$(bodycode -b "$JAR" "$BASE/index.php?module=Analytics")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "Analytics landing -> 200" "$S" "200"
+contains "$B" "Farm Analytics" "analytics landing renders"
+contains "$B" "Yield per hectare" "analytics landing shows yields"
+notcontains "$B" "Fatal error" "analytics landing has no fatal error"
+
+R="$(bodycode -b "$JAR" "$BASE/index.php?module=Analytics&from=2024-01-01&to=2024-12-31")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "Analytics range filter -> 200" "$S" "200"
+contains "$B" "2024-01-01" "analytics honours the from date"
+
+R="$(bodycode -b "$JAR" "$BASE/index.php?module=Reports&action=export&dataset=soil")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "Report export (soil) -> 200" "$S" "200"
+contains "$B" "sample_date" "soil export contains its columns"
+check "Report export unknown dataset -> 400" "$(status -b "$JAR" "$BASE/index.php?module=Reports&action=export&dataset=nope")" "400"
+
+R="$(bodycode -b "$JAR" "$BASE/index.php?module=Reports&action=printable&dataset=invoices")"
+S="$(printf '%s' "$R" | tail -1)"; B="$(printf '%s' "$R" | sed '$d')"
+check "Printable report (invoices) -> 200" "$S" "200"
+contains "$B" "FFMS Invoices Report" "printable report renders its title"
+
+# The dashboard links analytics figures for finance roles only.
+contains "$(curl -s -b "$JAR" "$BASE/index.php?module=Dashboard")" "Profit (YTD)" "dashboard shows the profit KPI to finance roles"
+
+# ---------------------------------------------------------------------------
 # 6. Optional: no new PHP warnings (when PHP_LOG points at the server log)
 # ---------------------------------------------------------------------------
 if [ -n "$PHP_LOG" ] && [ -f "$PHP_LOG" ]; then

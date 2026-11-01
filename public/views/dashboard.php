@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../src/Modules/Analytics/AnalyticsModel.php';
 require_once __DIR__ . '/../../src/Services/WeatherService.php';
 require_once __DIR__ . '/../../src/Intelligence/AttentionService.php';
+require_once __DIR__ . '/../../src/Intelligence/AnalyticsService.php';
 require_once __DIR__ . '/../../config/env.php';
 require_once __DIR__ . '/../../src/Helpers/RoleHelper.php';
 $__role = RoleHelper::normalise($_SESSION['role'] ?? 'worker');
@@ -12,6 +13,14 @@ $analyticsModel = new AnalyticsModel($pdo);
 $totalCost = $analyticsModel->getTotalProcurementCost() ?? 0;
 $totalSales = $analyticsModel->getTotalSalesAmount() ?? 0;
 $totalInventory = $analyticsModel->getTotalInventoryCount() ?? 0;
+
+// Enterprise figures for the current calendar year (the single ledger view).
+$__overview = null;
+try {
+    $__overview = (new AnalyticsService($pdo))->overview();
+} catch (\Throwable $e) {
+    error_log('Dashboard analytics failed: ' . $e->getMessage());
+}
 
 // Weather: use first farm's GPS coords if set, else env default
 $lat = getEnvVar('DEFAULT_LAT', -15.3875);
@@ -116,7 +125,7 @@ function weatherIcon($code) {
     <?php return; endif; ?>
 
     <!-- KPI Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 stagger">
+    <div class="grid grid-cols-1 <?php echo $__money ? 'md:grid-cols-2 xl:grid-cols-4' : 'md:grid-cols-3'; ?> gap-6 stagger">
         <?php if ($__money): ?>
         <div class="glass-card card-glow p-4 md:p-5 group">
             <div class="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-rose-500 to-pink-500 opacity-70 rounded-t-2xl"></div>
@@ -142,6 +151,27 @@ function weatherIcon($code) {
                 </div>
                 <div class="shrink-0 w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card card-glow p-4 md:p-5 group">
+            <div class="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r <?php echo ($__overview['profit'] ?? 0) >= 0 ? 'from-teal-500 to-cyan-500' : 'from-red-500 to-rose-500'; ?> opacity-70 rounded-t-2xl"></div>
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Profit (YTD)</div>
+                    <div class="mt-1.5 text-xl md:text-2xl font-extrabold tabular-nums <?php echo ($__overview['profit'] ?? 0) >= 0 ? 'text-emerald-700' : 'text-red-600'; ?>">
+                        K<?php echo number_format((float) ($__overview['profit'] ?? 0), 2); ?>
+                    </div>
+                    <div class="mt-1 text-[11px] text-slate-400">
+                        Margin <?php echo number_format((float) ($__overview['margin_pct'] ?? 0), 1); ?>%
+                        <?php if (($__overview['cost_per_ha'] ?? null) !== null): ?>
+                            · K<?php echo number_format((float) $__overview['cost_per_ha'], 0); ?>/ha
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="shrink-0 w-9 h-9 rounded-xl <?php echo ($__overview['profit'] ?? 0) >= 0 ? 'bg-teal-50 text-teal-600' : 'bg-red-50 text-red-600'; ?> flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
                 </div>
             </div>
         </div>

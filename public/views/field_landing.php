@@ -27,9 +27,10 @@ if ($farmId) {
 }
 
 $totFields = count($fields);
-$totHa = 0; $soilMap = [];
+$totHa = 0; $soilMap = []; $drawnBoundaries = 0;
 foreach ($fields as $fld) {
-    $totHa += (float) ($fld['size'] ?? 0);
+    $totHa += (float) (!empty($fld['computed_hectares']) ? $fld['computed_hectares'] : ($fld['size'] ?? 0));
+    if (!empty($fld['boundary_geojson'])) $drawnBoundaries++;
     $soil = (string) ($fld['soil_type'] ?? 'Unknown');
     $soilMap[$soil] = ($soilMap[$soil] ?? 0) + 1;
 }
@@ -59,7 +60,7 @@ $addLink = $farmId ? 'index.php?module=Field&action=manage&farm_id=' . $farmId :
 
 <div class="glass-card p-3 sm:p-5 mb-6">
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <h2 class="text-lg font-bold text-slate-700">Field Layout (simulated)</h2>
+        <h2 class="text-lg font-bold text-slate-700">Field Layout <?php echo $drawnBoundaries ? '(mapped boundaries)' : '(simulated)'; ?></h2>
         <div class="flex items-center gap-3 flex-wrap">
             <?php foreach ($soilMap as $soil => $n): ?>
                 <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600">
@@ -113,11 +114,21 @@ $addLink = $farmId ? 'index.php?module=Field&action=manage&farm_id=' . $farmId :
 (function () {
     var center = [<?php echo json_encode($center['lat']); ?>, <?php echo json_encode($center['lng']); ?>];
     var fields = <?php echo json_encode(array_map(function ($fld) {
+        $geo = $fld['boundary_geojson'] ?? null;
+        if (is_string($geo) && $geo !== '') {
+            $decoded = json_decode($geo, true);
+            $geo = is_array($decoded) ? $decoded : null;
+        } elseif (!is_array($geo)) {
+            $geo = null;
+        }
         return [
             'id'   => (int) (is_array($fld) ? ($fld['id'] ?? 0) : ($fld->id ?? 0)),
             'name' => (string) (is_array($fld) ? ($fld['name'] ?? 'Field') : ($fld->name ?? 'Field')),
-            'size' => (float) (is_array($fld) ? ($fld['size'] ?? 0) : ($fld->size ?? 0)),
+            'size' => (float) (is_array($fld) ? (!empty($fld['computed_hectares']) ? $fld['computed_hectares'] : ($fld['size'] ?? 0)) : ($fld->size ?? 0)),
             'soil' => (string) (is_array($fld) ? ($fld['soil_type'] ?? 'Unknown') : ($fld->soil_type ?? 'Unknown')),
+            'lat'  => is_array($fld) && isset($fld['latitude']) ? (float) $fld['latitude'] : null,
+            'lng'  => is_array($fld) && isset($fld['longitude']) ? (float) $fld['longitude'] : null,
+            'geo'  => $geo,
         ];
     }, $fields)); ?>;
     var map = L.map('field-map').setView(center, 15);
@@ -130,20 +141,35 @@ $addLink = $farmId ? 'index.php?module=Field&action=manage&farm_id=' . $farmId :
     if (!fields.length) {
         L.marker(center).addTo(map).bindPopup('<strong>No fields</strong><br>Add a field to see it on the map.');
     }
+    var mappedLayers = [];
     fields.forEach(function (fl, idx) {
-        // simulated layout: grid around the farm centre, deterministic by index
-        var col = idx % 3, row = Math.floor(idx / 3);
-        var lat = center[0] + (row === 0 ? 0.0006 : 0.00082 * row);
-        var lng = center[1] + (col - 1) * 0.0014;
-        var radius = Math.max(90, Math.min(220, Math.sqrt(fl.size || 1) * 55));
         var color = soilColor(fl.soil);
+        if (fl.geo && fl.geo.coordinates && fl.geo.coordinates[0]) {
+            var layer = L.geoJSON(fl.geo, {
+                style: { color: color, weight: 2, fillColor: color, fillOpacity: 0.28 }
+            }).addTo(map);
+            layer.bindPopup('<strong>' + fl.name + '</strong><br>' + fl.size.toFixed(2) + ' ha (mapped) · ' + fl.soil);
+            mappedLayers.push(layer);
+            return;
+        }
+        // No boundary yet: show a deterministic placeholder around the farm centre.
+        var col = idx % 3, row = Math.floor(idx / 3);
+        var lat = (fl.lat || center[0]) + (row === 0 ? 0.0006 : 0.00082 * row);
+        var lng = (fl.lng || center[1]) + (col - 1) * 0.0014;
+        var radius = Math.max(90, Math.min(220, Math.sqrt(fl.size || 1) * 55));
         var cr = L.circle([lat, lng], { radius: radius, color: color, weight: 2, fillColor: color, fillOpacity: 0.28 }).addTo(map);
-        cr.bindPopup('<strong>' + fl.name + '</strong><br>' + fl.size.toFixed(1) + ' ha · ' + fl.soil);
+        cr.bindPopup('<strong>' + fl.name + '</strong><br>' + fl.size.toFixed(1) + ' ha · ' + fl.soil + '<br><em>No boundary drawn yet</em>');
     });
-    if (fields.length >= 2) {
+    if (mappedLayers.length) {
+        var group = L.featureGroup(mappedLayers);
+        map.fitBounds(group.getBounds(), { padding: [25, 25] });
+        if (mappedLayers.length === 1 && mappedLayers[0].getBounds().isValid()) {
+            map.setZoom(Math.max(map.getZoom(), 15));
+        }
+    } else if (fields.length >= 2) {
         map.fitBounds(fields.map(function(fl, idx) {
             var col = idx % 3, row = Math.floor(idx / 3);
-            return [center[0] + (row === 0 ? 0.0006 : 0.00082 * row), center[1] + (col - 1) * 0.0014];
+            return [(fl.lat || center[0]) + (row === 0 ? 0.0006 : 0.00082 * row), (fl.lng || center[1]) + (col - 1) * 0.0014];
         }));
     }
 })();
