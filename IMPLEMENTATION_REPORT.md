@@ -25,7 +25,7 @@
 
 ## Validation
 
-`git diff --check` passes. PHP, `tests/regression.sh`, and `tests/smoke_fuzz.py` could not run in this checkout because PHP is not installed and those two requested test files are absent; only `tests/FarmModelTest.php` is present.
+`git diff --check` and Python smoke-test compilation pass. The PHP regression server could not run in this checkout because PHP and PostgreSQL are not installed locally; the test scripts are present and ready for a configured local environment.
 
 ## Deferred
 
