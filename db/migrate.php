@@ -1,6 +1,31 @@
 <?php
 // Auto-migration script to ensure tables exist
+//
+// Running the full migration (dozens of schema files, seeds and backfills) on
+// every single request was the dominant cause of slow page loads, especially
+// against the hosted database. Gate it behind a version marker stored in the
+// database itself: once the current version has been applied, subsequent
+// requests skip straight through.
+$migrationVersion = '2';
+
 try {
+    $applied = null;
+    try {
+        $applied = $pdo->query("SELECT value FROM app_meta WHERE key = 'migration_version'")->fetchColumn();
+    } catch (PDOException $e) {
+        // app_meta does not exist yet (fresh database) — proceed with migration.
+        $applied = null;
+    }
+    if ($applied === $migrationVersion) {
+        return;
+    }
+} catch (Throwable $e) {
+    // Fall through and attempt the migration anyway.
+}
+
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS app_meta (key VARCHAR(64) PRIMARY KEY, value TEXT)");
+
     $schema = file_get_contents(__DIR__ . '/schema.sql');
     if ($schema !== false) {
         // Execute the entire schema file
@@ -144,6 +169,11 @@ try {
 
     // Seed shared lookup reference data (idempotent)
     require_once __DIR__ . '/seed_lookups.php';
+
+    // Record that this migration version has been applied so subsequent
+    // requests can skip the (expensive) migration step entirely.
+    $up = $pdo->prepare("INSERT INTO app_meta (key, value) VALUES ('migration_version', ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value");
+    $up->execute([$migrationVersion]);
 } catch (PDOException $e) {
     // Log the error, but don't block the application if it's already set up
     error_log("Migration failed: " . $e->getMessage());
