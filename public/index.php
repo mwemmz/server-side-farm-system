@@ -3,6 +3,9 @@ session_start();
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../src/Helpers/CsrfHelper.php';
+require_once __DIR__ . '/../src/Helpers/RbacHelper.php';
+require_once __DIR__ . '/../src/Helpers/AuditHelper.php';
 
 // Run migrations + seeding automatically
 require_once __DIR__ . '/../db/migrate.php';
@@ -37,9 +40,122 @@ if (!isset($_SESSION['user_id'])) {
 
 // --- Role-Based Access Control (RBAC) ---
 $role = $_SESSION['role'] ?? 'worker';
-$financeOnly = ['admin', 'accountant'];
+$financeOnly = ['admin', 'accountant', 'farm-owner'];
 if ($module === 'Finance' && !in_array($role, $financeOnly, true)) {
     die("Access Denied: Only admins can access the Finance module.");
+}
+if ($module === 'Security' && $action !== 'login' && $role !== 'admin') {
+    http_response_code(403);
+    exit('Access Denied: Security administration is restricted to admins.');
+}
+
+// Authenticated server-side feature actions.
+if (in_array($action, ['backup', 'profitability', 'qr_resolve', 'qr_label', 'quick_action', 'assistant_sale_draft', 'assistant_sale_confirm', 'sms_digest'], true)) {
+    header('Content-Type: application/json; charset=UTF-8');
+    $userId = (int) $_SESSION['user_id'];
+    if ($action === 'backup') {
+        RbacHelper::requirePermission('admin.backup');
+        CsrfHelper::requireValid();
+        require_once __DIR__ . '/../src/Services/BackupService.php';
+        AuditHelper::log($pdo, 'human', 'database_backup', 'database', null, ['format' => 'json'], $userId);
+        header('Content-Disposition: attachment; filename="ffms-backup-' . gmdate('Ymd-His') . '.json"');
+        echo BackupService::exportJson($pdo);
+        exit;
+    }
+    if ($action === 'profitability') {
+        RbacHelper::requirePermission('profit.read');
+        require_once __DIR__ . '/../src/Services/FarmMetricsService.php';
+        $fieldId = isset($_GET['field_id']) && ctype_digit((string) $_GET['field_id']) ? (int) $_GET['field_id'] : null;
+        $animalId = isset($_GET['animal_id']) && ctype_digit((string) $_GET['animal_id']) ? (int) $_GET['animal_id'] : null;
+        echo json_encode(['success' => true, 'data' => (new FarmMetricsService($pdo))->profitability($fieldId, $animalId)]);
+        exit;
+    }
+    if ($action === 'qr_resolve' || $action === 'qr_label') {
+        RbacHelper::requirePermission('qr.use');
+        $tag = trim((string) ($_GET['tag'] ?? ''));
+        if ($tag === '' || !preg_match('/^[A-Za-z0-9._:-]{1,80}$/', $tag)) {
+            http_response_code(422); echo json_encode(['success' => false, 'error' => 'Invalid tag.']); exit;
+        }
+        $stmt = $pdo->prepare("SELECT 'animal' AS entity_type, id, type AS name, tag_code FROM livestock WHERE tag_code = ?
+            UNION ALL SELECT 'inventory', id, name, tag_code FROM inventory WHERE tag_code = ?
+            UNION ALL SELECT 'equipment', id, name, tag_code FROM equipment WHERE tag_code = ?");
+        $stmt->execute([$tag, $tag, $tag]);
+        $entity = $stmt->fetch() ?: null;
+        echo json_encode(['success' => true, 'data' => $entity, 'label' => $entity ? [
+            'text' => $entity['entity_type'] . ' #' . $entity['id'] . ' - ' . $entity['name'],
+            'qr_value' => $entity['tag_code'],
+        ] : null]);
+        exit;
+    }
+    if ($action === 'quick_action') {
+        RbacHelper::requirePermission('qr.use');
+        CsrfHelper::requireValid();
+        $kind = (string) ($_POST['kind'] ?? '');
+        $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+        if (!$id || !in_array($kind, ['vaccinate', 'stock_out', 'service'], true)) {
+            http_response_code(422); echo json_encode(['success' => false, 'error' => 'Invalid quick action.']); exit;
+        }
+        $pdo->beginTransaction();
+        try {
+            if ($kind === 'vaccinate') {
+                $name = trim((string) ($_POST['vaccine_name'] ?? ''));
+                if ($name === '') throw new InvalidArgumentException('Vaccine name is required.');
+                $stmt = $pdo->prepare("INSERT INTO vaccinations (livestock_id, vaccine_name, vaccination_date, next_due_date) VALUES (?, ?, CURRENT_DATE, ?)");
+                $stmt->execute([$id, $name, $_POST['next_due_date'] ?? null]);
+            } elseif ($kind === 'stock_out') {
+                $quantity = filter_input(INPUT_POST, 'quantity', FILTER_VALIDATE_INT);
+                if (!$quantity || $quantity < 1) throw new InvalidArgumentException('Quantity must be positive.');
+                $stmt = $pdo->prepare("UPDATE inventory SET quantity = quantity - ? WHERE id = ? AND quantity >= ?");
+                $stmt->execute([$quantity, $id, $quantity]);
+                if ($stmt->rowCount() !== 1) throw new InvalidArgumentException('Insufficient stock or item not found.');
+                $pdo->prepare("INSERT INTO stock_movements (item_id, direction, quantity) VALUES (?, 'out', ?)")->execute([$id, $quantity]);
+            } else {
+                $note = trim((string) ($_POST['notes'] ?? ''));
+                if ($note === '') throw new InvalidArgumentException('Service notes are required.');
+                $pdo->prepare("UPDATE equipment SET maintenance_status = 'Serviced' WHERE id = ?")->execute([$id]);
+            }
+            $pdo->commit();
+            AuditHelper::log($pdo, 'human', 'qr_quick_action_' . $kind, $kind, $id, $_POST, $userId);
+            echo json_encode(['success' => true]); exit;
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            http_response_code(422); echo json_encode(['success' => false, 'error' => $e->getMessage()]); exit;
+        }
+    }
+    if ($action === 'assistant_sale_draft') {
+        RbacHelper::requirePermission('assistant.use');
+        $text = trim((string) ($_POST['message'] ?? $_GET['message'] ?? ''));
+        if (!preg_match('/sold\s+(\d+(?:\.\d+)?)\s+(.+?)\s+(?:k|K)(\d+(?:\.\d+)?)/i', $text, $m)) {
+            http_response_code(422); echo json_encode(['success' => false, 'error' => 'Use: sold 3 bags maize K250']); exit;
+        }
+        echo json_encode(['success' => true, 'draft' => ['quantity' => (float) $m[1], 'item' => trim($m[2]), 'amount' => (float) $m[3], 'sale_date' => date('Y-m-d')]]);
+        exit;
+    }
+    if ($action === 'assistant_sale_confirm') {
+        RbacHelper::requirePermission('assistant.use');
+        CsrfHelper::requireValid();
+        $amount = filter_input(INPUT_POST, 'amount', FILTER_VALIDATE_FLOAT);
+        $customer = trim((string) ($_POST['customer_name'] ?? 'Assistant sale'));
+        if ($amount === false || $amount <= 0 || $customer === '') {
+            http_response_code(422); echo json_encode(['success' => false, 'error' => 'Valid amount and customer are required.']); exit;
+        }
+        $stmt = $pdo->prepare("INSERT INTO sales_records (customer_name, amount, sale_date) VALUES (?, ?, ?)");
+        $stmt->execute([$customer, $amount, $_POST['sale_date'] ?? date('Y-m-d')]);
+        $saleId = (int) $pdo->lastInsertId();
+        AuditHelper::log($pdo, 'human', 'assistant_sale_confirmed', 'sale', $saleId, $_POST, $userId);
+        echo json_encode(['success' => true, 'sale_id' => $saleId]); exit;
+    }
+    if ($action === 'sms_digest') {
+        RbacHelper::requirePermission('alerts.read');
+        CsrfHelper::requireValid();
+        require_once __DIR__ . '/../src/Intelligence/InsightsEngine.php';
+        require_once __DIR__ . '/../src/Services/NotificationService.php';
+        $insightsEngine = new InsightsEngine($pdo);
+        $message = 'FFMS daily digest: ' . $insightsEngine->stats()['total'] . ' recommendations need review.';
+        $ok = (new NotificationService($pdo))->sendSms((string) ($_POST['recipient'] ?? 'simulator'), $message);
+        AuditHelper::log($pdo, 'human', 'sms_digest_simulated', 'notification', null, ['recipient' => $_POST['recipient'] ?? 'simulator'], $userId);
+        echo json_encode(['success' => $ok, 'message' => $message]); exit;
+    }
 }
 
 $module = $_GET['module'] ?? 'Dashboard';

@@ -4,6 +4,7 @@ class BaseModuleModel {
     protected $pdo;
     protected $table;
     public function __construct($pdo, $table) { $this->pdo = $pdo; $this->table = $table; }
+    public function getPdo() { return $this->pdo; }
     public function getAll() { return $this->pdo->query("SELECT * FROM {$this->table}")->fetchAll(); }
     public function getById($id) {
         $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE id = ?");

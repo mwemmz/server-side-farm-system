@@ -24,6 +24,9 @@ $records = $data['records'] ?? ($data ?? []);
         ['name' => 'customer_name', 'label' => 'Customer Name', 'value' => $formData['customer_name'] ?? ''],
         ['name' => 'amount', 'label' => 'Amount (K)', 'value' => $formData['amount'] ?? ''],
         ['name' => 'sale_date', 'label' => 'Sale Date', 'type' => 'date', 'value' => $formData['sale_date'] ?? '']
+        ,['name' => 'inventory_id', 'label' => 'Inventory ID (optional)', 'type' => 'number', 'value' => $formData['inventory_id'] ?? '']
+        ,['name' => 'livestock_id', 'label' => 'Animal ID (optional)', 'type' => 'number', 'value' => $formData['livestock_id'] ?? '']
+        ,['name' => 'field_id', 'label' => 'Field ID (optional)', 'type' => 'number', 'value' => $formData['field_id'] ?? '']
     ];
     echo FormHelper::generateForm($fields, '/index.php?module=Sales&action=add', 'POST', $errors);
     ?>

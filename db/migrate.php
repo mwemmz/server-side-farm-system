@@ -7,6 +7,11 @@ try {
         $pdo->exec($schema);
     }
 
+    $featureSchema = file_get_contents(__DIR__ . '/features_schema.sql');
+    if ($featureSchema !== false) {
+        $pdo->exec($featureSchema);
+    }
+
     // Incremental migrations for existing tables
     $pdo->exec("ALTER TABLE farms ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION DEFAULT -15.3875");
     $pdo->exec("ALTER TABLE farms ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION DEFAULT 28.3228");

@@ -2,6 +2,7 @@
 require_once __DIR__ . '/SalesModel.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
+require_once __DIR__ . '/../../Helpers/AuditHelper.php';
 
 class SalesController {
     private $model;
@@ -15,7 +16,12 @@ class SalesController {
             $errors = ValidationHelper::validateRequired($fields, $data);
 
             if (empty($errors)) {
-                if ($this->model->create($data)) {
+                $data['inventory_id'] = !empty($data['inventory_id']) ? (int) $data['inventory_id'] : null;
+                $data['livestock_id'] = !empty($data['livestock_id']) ? (int) $data['livestock_id'] : null;
+                $data['field_id'] = !empty($data['field_id']) ? (int) $data['field_id'] : null;
+                $saleId = $this->model->createSale($data);
+                if ($saleId > 0) {
+                    AuditHelper::log($this->model->getPdo(), 'human', 'sale_created', 'sale', $saleId, $data, $_SESSION['user_id'] ?? null);
                     SessionHelper::setFlash('success', 'Sale added successfully!');
                     header('Location: /index.php?module=Sales&action=index');
                     exit;

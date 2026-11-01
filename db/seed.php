@@ -15,6 +15,13 @@ try {
                 email = EXCLUDED.email"
     );
     $stmt->execute([$adminHash, 'admin@ffms.local']);
+    foreach ([
+        ['owner', 'owner@ffms.local', 'farm-owner'],
+        ['agronomist', 'agronomist@ffms.local', 'agronomist'],
+    ] as [$username, $email, $role]) {
+        $userStmt = $pdo->prepare("INSERT INTO users (username, password_hash, email, role) VALUES (?, ?, ?, ?) ON CONFLICT (username) DO UPDATE SET role = EXCLUDED.role, email = EXCLUDED.email");
+        $userStmt->execute([$username, password_hash('demo123', PASSWORD_DEFAULT), $email, $role]);
+    }
 } catch (PDOException $e) {
     error_log("Seed (admin) failed: " . $e->getMessage());
 }
