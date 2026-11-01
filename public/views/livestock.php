@@ -28,6 +28,38 @@ $statusCls = ['active' => 'bg-emerald-100 text-emerald-800', 'sold' => 'bg-sky-1
 ?>
 <h1 class="text-2xl sm:text-3xl font-bold mb-6 text-green-800">Livestock Management</h1>
 
+<!-- Quick navigator: jump to one of the forms on this page -->
+<div class="glass-card p-3 sm:p-4 mb-6">
+    <label for="livestock-form-nav" class="text-[11px] font-bold uppercase tracking-wide text-slate-500">Jump to a form</label>
+    <div class="flex flex-col sm:flex-row gap-2 mt-1.5">
+        <select id="livestock-form-nav" class="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white">
+            <option value="">Choose a form…</option>
+            <option value="#add-livestock">Add Livestock</option>
+            <option value="#vaccinate">Record a Vaccination</option>
+            <option value="#batch-vaccinate">Vaccinate a Batch</option>
+            <option value="#treatment">Record a Treatment</option>
+            <option value="#health">Report a Pest / Health Problem</option>
+            <option value="#register">Animal Register</option>
+        </select>
+        <button type="button" id="livestock-form-nav-go" class="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-bold hover:bg-green-700 transition">Go</button>
+    </div>
+</div>
+<script>
+(function () {
+    var sel = document.getElementById('livestock-form-nav');
+    var btn = document.getElementById('livestock-form-nav-go');
+    if (!sel || !btn) return;
+    function go() {
+        var v = sel.value;
+        if (!v) return;
+        var el = document.querySelector(v);
+        if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    }
+    btn.addEventListener('click', go);
+    sel.addEventListener('change', go);
+})();
+</script>
+
 <?php if ($successMessage): ?>
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
         <?php echo htmlspecialchars($successMessage); ?>
@@ -106,8 +138,7 @@ $statusCls = ['active' => 'bg-emerald-100 text-emerald-800', 'sold' => 'bg-sky-1
     <?php return; ?>
 <?php endif; ?>
 
-<div class="glass-card p-4 sm:p-6 mb-6">
-    <h2 class="text-xl font-semibold mb-4">Add Livestock</h2>
+<div class="glass-card p-4 sm:p-6 mb-6" id="add-livestock">
     <?php
     $fields = [
         ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'combo', 'options' => FormHelper::farmOptions($pdo), 'allow_custom' => false, 'placeholder' => 'Type to find a farm…', 'value' => $formData['farm_id'] ?? ''],
@@ -159,7 +190,7 @@ $register = array_values(array_filter($animals, function ($a) use ($fSpecies, $f
     return true;
 }));
 ?>
-<div class="glass-card p-4 sm:p-6 mb-6">
+<div class="glass-card p-4 sm:p-6 mb-6" id="register">
     <h2 class="text-xl font-semibold mb-4">Animal Register <span class="text-sm font-normal text-slate-400">(<?php echo count($register); ?> of <?php echo count($animals); ?>)</span></h2>
     <form method="get" action="index.php" class="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4 text-sm">
         <input type="hidden" name="module" value="Livestock"><input type="hidden" name="action" value="manage">
@@ -258,7 +289,7 @@ $register = array_values(array_filter($animals, function ($a) use ($fSpecies, $f
 })();
 </script>
 
-<div class="glass-card p-4 sm:p-6 mb-6">
+<div class="glass-card p-4 sm:p-6 mb-6" id="batch-vaccinate">
     <h2 class="text-xl font-semibold mb-4">Vaccinate a Batch</h2>
     <p class="text-xs text-slate-500 mb-4">Tick several animals and record one vaccine and date for all of them at once.</p>
     <?php
