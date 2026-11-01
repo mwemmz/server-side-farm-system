@@ -19,6 +19,7 @@ $statusBadge = [
     <div class="glass-card p-5">
         <h2 class="text-lg font-bold text-slate-700 mb-4">Log a Case</h2>
         <form method="POST" action="index.php?module=Labour&action=add&subsection=grievances" class="space-y-3">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
             <div class="flex flex-col gap-1"><label class="text-sm font-semibold text-slate-700">Employee *</label>
                 <select name="employee_id" required class="w-full px-3 py-2 text-sm border rounded-lg">
                     <option value="">— Select employee —</option>
@@ -52,7 +53,8 @@ $statusBadge = [
                     <div class="mt-2 text-xs bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 text-emerald-800"><b>Resolution:</b> <?php echo htmlspecialchars($g['resolution_notes']); ?></div>
                 <?php endif; ?>
                 <?php if ($g['status'] === 'open' || $g['status'] === 'in_progress'): ?>
-                    <form method="POST" action="index.php?module=Labour&action=resolve&subsection=grievances&id=<?php echo $g['id']; ?>" class="flex items-center gap-2 mt-2">
+                    <form method="POST" action="index.php?module=Labour&action=resolve&subsection=grievances&id=<?php echo (int) $g['id']; ?>" class="flex items-center gap-2 mt-2">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
                         <input type="text" name="resolution_notes" placeholder="Resolution notes…" class="flex-1 px-3 py-1.5 text-sm border rounded-lg">
                         <button class="text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-600 text-white">Mark Resolved</button>
                     </form>

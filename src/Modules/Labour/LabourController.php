@@ -1,13 +1,17 @@
 <?php
 require_once __DIR__ . '/LabourModel.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
+require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Intelligence/HrService.php';
+require_once __DIR__ . '/../Finance/FinanceService.php';
 
 class LabourController {
     private $model;
     private $hr;
+    private $pdo;
 
     public function __construct($pdo) {
+        $this->pdo = $pdo;
         $this->model = new LabourModel($pdo);
         $this->hr = new HrService($pdo);
     }
@@ -81,6 +85,8 @@ class LabourController {
                 return $this->hr->addDepartment($name, trim($d['description'] ?? '')) ? true : 'Failed to add department.';
             case 'training':
                 if (empty($d['employee_id']) || empty(trim($d['course_name'] ?? ''))) return 'Employee and course name are required.';
+                $e = ValidationHelper::dateNotFuture($d, 'completion_date', 'Completion date');
+                if ($e) return $e;
                 return $this->hr->addTraining($d) ? true : 'Failed to add training record.';
             case 'payroll':
                 if (empty($d['employee_id'])) return 'Select an employee.';
@@ -102,6 +108,8 @@ class LabourController {
                 return $this->hr->addShift($d) ? true : 'Failed to add shift.';
             case 'attendance':
                 if (empty($d['employee_id']) || empty($d['work_date'])) return 'Employee and work date are required.';
+                $e = ValidationHelper::dateNotFuture($d, 'work_date', 'Work date');
+                if ($e) return $e;
                 return $this->hr->addAttendance($d) ? true : 'Failed to record attendance.';
             case 'grievances':
                 if (empty($d['employee_id']) || empty(trim($d['description'] ?? ''))) return 'Employee and description are required.';
@@ -121,15 +129,38 @@ class LabourController {
     // ---- Sub-action handlers (approve/reject resolve, mark paid) -----
     public function handleAction($sub, $action) {
         $officerId = (int) ($_SESSION['user_id'] ?? 0);
+        $id = ValidationHelper::id($_GET['id'] ?? '');
+        if ($id === null) return null; // missing/hostile id: nothing to act on
         switch ($sub . ':' . $action) {
             case 'leave:approve':
-                return $this->hr->approveLeave((int) $_GET['id'], $officerId);
+                return $this->hr->approveLeave($id, $officerId);
             case 'leave:reject':
-                return $this->hr->rejectLeave((int) $_GET['id'], $officerId);
+                return $this->hr->rejectLeave($id, $officerId);
             case 'grievances:resolve':
-                return $this->hr->resolveGrievance((int) $_GET['id'], trim($_POST['resolution_notes'] ?? 'Resolved'));
+                return $this->hr->resolveGrievance($id, trim($_POST['resolution_notes'] ?? 'Resolved'));
             case 'payroll:paid':
-                return $this->hr->markPaid((int) $_GET['id']);
+                $payrollId = $id;
+                $result = $this->hr->markPaid($payrollId);
+                // Cross-module: a paid payroll run posts a Labour expense (idempotent).
+                try {
+                    $st = $this->pdo->prepare(
+                        "SELECT p.net_pay, p.payment_date, e.name AS employee_name, e.farm_id
+                         FROM payroll_records p JOIN employees e ON e.id = p.employee_id
+                         WHERE p.id = ? LIMIT 1"
+                    );
+                    $st->execute([$payrollId]);
+                    $pay = $st->fetch();
+                    if ($pay) {
+                        (new FinanceService($this->pdo))->postSafe(
+                            'expense', 'Labour & wages', $pay['net_pay'],
+                            'Payroll: ' . ($pay['employee_name'] ?: 'employee'),
+                            $pay['farm_id'] ?? null, 'Payroll', $payrollId, $pay['payment_date'] ?: date('Y-m-d'), 'paid'
+                        );
+                    }
+                } catch (PDOException $e) {
+                    error_log('Payroll finance post failed: ' . $e->getMessage());
+                }
+                return $result;
         }
         return null;
     }

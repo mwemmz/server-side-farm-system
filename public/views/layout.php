@@ -1,8 +1,10 @@
+<?php require_once __DIR__ . '/../../src/Helpers/SessionHelper.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
     <title>FFMS - Intelligent Farm Management System</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -53,7 +55,6 @@
                 'Inventory' => '<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
                 'Equipment' => '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
                 'Labour' => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-                'Pest' => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>',
                 'Weather' => '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
                 'Harvest' => '<path d="M2 22 16 8"/><path d="M3.47 12.53 5 11l1.53 1.53a3.5 3.5 0 0 1 0 4.94L5 19l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z"/><path d="M7.47 8.53 9 7l1.53 1.53a3.5 3.5 0 0 1 0 4.94L9 15l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z"/><path d="M11.47 4.53 13 3l1.53 1.53a3.5 3.5 0 0 1 0 4.94L13 11l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z"/><path d="M20 2h2v2a4 4 0 0 1-4 4h-2V6a4 4 0 0 1 4-4Z"/><path d="M11.47 17.47 13 19l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L5 19l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z"/><path d="M15.47 13.47 17 15l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L9 15l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z"/><path d="M19.47 9.47 21 11l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L13 11l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z"/>',
                 'Market' => '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
@@ -66,18 +67,37 @@
                 'Notifications' => '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
                 'Reports' => '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/>',
                 'Security' => '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+                'Users' => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+                'Audit Log' => '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/>',
                 'Procurement' => '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
                 'Sales' => '<line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/>',
             ];
             // Resolve where each sidebar item links (Market Analysis is hosted
-            // under the Insights predictive-analytics view) and if it's active.
+            // under the Insights predictive-analytics view; Users / Audit Log
+            // live under the Security module) and whether it's active.
+            $currentAction = $_GET['action'] ?? 'index';
+            require_once __DIR__ . '/../../src/Helpers/RoleHelper.php';
+            if (($_SESSION['role'] ?? '') !== 'admin') unset($modules['Users']);
+            foreach (array_keys($modules) as $__m) {
+                if (!RoleHelper::canSee($_SESSION['role'] ?? 'worker', $__m)) unset($modules[$__m]);
+            }
+            $specialHref = [
+                'Market Analysis' => 'index.php?module=Insights&amp;view=market',
+                'Users'           => 'index.php?module=Security&amp;action=users',
+                'Audit Log'       => 'index.php?module=Security&amp;action=audit',
+            ];
             $navHref = []; $navActive = [];
             foreach ($modules as $mod => $iconPath) {
-                $isMarket = ($mod === 'Market Analysis');
-                $navHref[$mod]   = $isMarket ? 'index.php?module=Insights&amp;view=market' : 'index.php?module=' . urlencode($mod);
-                $navActive[$mod] = $isMarket
-                    ? ($currentModule === 'Insights' && $currentView === 'market')
-                    : ($currentModule === $mod);
+                $navHref[$mod] = isset($specialHref[$mod]) ? $specialHref[$mod] : 'index.php?module=' . urlencode($mod);
+                if ($mod === 'Market Analysis') {
+                    $navActive[$mod] = ($currentModule === 'Insights' && $currentView === 'market');
+                } elseif ($mod === 'Users') {
+                    $navActive[$mod] = ($currentModule === 'Security' && $currentAction === 'users');
+                } elseif ($mod === 'Audit Log') {
+                    $navActive[$mod] = ($currentModule === 'Security' && $currentAction === 'audit');
+                } else {
+                    $navActive[$mod] = ($currentModule === $mod);
+                }
             }
             foreach ($modules as $mod => $iconPath) {
                 $isActive = $navActive[$mod];
@@ -208,12 +228,80 @@
             <div class="relative z-10">
                 <?php
                 require_once __DIR__ . '/../../src/Helpers/SessionHelper.php';
+                $errFlash = SessionHelper::getFlash('error');
+                if ($errFlash): ?>
+                    <div class="glass-card bg-red-50/80 p-4 mb-6 text-red-800 flex items-center gap-3" role="alert"><span><?php echo htmlspecialchars((string) $errFlash); ?></span></div>
+                <?php endif;
                 $success = SessionHelper::getFlash('success');
                 if ($success): ?>
                     <div class="glass-card card-glow bg-emerald-50/80 p-4 mb-6 text-emerald-800 flex items-center gap-3" role="alert">
                         <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                         <span><?php echo $success; ?></span>
                     </div>
+                <?php endif; ?>
+                <?php
+                $created = SessionHelper::getCreated();
+                if ($created):
+                    $refSafe = htmlspecialchars($created['ref']);
+                ?>
+                <div id="ff-created-modal" data-created-module="<?php echo htmlspecialchars((string) ($created['module'] ?? '')); ?>" data-created-id="<?php echo isset($created['id']) ? (int) $created['id'] : ''; ?>" class="fixed inset-0 z-[120] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="ff-created-title">
+                    <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" data-ff-created-close></div>
+                    <div class="relative w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
+                        <div class="px-6 pt-6 pb-4 text-center">
+                            <div class="mx-auto w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mb-3">
+                                <svg class="w-7 h-7 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            </div>
+                            <h2 id="ff-created-title" class="text-lg font-bold text-slate-800">Saved successfully</h2>
+                            <p class="text-sm text-slate-500 mt-0.5"><?php echo htmlspecialchars($created['module']); ?> &middot; <?php echo htmlspecialchars($created['label']); ?></p>
+                        </div>
+                        <div class="px-6">
+                            <div class="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">Reference code</div>
+                            <div class="flex items-center gap-2">
+                                <div id="ff-created-ref" class="flex-1 font-mono text-lg font-bold tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-center select-all"><?php echo $refSafe; ?></div>
+                                <button type="button" id="ff-created-copy" class="shrink-0 px-4 py-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-bold shadow-lg hover:opacity-90 transition">Copy</button>
+                            </div>
+                            <?php if (!empty($created['extra'])): ?>
+                            <dl class="mt-4 space-y-1.5 text-sm">
+                                <?php foreach ($created['extra'] as $k => $v): ?>
+                                <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5 last:border-0">
+                                    <dt class="text-slate-500"><?php echo htmlspecialchars((string) $k); ?></dt>
+                                    <dd class="font-semibold text-slate-700 text-right"><?php echo htmlspecialchars((string) $v); ?></dd>
+                                </div>
+                                <?php endforeach; ?>
+                            </dl>
+                            <?php endif; ?>
+                        </div>
+                        <div class="px-6 py-5 flex gap-2">
+                            <a href="index.php?module=<?php echo urlencode($created['module']); ?>&amp;action=manage" class="flex-1 text-center px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-sm font-bold hover:bg-slate-200 transition">Go to list</a>
+                            <button type="button" data-ff-created-close class="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-bold shadow-lg hover:opacity-90 transition">Done</button>
+                        </div>
+                    </div>
+                </div>
+                <script>
+                (function () {
+                    var modal = document.getElementById('ff-created-modal');
+                    if (!modal) return;
+                    function close() { modal.style.display = 'none'; }
+                    modal.querySelectorAll('[data-ff-created-close]').forEach(function (el) { el.addEventListener('click', close); });
+                    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+                    var btn = document.getElementById('ff-created-copy');
+                    var ref = document.getElementById('ff-created-ref');
+                    if (btn && ref) {
+                        btn.addEventListener('click', function () {
+                            var text = ref.textContent.trim();
+                            function done() { btn.textContent = 'Copied!'; setTimeout(function () { btn.textContent = 'Copy'; }, 1500); }
+                            if (navigator.clipboard && navigator.clipboard.writeText) {
+                                navigator.clipboard.writeText(text).then(done, function () { fallback(); });
+                            } else { fallback(); }
+                            function fallback() {
+                                var t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select();
+                                try { document.execCommand('copy'); done(); } catch (e) {}
+                                document.body.removeChild(t);
+                            }
+                        });
+                    }
+                })();
+                </script>
                 <?php endif; ?>
                 <?php echo $content; ?>
             </div>
@@ -332,6 +420,7 @@
             <!-- Input -->
             <div class="border-t border-slate-200 p-3 bg-white">
                 <form id="ff-chat-form" class="flex gap-2">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
                     <input id="ff-chat-input" type="text" autocomplete="off" placeholder="Ask about your farm…"
                            class="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500/40">
                     <button type="submit" class="shrink-0 px-3 py-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-bold hover:opacity-90 transition">
@@ -480,6 +569,8 @@
                     const fd = new FormData();
                     fd.append('message', q);
                     if (sessionId) fd.append('session_id', sessionId);
+                    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+                    if (csrfMeta) fd.append('csrf_token', csrfMeta.getAttribute('content'));
                     const res = await fetch('index.php?module=Insights&action=chat', { method: 'POST', body: fd });
                     const json = await res.json();
                     typing.remove();

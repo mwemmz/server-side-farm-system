@@ -180,3 +180,40 @@ CREATE TABLE IF NOT EXISTS security_logs (
     action VARCHAR(255),
     log_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ---- Notification alert rules (rule-based alerts over live farm metrics) ----
+CREATE TABLE IF NOT EXISTS notification_rules (
+    id SERIAL PRIMARY KEY,
+    metric VARCHAR(50) NOT NULL,
+    operator VARCHAR(4) NOT NULL DEFAULT '>=',
+    threshold DECIMAL(12,2) NOT NULL DEFAULT 0,
+    message TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Link rule-generated alerts back to their rule (for duplicate suppression).
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS rule_id INT;
+
+-- ---- Finance: loans and budgets ----
+CREATE TABLE IF NOT EXISTS loans (
+    id SERIAL PRIMARY KEY,
+    lender VARCHAR(255) NOT NULL,
+    principal DECIMAL(12,2) NOT NULL DEFAULT 0,
+    interest_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+    start_date DATE,
+    due_date DATE,
+    balance DECIMAL(12,2) NOT NULL DEFAULT 0,
+    status VARCHAR(20) NOT NULL DEFAULT 'active',
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS budgets (
+    id SERIAL PRIMARY KEY,
+    category VARCHAR(120) NOT NULL,
+    period VARCHAR(50),
+    planned_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

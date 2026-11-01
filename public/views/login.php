@@ -62,7 +62,16 @@
             </div>
         <?php endif; ?>
 
+        <?php if (!empty($_GET['expired'])): ?>
+            <div class="mb-4 rounded-xl bg-amber-500/15 border border-amber-500/40 px-4 py-3 text-sm text-amber-200 flex items-center gap-2.5" role="alert">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>Your session expired after a period of inactivity. Please sign in again.</span>
+            </div>
+        <?php endif; ?>
+
         <form method="POST" action="index.php?module=Security&action=login" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
+            <input type="hidden" name="return_to" value="<?php echo htmlspecialchars((string) ($_GET['return_to'] ?? ($loginData['return_to'] ?? ''))); ?>">
             <div>
                 <label for="username" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Username</label>
                 <input id="username" name="username" type="text" required autofocus placeholder="admin"

@@ -124,16 +124,32 @@ class HrService {
         ]);
     }
     public function approveLeave($id, $officerId) {
-        $this->pdo->prepare("UPDATE leave_requests SET status='approved', approved_by=?, approved_at=CURRENT_TIMESTAMP WHERE id=?")
-            ->execute([$officerId, $id]);
-        // Reduce the employee's leave balance.
-        $lr = $this->pdo->prepare("SELECT employee_id, leave_type, days FROM leave_requests WHERE id=?");
-        $lr->execute([$id]); $row = $lr->fetch();
-        if ($row) {
-            $this->pdo->prepare("UPDATE leave_balances SET used_days = used_days + ? WHERE employee_id=? AND leave_type=?")
-                ->execute([(int) $row['days'], $row['employee_id'], $row['leave_type']]);
+        $this->pdo->beginTransaction();
+        try {
+            // Only approve a request that is still pending, so approving twice
+            // cannot deduct the employee's balance more than once.
+            $st = $this->pdo->prepare(
+                "UPDATE leave_requests SET status='approved', approved_by=?, approved_at=CURRENT_TIMESTAMP
+                 WHERE id=? AND status='pending'"
+            );
+            $st->execute([$officerId, $id]);
+            if ($st->rowCount() === 0) {
+                $this->pdo->rollBack();
+                return false;
+            }
+            // Reduce the employee's leave balance (once).
+            $lr = $this->pdo->prepare("SELECT employee_id, leave_type, days FROM leave_requests WHERE id=?");
+            $lr->execute([$id]); $row = $lr->fetch();
+            if ($row) {
+                $this->pdo->prepare("UPDATE leave_balances SET used_days = used_days + ? WHERE employee_id=? AND leave_type=?")
+                    ->execute([(int) $row['days'], $row['employee_id'], $row['leave_type']]);
+            }
+            $this->pdo->commit();
+            return true;
+        } catch (Exception $e) {
+            if ($this->pdo->inTransaction()) { $this->pdo->rollBack(); }
+            return false;
         }
-        return true;
     }
     public function rejectLeave($id, $officerId) {
         return $this->pdo->prepare("UPDATE leave_requests SET status='rejected', approved_by=?, approved_at=CURRENT_TIMESTAMP WHERE id=?")

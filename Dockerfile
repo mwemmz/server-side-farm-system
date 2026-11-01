@@ -22,3 +22,8 @@ RUN chown -R www-data:www-data /var/www/html
 
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
+
+# Bind Apache to Render's $PORT on 0.0.0.0 (keeps port 80 as a fallback)
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+CMD ["/usr/local/bin/docker-entrypoint.sh"]

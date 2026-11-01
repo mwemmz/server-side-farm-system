@@ -20,6 +20,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+// Any uncaught error becomes a JSON response (bad data -> 422), never a blank 500.
+set_exception_handler(function ($e) {
+    error_log('FFMS API unhandled: ' . get_class($e) . ': ' . $e->getMessage());
+    $state = ($e instanceof PDOException) ? substr((string) $e->getCode(), 0, 2) : '';
+    if (in_array($state, ['22', '23'], true) || $e instanceof TypeError || $e instanceof ValueError) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'data' => null, 'error' => 'Invalid or conflicting data']);
+    } else {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'data' => null, 'error' => 'Internal error']);
+    }
+    exit;
+});
+
 /** Send a JSON response in the standard shape and stop. */
 function api_send($success, $data = null, $error = null, $status = 200) {
     http_response_code($status);

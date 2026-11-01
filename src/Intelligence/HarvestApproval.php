@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/IntelligenceUtils.php';
 require_once __DIR__ . '/YieldPredictionService.php';
+require_once __DIR__ . '/../Modules/Finance/FinanceService.php';
 
 /**
  * Feature 5 — Approval Workflow: Harvest → Finance.
@@ -169,13 +170,11 @@ class HarvestApproval {
         $lastSale = $this->pdo->query("SELECT id FROM sales_records ORDER BY sale_date DESC, id DESC LIMIT 1")->fetch();
         $amount = (float) $harvest['quantity']; // placeholder valuation; real logic would use sale price
 
-        $stmt = $this->pdo->prepare(
-            "INSERT INTO finance_records (type, amount, description, date)
-             VALUES ('income', ?, ?, CURRENT_DATE) RETURNING id"
-        );
         $description = "Auto income from approved harvest #{$harvest['id']} ({$harvest['crop_name']})";
-        $stmt->execute([$amount, $description]);
-        $id = (int) $stmt->fetchColumn();
+        // Post through the central finance service (idempotent per harvest).
+        $id = (new FinanceService($this->pdo))->postSafe(
+            'income', 'Crop sales', $amount, $description, $harvest['farm_id'] ?? null, 'Harvest', (int) $harvest['id'], date('Y-m-d'), 'paid'
+        );
 
         IntelligenceUtils::auditSystem(
             $this->pdo,

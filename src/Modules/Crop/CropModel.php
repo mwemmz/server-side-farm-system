@@ -11,6 +11,8 @@ class CropModel {
         return $stmt->fetchAll();
     }
 
+    public function lastId() { return (int) $this->pdo->lastInsertId(); }
+
     public function createCrop($farm_id, $name, $variety, $planting_date, $expected_harvest_date) {
         $stmt = $this->pdo->prepare("INSERT INTO crops (farm_id, name, variety, planting_date, expected_harvest_date) VALUES (?, ?, ?, ?, ?)");
         return $stmt->execute([$farm_id, $name, $variety, $planting_date, $expected_harvest_date]);

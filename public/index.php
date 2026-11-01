@@ -1,4 +1,8 @@
 <?php
+// Idle session timeout (30 min). Must be set before session_start so that
+// session.gc_maxlifetime actually applies (ini_set after session_start warns).
+$idleLimit = 1800;
+ini_set('session.gc_maxlifetime', (string) $idleLimit);
 session_start();
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
@@ -7,11 +11,89 @@ require_once __DIR__ . '/../src/Helpers/CsrfHelper.php';
 require_once __DIR__ . '/../src/Helpers/RbacHelper.php';
 require_once __DIR__ . '/../src/Helpers/AuditHelper.php';
 
+// Hostile-input guard: only known fields may be arrays (e.g. animal_ids[]); any other
+// array value is blanked so controllers never receive an array where text is expected.
+foreach (['_POST' => $_POST, '_GET' => $_GET] as $__k => $__v) {
+    foreach ($__v as $__name => $__val) {
+        if (is_array($__val) && !in_array($__name, ['animal_ids'], true)) {
+            if ($__k === '_POST') { $_POST[$__name] = ''; } else { $_GET[$__name] = ''; }
+        }
+    }
+}
+
+// Last-resort handler: bad data (too long, out of range, missing parent record) becomes a
+// friendly message on the page the user came from, never a blank 500.
+set_exception_handler(function ($e) {
+    error_log('FFMS unhandled: ' . get_class($e) . ': ' . $e->getMessage());
+    $state = ($e instanceof PDOException) ? substr((string) $e->getCode(), 0, 2) : '';
+    $userData = in_array($state, ['22', '23'], true) || $e instanceof TypeError || $e instanceof ValueError;
+    $msg = $userData
+        ? 'That could not be saved. Check the values (length, numbers, and that linked records exist) and try again.'
+        : 'Something went wrong on our side. Please try again.';
+    if (!headers_sent() && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+        $_SESSION['flash']['error'] = $msg;
+        $ref = parse_url($_SERVER['HTTP_REFERER'] ?? '', PHP_URL_QUERY);
+        $host = parse_url($_SERVER['HTTP_REFERER'] ?? '', PHP_URL_HOST);
+        $sameHost = ($host === null) || ($host === preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
+        $back = ($ref && $sameHost) ? 'index.php?' . $ref : 'index.php?module=Dashboard';
+        header('Location: ' . $back);
+        exit;
+    }
+    if (!headers_sent()) { http_response_code($userData ? 422 : 500); }
+    echo '<!doctype html><meta charset="utf-8"><title>Error</title><p style="font-family:sans-serif;margin:2rem">' . htmlspecialchars($msg) . ' <a href="index.php?module=Dashboard">Back to dashboard</a></p>';
+});
+
 // Run migrations + seeding automatically
 require_once __DIR__ . '/../db/migrate.php';
 
 $module = $_GET['module'] ?? 'Dashboard';
 $action = $_GET['action'] ?? 'index';
+
+// --- A1: Central CSRF protection for every state-changing request ---
+require_once __DIR__ . '/../src/Helpers/SessionHelper.php';
+$reqMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+$wantsJson = (stripos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false)
+    || (strcasecmp($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '', 'XMLHttpRequest') === 0)
+    || ($module === 'Lookup')
+    || ($module === 'Insights')
+    || ($module === 'Labour' && $action === 'emp_add');
+$providedToken = $_POST['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+
+// Actions that must never be reachable by a plain GET (no link-prefetch/CSRF-by-image).
+$mustPostActions = ['delete', 'approve', 'reject', 'resolve', 'paid',
+                    'mark_read', 'mark_all_read', 'run_rules', 'toggle_rule', 'delete_rule',
+                    'panel_act', 'incidentStatus', 'recordService'];
+if (in_array($action, $mustPostActions, true) && $reqMethod !== 'POST') {
+    http_response_code(405);
+    if ($wantsJson) {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['success' => false, 'error' => 'This action must be submitted as a POST request.']);
+    } else {
+        echo "<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Action not allowed</title></head>"
+           . "<body style='font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0'>"
+           . "<div style='max-width:26rem;padding:2rem;text-align:center'>"
+           . "<h2 style='margin:0 0 .5rem'>Action not allowed</h2>"
+           . "<p style='color:#94a3b8'>For your security this action must be submitted from the application.</p>"
+           . "<p style='margin-top:1.5rem'><a href='index.php' style='color:#4ade80;font-weight:600'>Back to dashboard</a></p></div></body></html>";
+    }
+    exit;
+}
+
+if ($reqMethod === 'POST' && !SessionHelper::csrfValidate($providedToken)) {
+    http_response_code(403);
+    if ($wantsJson) {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['success' => false, 'error' => 'Invalid or missing security token.']);
+    } else {
+        echo "<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Session expired</title></head>"
+           . "<body style='font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0'>"
+           . "<div style='max-width:26rem;padding:2rem;text-align:center'>"
+           . "<h2 style='margin:0 0 .5rem'>Your session expired</h2>"
+           . "<p style='color:#94a3b8'>Go back, reload the page and try again.</p>"
+           . "<p style='margin-top:1.5rem'><a href='index.php' style='color:#4ade80;font-weight:600'>Back to the app</a></p></div></body></html>";
+    }
+    exit;
+}
 
 // --- Authentication actions (login/logout) handled before the auth gate ---
 if ($module === 'Security' && in_array($action, ['login', 'logout'], true)) {
@@ -34,8 +116,31 @@ if ($module === 'Security' && in_array($action, ['login', 'logout'], true)) {
 
 // --- Auth gate: every other page requires a logged-in user ---
 if (!isset($_SESSION['user_id'])) {
-    header('Location: index.php?module=Security&action=login');
+    require_once __DIR__ . '/../src/Helpers/RoleHelper.php';
+    $back = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET' ? RoleHelper::safeReturn($_SERVER['REQUEST_URI'] ?? '') : null;
+    header('Location: index.php?module=Security&action=login' . ($back ? '&return_to=' . urlencode($back) : ''));
     exit;
+}
+
+// --- Idle session timeout (30 min): log it and bounce back to login ---
+if (isset($_SESSION['last_activity']) && (time() - (int) $_SESSION['last_activity']) > $idleLimit) {
+    require_once __DIR__ . '/../src/Modules/Security/SecurityModel.php';
+    (new SecurityModel($pdo))->logEvent((int) ($_SESSION['user_id'] ?? 0), 'session_timeout');
+    session_unset();
+    session_destroy();
+    header('Location: index.php?module=Security&action=login&expired=1');
+    exit;
+}
+$_SESSION['last_activity'] = time();
+
+// --- Role home: a bare index.php sends each role to its own landing screen ---
+require_once __DIR__ . '/../src/Helpers/RoleHelper.php';
+if (!isset($_GET['module']) && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+    $home = RoleHelper::homeFor($_SESSION['role'] ?? 'worker');
+    if ($home !== 'index.php?module=Dashboard') {
+        header('Location: ' . $home);
+        exit;
+    }
 }
 
 // --- Role-Based Access Control (RBAC) ---
@@ -160,6 +265,89 @@ if (in_array($action, ['backup', 'profitability', 'qr_resolve', 'qr_label', 'qui
 
 $module = $_GET['module'] ?? 'Dashboard';
 $action = $_GET['action'] ?? 'index';
+
+// --- Pest is no longer a standalone module: it now lives inside Crop & Livestock.
+// Keep the old URL working by redirecting it into the Crop module.
+if ($module === 'Pest') {
+    header('Location: index.php?module=Crop&action=manage');
+    exit;
+}
+
+// --- Lookup reference data (dependent combobox options) ---
+if ($module === 'Lookup' && $action === 'options') {
+    header('Content-Type: application/json; charset=UTF-8');
+    require_once __DIR__ . '/../src/Helpers/LookupHelper.php';
+    $category = $_GET['category'] ?? '';
+    $parent   = $_GET['parent'] ?? '';
+    if ($category === 'vaccine_name') {
+        $options = [];
+        foreach (LookupHelper::vaccineOptions($pdo, $parent !== '' ? $parent : null) as $value => $label) {
+            $options[] = ['value' => $value, 'label' => $label];
+        }
+        echo json_encode(['success' => true, 'options' => $options]);
+        exit;
+    }
+    // Finance categories depend on the chosen type (Income vs Expense).
+    if ($category === 'finance_category' && $parent !== '') {
+        $listCat = (strtolower($parent) === 'income') ? 'finance_category_income' : 'finance_category_expense';
+        echo json_encode(['success' => true, 'options' => LookupHelper::listOptions($pdo, $listCat)]);
+        exit;
+    }
+    $filter   = ($parent !== '') ? ['parent' => $parent] : [];
+    echo json_encode(['success' => true, 'options' => LookupHelper::listOptions($pdo, $category, $filter)]);
+    exit;
+}
+
+// --- Remember a custom value typed into an open combobox (Phase 2) ---
+if ($module === 'Lookup' && $action === 'remember') {
+    header('Content-Type: application/json; charset=UTF-8');
+    require_once __DIR__ . '/../src/Helpers/LookupHelper.php';
+    require_once __DIR__ . '/../src/Helpers/SessionHelper.php';
+
+    // Only supervisory roles may add new dropdown values, and the request must
+    // carry the session CSRF token (defence against cross-site posting).
+    $rememberRoles = ['admin', 'manager', 'accountant'];
+    if (!in_array($role, $rememberRoles, true)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'You are not permitted to add list values.']);
+        exit;
+    }
+    if (!SessionHelper::csrfValidate($_POST['csrf_token'] ?? '')) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Invalid or missing security token.']);
+        exit;
+    }
+
+    $category = (string) ($_POST['category'] ?? '');
+    $value    = (string) ($_POST['value'] ?? '');
+    if (!preg_match('/^[a-z_]{1,40}$/', $category)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid category.']);
+        exit;
+    }
+    $canonical = LookupHelper::remember($pdo, $category, $value);
+    echo json_encode(['success' => true, 'value' => $canonical]);
+    exit;
+}
+
+// --- Lookup demo/acceptance page (Phase 1): proves pick-or-type + custom values ---
+if ($module === 'Lookup' && $action === 'test') {
+    require_once __DIR__ . '/../src/Helpers/LookupHelper.php';
+    require_once __DIR__ . '/../src/Helpers/FormHelper.php';
+    require_once __DIR__ . '/../src/Helpers/ValidationHelper.php';
+    $result = null; $errors = [];
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $breed = trim($_POST['breed'] ?? '');
+        $farm  = $_POST['farm_id'] ?? '';
+        if ($breed !== '') $breed = LookupHelper::remember($pdo, 'livestock_breed', $breed);
+        if (!ValidationHelper::existsIn($pdo, 'farms', $farm)) {
+            $errors['farm_id'] = 'Pick an existing farm from the list.';
+        }
+        if (empty($errors)) $result = ['breed' => $breed, 'farm_id' => (int) $farm];
+    }
+    $data = ['result' => $result, 'errors' => $errors, 'data' => $_POST];
+    ob_start(); require __DIR__ . '/views/lookup_test.php'; $content = ob_get_clean();
+    require __DIR__ . '/views/layout.php'; exit;
+}
 
 // --- AI/BI (Insights + Assistant): JSON actions + the Insights feed page ---
 require_once __DIR__ . '/../src/Intelligence/InsightsEngine.php';
@@ -341,7 +529,7 @@ if ($module === 'Labour') {
     if (file_exists($viewFile)) {
         $data = $labour->dashboardView();
         $data['upcoming_leave'] = $labour->hrNew()->upcomingLeave(30);
-        $data['pending_leave'] = $labour->hrNew()->leaveRequests(true);
+        $data['pending_leave_list'] = $labour->hrNew()->leaveRequests(true);
         $data['recent_training'] = array_slice($labour->hrNew()->training(), 0, 5);
         ob_start();
         require $viewFile;
@@ -349,6 +537,75 @@ if ($module === 'Labour') {
         require __DIR__ . "/views/layout.php";
         exit;
     }
+}
+
+// --- Finance: loans & budgets (sub-views demoted behind panel buttons) ---
+if ($module === 'Finance' && in_array($action, ['loans', 'budgets'], true)) {
+    require_once __DIR__ . '/../src/Modules/Finance/FinanceController.php';
+    $finance = new FinanceController($pdo);
+    $finView = ($action === 'loans') ? 'finance_loans.php' : 'finance_budgets.php';
+    $data = $finance->$action();
+    ob_start();
+    require __DIR__ . '/views/' . $finView;
+    $content = ob_get_clean();
+    require __DIR__ . '/views/layout.php';
+    exit;
+}
+
+// --- Notifications: mark-as-read + alert-rule actions and rules view ---
+if ($module === 'Notifications') {
+    require_once __DIR__ . '/../src/Modules/Notifications/NotificationsController.php';
+    $notif = new NotificationsController($pdo);
+    $notifMap = [
+        'mark_read'     => 'markRead',
+        'mark_all_read' => 'markAllRead',
+        'run_rules'     => 'runRules',
+        'toggle_rule'   => 'toggleRule',
+        'delete_rule'   => 'deleteRule',
+    ];
+    if (isset($notifMap[$action])) {
+        $method = $notifMap[$action];
+        if (in_array($action, ['mark_read', 'toggle_rule', 'delete_rule'], true)) {
+            $notif->$method((int) ($_GET['id'] ?? 0));
+        } else {
+            $notif->$method();
+        }
+        header('Location: index.php?module=Notifications&action=manage');
+        exit;
+    }
+    if ($action === 'rules') {
+        $data = $notif->rules();
+        ob_start();
+        require __DIR__ . '/views/notifications_rules.php';
+        $content = ob_get_clean();
+        require __DIR__ . '/views/layout.php';
+        exit;
+    }
+}
+
+// --- Security: password change, user management, audit log ---
+if ($module === 'Security') {
+    require_once __DIR__ . '/../src/Modules/Security/SecurityController.php';
+    $secCtrl = new SecurityController($pdo);
+    if ($action === 'change_password') {
+        $data = $secCtrl->changePassword();
+        ob_start(); require __DIR__ . '/views/security_password.php'; $content = ob_get_clean();
+        require __DIR__ . '/views/layout.php'; exit;
+    }
+    if ($action === 'users') {
+        if ($role !== 'admin') { die("Access Denied: User management is restricted to admins."); }
+        $data = $secCtrl->users();
+        ob_start(); require __DIR__ . '/views/security_users.php'; $content = ob_get_clean();
+        require __DIR__ . '/views/layout.php'; exit;
+    }
+    if ($action === 'audit') {
+        $data = $secCtrl->auditLog();
+        ob_start(); require __DIR__ . '/views/security_audit.php'; $content = ob_get_clean();
+        require __DIR__ . '/views/layout.php'; exit;
+    }
+    $data = $secCtrl->index();
+    ob_start(); require __DIR__ . '/views/security.php'; $content = ob_get_clean();
+    require __DIR__ . '/views/layout.php'; exit;
 }
 
 if ($module === 'Dashboard') {
@@ -374,7 +631,7 @@ if (in_array($module, $panelModules, true)) {
     }
 
     // Module landing (tap) -> panel view, unless an explicit CRUD action is requested.
-    $isCrudAction = in_array($action, ['add', 'edit', 'delete', 'manage'], true)
+    $isCrudAction = in_array($action, ['add', 'edit', 'delete', 'manage', 'profile', 'nextTag'], true)
         || ($_SERVER['REQUEST_METHOD'] === 'POST');
     $panelView = __DIR__ . "/views/" . strtolower($module) . "_panel.php";
 

@@ -9,7 +9,13 @@
  * app's $pdo / $config globals are in scope.
  */
 require_once __DIR__ . '/../../../config/env.php';
+require_once __DIR__ . '/../../../src/Helpers/SessionHelper.php';
 $recs = $data ?? [];
+// Some controllers return structured arrays (e.g. Crop => ['crops'=>..,'pests'=>..]);
+// unwrap the record list so the landing iterates rows, not the wrapper.
+if (is_array($recs) && isset($recs['crops']) && is_array($recs['crops'])) {
+    $recs = $recs['crops'];
+}
 $m    = isset($module) ? $module : ($_GET['module'] ?? 'Module');
 
 function esc($v) { return htmlspecialchars($v ?? ''); }
@@ -31,7 +37,7 @@ switch ($m) {
         }
         $summaries = [['Active crops', $active, 'green'], ['Harvest due', $upcoming, 'amber'], ['Total fields', (int) $pdo->query('SELECT COUNT(*) FROM fields')->fetchColumn(), 'slate']];
         foreach ($recs as $c) {
-            $g = $c['expected_harvest_date'] ? ((strtotime((string) $c['expected_harvest_date']) < strtotime('today')) ? ['Overdue', 'red'] : ['On track', 'green']) : ['—', 'slate'];
+            $g = !empty($c['expected_harvest_date']) ? ((strtotime((string) $c['expected_harvest_date']) < strtotime('today')) ? ['Overdue', 'red'] : ['On track', 'green']) : ['—', 'slate'];
             $render .= '<div class="glass-card p-4 sm:p-5"><div class="flex justify-between items-start"><div class="text-base font-bold text-slate-800">' . esc($c['name']) . '</div><span class="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-'.(($g[1]==='red')?'red':'emerald').'-100 text-'.(($g[1]==='red')?'red':'emerald').'-800">'.$g[0].'</span></div>'
                 . '<div class="text-xs text-slate-500 mt-0.5">' . esc($c['variety'] ?? '') . ' · Farm #' . esc($c['farm_id'] ?? '—') . '</div>'
                 . '<div class="mt-2 text-xs text-slate-500 flex gap-4"><span>Planted <strong>' . esc($c['planting_date'] ?? '—') . '</strong></span><span>Harvest <strong>' . esc($c['expected_harvest_date'] ?? '—') . '</strong></span></div></div>';
@@ -45,7 +51,7 @@ switch ($m) {
         $summaries = [['Items tracked', $totalItems, 'slate'], ['Total units', $totQty, 'green'], ['Low stock', $low, ($low ? 'red' : 'green')]];
         foreach ($recs as $i) {
             $q = (int) ($i['quantity'] ?? 0); $ok = $q > 10;
-            $render .= '<div class="glass-card p-4 sm:p-5"><div class="flex justify-between items-center"><div class="text-base font-bold text-slate-800">' . esc($i['name']) . '</div>'
+            $render .= '<div class="glass-card p-4 sm:p-5"><div class="flex justify-between items-center"><div class="text-base font-bold text-slate-800">' . esc($i['name'] ?? 'Item') . '</div>'
                 . '<span class="text-sm font-extrabold '.($ok?'text-emerald-700':'text-red-700').'">'.$q.' <span class="text-[10px] font-medium text-slate-400">'.esc($i['unit'] ?? '').'</span></span></div>'
                 . ($ok ? '' : '<div class="mt-2 text-[11px] font-semibold text-red-600">⚠ Low stock — consider reorder</div>') . '</div>';
         }
@@ -54,7 +60,7 @@ switch ($m) {
     case 'Labour':
         $title = 'Labour Dashboard'; $subtitle = 'Workforce on the ground this season.';
         $roles = [];
-        foreach ($recs as $l) { $r = $l['role'] ?: 'General'; $roles[$r] = ($roles[$r] ?? 0) + 1; }
+        foreach ($recs as $l) { $r = $l['role'] ?? 'General'; $roles[$r] = ($roles[$r] ?? 0) + 1; }
         arsort($roles);
         $summaries = [['Workforce', count($recs), 'green'], ['Roles', count($roles), 'slate']];
         foreach ($roles as $r => $n) $summaries[] = [$r, $n, 'amber'];
@@ -67,7 +73,7 @@ switch ($m) {
     case 'Pest':
         $title = 'Pest Management Dashboard'; $subtitle = 'Monitor detections and control actions.';
         $byPest = [];
-        foreach ($recs as $p) { $n = $p['pest_name'] ?: 'Unknown'; $byPest[$n] = ($byPest[$n] ?? 0) + 1; }
+        foreach ($recs as $p) { $n = $p['pest_name'] ?? 'Unknown'; $byPest[$n] = ($byPest[$n] ?? 0) + 1; }
         arsort($byPest);
         $summaries = [['Detections', count($recs), 'red'], ['Pest species', count($byPest), 'amber']];
         foreach ($byPest as $n => $c) if ($c > 1) $summaries[] = [$n, $c, 'red'];
@@ -81,7 +87,7 @@ switch ($m) {
     case 'Harvest':
         $title = 'Harvest Dashboard'; $subtitle = 'Seasonal yields and quality at a glance.';
         $tot = 0.0; $quality = [];
-        foreach ($recs as $h) { $tot += (float) ($h['quantity'] ?? 0); $q = $h['quality'] ?: '—'; $quality[$q] = ($quality[$q] ?? 0) + 1; }
+        foreach ($recs as $h) { $tot += (float) ($h['quantity'] ?? 0); $q = $h['quality'] ?? '—'; $quality[$q] = ($quality[$q] ?? 0) + 1; }
         $summaries = [['Total harvested', number_format($tot, 0) . ' kg', 'green'], ['Records', count($recs), 'slate']];
         foreach ($quality as $q => $n) $summaries[] = ['Quality: ' . ($q === '—' ? 'n/a' : $q), $n, 'amber'];
         foreach ($recs as $h) {
@@ -93,11 +99,11 @@ switch ($m) {
     case 'Market':
         $title = 'Market Prices'; $subtitle = 'Current crop prices to guide selling decisions.';
         $latest = []; $total = 0.0;
-        foreach ($recs as $md) { $total += (float) ($md['price'] ?? 0); $latest[$md['crop_name']] = $md['price']; }
+        foreach ($recs as $md) { $total += (float) ($md['price'] ?? 0); $cn = $md['crop_name'] ?? '—'; if (!isset($latest[$cn])) $latest[$cn] = $md['price'] ?? 0; }
         $avg = count($recs) ? ($total / count($recs)) : 0;
         $summaries = [['Latest prices', count($latest), 'green'], ['Avg price', 'K' . number_format($avg, 2), 'slate']];
         foreach ($recs as $md) {
-            $render .= '<div class="glass-card p-4 sm:p-5"><div class="flex justify-between items-center"><div class="text-base font-bold text-slate-800">' . esc($md['crop_name']) . '</div><span class="text-sm font-extrabold text-emerald-700">' . money($md['price']) . '</span></div>'
+            $render .= '<div class="glass-card p-4 sm:p-5"><div class="flex justify-between items-center"><div class="text-base font-bold text-slate-800">' . esc($md['crop_name'] ?? '—') . '</div><span class="text-sm font-extrabold text-emerald-700">' . money($md['price'] ?? 0) . '</span></div>'
                 . '<div class="text-xs text-slate-500 mt-1">per kg · ' . esc($md['market_date'] ?? '') . '</div></div>';
         }
         break;
@@ -117,7 +123,7 @@ switch ($m) {
         $totSpend = 0.0; foreach ($recs as $pr) $totSpend += (float) ($pr['cost'] ?? 0);
         $summaries = [['Purchases', count($recs), 'slate'], ['Total spend', money($totSpend), 'green']];
         foreach ($recs as $pr) {
-            $render .= '<div class="glass-card p-4 sm:p-5"><div class="flex justify-between items-center"><div class="text-base font-bold text-slate-800">' . esc($pr['item_name']) . '</div><span class="text-sm font-extrabold text-emerald-700">' . money($pr['cost']) . '</span></div>'
+            $render .= '<div class="glass-card p-4 sm:p-5"><div class="flex justify-between items-center"><div class="text-base font-bold text-slate-800">' . esc($pr['item_name'] ?? 'Purchase') . '</div><span class="text-sm font-extrabold text-emerald-700">' . money($pr['cost'] ?? 0) . '</span></div>'
                 . '<div class="text-xs text-slate-500 mt-1">' . esc($pr['quantity'] ?? '') . ' units · ' . esc($pr['purchase_date'] ?? '') . '</div></div>';
         }
         break;
@@ -127,17 +133,27 @@ switch ($m) {
         $totRev = 0.0; foreach ($recs as $s) $totRev += (float) ($s['amount'] ?? 0);
         $summaries = [['Sales', count($recs), 'slate'], ['Total revenue', money($totRev), 'green']];
         foreach ($recs as $s) {
-            $render .= '<div class="glass-card p-4 sm:p-5"><div class="flex justify-between items-center"><div class="text-base font-bold text-slate-800">' . esc($s['customer_name']) . '</div><span class="text-sm font-extrabold text-emerald-700">' . money($s['amount']) . '</span></div>'
+            $render .= '<div class="glass-card p-4 sm:p-5"><div class="flex justify-between items-center"><div class="text-base font-bold text-slate-800">' . esc($s['customer_name'] ?? 'Customer') . '</div><span class="text-sm font-extrabold text-emerald-700">' . money($s['amount'] ?? 0) . '</span></div>'
                 . '<div class="text-xs text-slate-500 mt-1">' . esc($s['sale_date'] ?? '') . '</div></div>';
         }
         break;
 
     case 'Notifications':
         $title = 'Notifications'; $subtitle = 'Alerts and intelligence updates.';
-        $summaries = [['Notifications', count($recs), 'green']];
+        $unread = 0;
+        foreach ($recs as $n) { if (!in_array($n['is_read'] ?? false, [true, 1, '1', 't', 'true'], true)) $unread++; }
+        $summaries = [['Total', count($recs), 'slate'], ['Unread', $unread, ($unread ? 'red' : 'green')]];
+        $csrf = htmlspecialchars(SessionHelper::csrfToken());
+        $render .= '<div class="flex flex-wrap items-center gap-3 mb-2">'
+            . '<form method="POST" action="index.php?module=Notifications&action=mark_all_read" class="inline"><input type="hidden" name="csrf_token" value="' . $csrf . '"><button class="text-xs font-bold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700">Mark all read</button></form>'
+            . '<a href="index.php?module=Notifications&action=rules" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 text-white">Alert Rules</a></div>';
         foreach ($recs as $n) {
-            $render .= '<div class="glass-card p-4 sm:p-5 flex items-start gap-3"><span class="w-2 h-2 rounded-full bg-green-500 mt-2 shrink-0"></span>'
-                . '<div><div class="text-sm text-slate-800">' . esc($n['message']) . '</div><div class="text-[11px] text-slate-400 mt-1">' . esc($n['created_at'] ?? '') . '</div></div></div>';
+            $read = in_array($n['is_read'] ?? false, [true, 1, '1', 't', 'true'], true);
+            $dot = $read ? 'bg-slate-300' : 'bg-green-500';
+            $render .= '<div class="glass-card p-4 sm:p-5 flex items-start gap-3' . ($read ? ' opacity-60' : '') . '"><span class="w-2 h-2 rounded-full ' . $dot . ' mt-2 shrink-0"></span>'
+                . '<div class="flex-1"><div class="text-sm text-slate-800">' . esc($n['message']) . '</div><div class="text-[11px] text-slate-400 mt-1">' . esc($n['created_at'] ?? '') . '</div></div>'
+                . ($read ? '<span class="text-[10px] font-bold text-slate-400">Read</span>' : '<form method="POST" action="index.php?module=Notifications&action=mark_read&id=' . (int) $n['id'] . '" class="inline"><input type="hidden" name="csrf_token" value="' . $csrf . '"><button class="text-[10px] font-bold text-green-700">Mark read</button></form>')
+                . '</div>';
         }
         break;
 

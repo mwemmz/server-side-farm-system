@@ -1,7 +1,12 @@
 <?php
 require_once __DIR__ . '/../../src/Modules/Analytics/AnalyticsModel.php';
 require_once __DIR__ . '/../../src/Services/WeatherService.php';
+require_once __DIR__ . '/../../src/Intelligence/AttentionService.php';
 require_once __DIR__ . '/../../config/env.php';
+require_once __DIR__ . '/../../src/Helpers/RoleHelper.php';
+$__role = RoleHelper::normalise($_SESSION['role'] ?? 'worker');
+$__compact = ($__role === 'worker') || (($_GET['view'] ?? '') === 'today');
+$__money = RoleHelper::seesFinance($__role);
 
 $analyticsModel = new AnalyticsModel($pdo);
 $totalCost = $analyticsModel->getTotalProcurementCost() ?? 0;
@@ -19,9 +24,9 @@ if ($farmRow && $farmRow['latitude'] !== null && $farmRow['longitude'] !== null)
 
 $weather = [];
 try {
-    $weatherService = new WeatherService();
+    $weatherService = new WeatherService($pdo);
     $weather = $weatherService->getCurrentSummary($lat, $lon);
-} catch (\Exception $e) {
+} catch (\Throwable $e) {
     $weather = [];
 }
 
@@ -38,6 +43,15 @@ function weatherLabel($code) {
     return $map[(int) $code] ?? 'Unknown';
 }
 
+// B5: "Needs attention today" — shared AttentionService.
+$attentionItems = [];
+try {
+    $attention = new AttentionService($pdo, $_SESSION['role'] ?? 'worker');
+    $attentionItems = $attention->collect();
+} catch (\Throwable $e) {
+    error_log('Dashboard attention failed: ' . $e->getMessage());
+}
+
 function weatherIcon($code) {
     $code = (int) $code;
     if ($code === 0 || $code === 1) return '<svg class="w-10 h-10 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>';
@@ -51,13 +65,59 @@ function weatherIcon($code) {
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 animate-fade-in">
         <div>
-            <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900">Dashboard</h1>
+            <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900"><?php echo $__compact ? 'My day' : 'Dashboard'; ?></h1>
             <p class="text-sm text-slate-500 mt-1.5 max-w-3xl">Welcome to the Intelligent Farm Management System.</p>
         </div>
     </div>
 
+    <!-- B5: Needs attention today -->
+    <?php if (!empty($attentionItems)): ?>
+    <div class="glass-card p-4 sm:p-6 border-l-4 border-l-amber-400 animate-fade-in">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-bold text-slate-800">Needs attention today</h2>
+            <span class="text-[11px] font-bold uppercase px-2.5 py-1 rounded-full bg-amber-100 text-amber-800"><?php echo count($attentionItems); ?> item<?php echo count($attentionItems) > 1 ? 's' : ''; ?></span>
+        </div>
+        <ul class="space-y-2">
+            <?php foreach ($attentionItems as $it):
+                $sev = $it['severity'] ?? 'slate';
+                $dot = $sev === 'red' ? 'bg-red-500' : ($sev === 'amber' ? 'bg-amber-500' : 'bg-slate-400');
+                $chip = $sev === 'red' ? 'bg-red-100 text-red-800' : ($sev === 'amber' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700');
+            ?>
+                <li>
+                    <a href="<?php echo htmlspecialchars($it['link'] ?? '#'); ?>" class="flex items-start gap-3 rounded-xl px-3 py-2.5 bg-white/50 border border-white/60 hover:bg-white/80 transition">
+                        <span class="mt-1.5 w-2 h-2 rounded-full <?php echo $dot; ?> shrink-0"></span>
+                        <span class="min-w-0">
+                            <span class="block text-sm font-semibold text-slate-800"><?php echo htmlspecialchars($it['title'] ?? ''); ?></span>
+                            <span class="block text-xs text-slate-500 mt-0.5"><?php echo htmlspecialchars($it['detail'] ?? ''); ?></span>
+                        </span>
+                        <span class="ml-auto shrink-0 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full <?php echo $chip; ?>"><?php echo htmlspecialchars($it['module'] ?? ''); ?></span>
+                    </a>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+    <?php else: ?>
+    <div class="text-xs text-slate-400 px-1 -mt-2">Nothing needs attention right now.</div>
+    <?php endif; ?>
+
+    <?php if ($__compact): ?>
+    <div class="glass-card p-4 sm:p-6 animate-fade-in">
+        <h2 class="text-lg font-bold text-slate-800 mb-3">Quick actions</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <a href="index.php?module=Livestock&amp;action=manage#vaccinate" class="text-center px-3 py-3 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 transition">Record vaccination</a>
+            <a href="index.php?module=Livestock&amp;action=manage#treatment" class="text-center px-3 py-3 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 transition">Record treatment</a>
+            <a href="index.php?module=Crop&amp;action=manage" class="text-center px-3 py-3 rounded-xl bg-amber-500 text-white text-sm font-bold hover:bg-amber-600 transition">Report a problem</a>
+            <a href="index.php?module=Inventory&amp;action=manage" class="text-center px-3 py-3 rounded-xl bg-slate-700 text-white text-sm font-bold hover:bg-slate-800 transition">Stock out</a>
+            <a href="index.php?module=Harvest&amp;action=add" class="text-center px-3 py-3 rounded-xl bg-slate-700 text-white text-sm font-bold hover:bg-slate-800 transition">Record harvest</a>
+            <a href="index.php?module=Livestock&amp;action=manage" class="text-center px-3 py-3 rounded-xl bg-white/70 border border-slate-200 text-slate-700 text-sm font-bold hover:bg-white transition">Animal register</a>
+        </div>
+    </div>
+    </div>
+    <?php return; endif; ?>
+
     <!-- KPI Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 stagger">
+        <?php if ($__money): ?>
         <div class="glass-card card-glow p-4 md:p-5 group">
             <div class="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-rose-500 to-pink-500 opacity-70 rounded-t-2xl"></div>
             <div class="flex items-start justify-between gap-2">
@@ -85,6 +145,7 @@ function weatherIcon($code) {
                 </div>
             </div>
         </div>
+        <?php endif; ?>
 
         <div class="glass-card card-glow p-4 md:p-5 group">
             <div class="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 to-blue-500 opacity-70 rounded-t-2xl"></div>

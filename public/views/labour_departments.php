@@ -14,6 +14,7 @@ $flashErr = SessionHelper::getFlash('error') ?? null;
     <div class="glass-card p-5">
         <h2 class="text-lg font-bold text-slate-700 mb-4">Add Department</h2>
         <form method="POST" action="index.php?module=Labour&action=add&subsection=departments" class="space-y-3">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
             <div class="flex flex-col gap-1">
                 <label class="text-sm font-semibold text-slate-700">Department Name *</label>
                 <input type="text" name="name" required class="w-full px-3.5 py-2 text-sm text-slate-800 bg-white/70 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500">

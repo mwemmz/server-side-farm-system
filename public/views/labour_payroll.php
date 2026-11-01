@@ -32,6 +32,7 @@ $empJson = array_map(function ($e) {
         <h2 class="text-lg font-bold text-slate-700 mb-1">New Pay Run</h2>
         <p class="text-xs text-slate-500 mb-4">Zambia statutory deductions auto-applied: NAPSA 5%, PAYE (progressive), NHIMA 1%.</p>
         <form id="payForm" method="POST" action="index.php?module=Labour&action=add&subsection=payroll" class="space-y-3">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
             <div class="flex flex-col gap-1"><label class="text-sm font-semibold text-slate-700">Employee *</label>
                 <select name="employee_id" id="payEmp" required class="w-full px-3 py-2 text-sm border rounded-lg">
                     <option value="">— Select employee —</option>
@@ -100,7 +101,10 @@ $empJson = array_map(function ($e) {
                             <?php if ($p['status'] === 'paid'): ?>
                                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Paid</span>
                             <?php else: ?>
-                                <a href="index.php?module=Labour&action=paid&subsection=payroll&id=<?php echo $p['id']; ?>" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 hover:bg-amber-200">Draft · Mark paid</a>
+                                <form method="POST" action="index.php?module=Labour&action=paid&subsection=payroll&id=<?php echo (int) $p['id']; ?>" class="inline">
+                                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
+                                    <button class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 hover:bg-amber-200">Draft · Mark paid</button>
+                                </form>
                             <?php endif; ?>
                         </td>
                     </tr>

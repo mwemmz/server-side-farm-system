@@ -17,6 +17,7 @@ $flashErr = SessionHelper::getFlash('error') ?? null;
     <div class="glass-card p-5">
         <h2 class="text-lg font-bold text-slate-700 mb-4">Create Shift / Roster</h2>
         <form method="POST" action="index.php?module=Labour&action=add&subsection=shifts" class="space-y-3">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
             <div class="flex flex-col gap-1"><label class="text-sm font-semibold text-slate-700">Employee *</label>
                 <select name="employee_id" required class="w-full px-3 py-2 text-sm border rounded-lg">
                     <option value="">— Select employee —</option>
@@ -45,6 +46,7 @@ $flashErr = SessionHelper::getFlash('error') ?? null;
     <div class="glass-card p-5">
         <h2 class="text-lg font-bold text-slate-700 mb-4">Clock In / Out</h2>
         <form method="POST" action="index.php?module=Labour&action=add&subsection=attendance" class="space-y-3">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
             <div class="flex flex-col gap-1"><label class="text-sm font-semibold text-slate-700">Employee *</label>
                 <select name="employee_id" required class="w-full px-3 py-2 text-sm border rounded-lg">
                     <option value="">— Select employee —</option>
@@ -52,7 +54,7 @@ $flashErr = SessionHelper::getFlash('error') ?? null;
                 </select></div>
             <div class="grid grid-cols-3 gap-3">
                 <div class="flex flex-col gap-1"><label class="text-sm font-semibold text-slate-700">Date *</label>
-                    <input type="date" name="work_date" required value="<?php echo date('Y-m-d'); ?>" class="w-full px-3.5 py-2 text-sm border rounded-lg"></div>
+                    <input type="date" name="work_date" required max="<?php echo date('Y-m-d'); ?>" value="<?php echo date('Y-m-d'); ?>" class="w-full px-3.5 py-2 text-sm border rounded-lg"></div>
                 <div class="flex flex-col gap-1"><label class="text-sm font-semibold text-slate-700">Clock In</label>
                     <input type="time" name="clock_in" class="w-full px-3.5 py-2 text-sm border rounded-lg"></div>
                 <div class="flex flex-col gap-1"><label class="text-sm font-semibold text-slate-700">Clock Out</label>
