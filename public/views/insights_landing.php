@@ -44,6 +44,8 @@ usort($recs, function ($a, $b) use ($order) {
             <p class="text-sm text-slate-500 mt-1.5 max-w-3xl">Proactive, data-driven recommendations computed from your farm's own records — the longer you log, the sharper they get.</p>
         </div>
         <div class="flex items-center gap-3 text-xs text-slate-500">
+            <a href="index.php?module=Insights&amp;view=planner" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-bold">Planting planner</a>
+            <a href="index.php?module=Traceability" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-bold">Traceability</a>
             <button onclick="window.FFAssistant && FFAssistant.open()"
                     class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-bold shadow-lg hover:shadow-emerald-700/40 transition-shadow">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>

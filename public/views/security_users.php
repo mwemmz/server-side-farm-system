@@ -22,7 +22,7 @@ $flash = SessionHelper::getFlash('success');
         ['name' => 'username', 'label' => 'Username', 'value' => $formData['username'] ?? ''],
         ['name' => 'email', 'label' => 'Email', 'type' => 'email', 'value' => $formData['email'] ?? ''],
         ['name' => 'password', 'label' => 'Temporary Password', 'type' => 'password', 'help' => 'At least 6 characters.'],
-        ['name' => 'role', 'label' => 'Role', 'type' => 'select', 'options' => ['worker' => 'Worker', 'manager' => 'Manager', 'accountant' => 'Accountant', 'admin' => 'Admin'], 'placeholder' => 'Select a role…', 'value' => $formData['role'] ?? 'worker'],
+        ['name' => 'role', 'label' => 'Role', 'type' => 'select', 'options' => ['worker' => 'Worker', 'manager' => 'Manager', 'accountant' => 'Accountant', 'farm-owner' => 'Farm owner', 'agronomist' => 'Agronomist', 'admin' => 'Admin'], 'placeholder' => 'Select a role…', 'value' => $formData['role'] ?? 'worker'],
     ];
     echo FormHelper::generateForm($fields, 'index.php?module=Security&action=users', 'POST', $errors);
     ?>

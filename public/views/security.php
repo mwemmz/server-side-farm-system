@@ -30,7 +30,7 @@ $isAdmin = ($_SESSION['role'] ?? '') === 'admin';
     <h2 class="font-bold text-slate-800 mb-2">Data backup</h2>
     <p class="text-sm text-slate-600 mb-3">Download a JSON backup of the current PostgreSQL data.</p>
     <form method="post" action="index.php?module=Security&action=backup">
-        <input type="hidden" name="_csrf" value="<?php echo htmlspecialchars(CsrfHelper::token()); ?>">
+        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
         <button class="bg-green-700 text-white rounded-lg px-4 py-2" type="submit">Download backup</button>
     </form>
 </div>

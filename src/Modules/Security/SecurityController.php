@@ -81,7 +81,7 @@ class SecurityController {
             if ($username === '') $errors['username'] = 'Username is required.';
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors['email'] = 'A valid email is required.';
             if (strlen($password) < 6) $errors['password'] = 'Password must be at least 6 characters.';
-            if (!in_array($role, ['admin', 'manager', 'accountant', 'worker'], true)) $errors['role'] = 'Invalid role.';
+            if (!in_array($role, ['admin', 'manager', 'accountant', 'worker', 'farm-owner', 'agronomist'], true)) $errors['role'] = 'Invalid role.';
             if (empty($errors)) {
                 try {
                     $this->model->createUser($username, $email, $password, $role);

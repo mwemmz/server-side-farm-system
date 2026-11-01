@@ -29,4 +29,4 @@
 
 ## Deferred
 
-Traceability batches/public provenance, planting what-if planning, offline sync, translations, and mobile-money receipts were deferred to keep the requested Phase 1 plus features 1–3 scope surgical.
+The previously deferred traceability batches/public provenance, planting what-if planning, offline sync, Bemba/Nyanja dictionary, and payment/receipt tracking are now implemented in `db/standout_schema.sql`, the new services, and authenticated `public/index.php` actions.

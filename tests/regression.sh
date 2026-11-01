@@ -559,6 +559,20 @@ check "return_to internal page honoured" "$(role_login "$J2" "$USER_NAME" "$USER
 rm -f "$J2"
 
 # ---------------------------------------------------------------------------
+# 7. Remaining standout endpoints: planner, traceability, translation, and
+#    receipt routes must respond with structured, non-500 output.
+# ---------------------------------------------------------------------------
+echo "-- Standout feature endpoints --"
+R="$(bodycode -b "$JAR" "$BASE/index.php?module=Insights&action=planner&area=2&input_cost=100&expected_yield=3&price_forecast=500&plant_month=3")"
+check "planner endpoint -> 200" "$(printf '%s' "$R" | tail -1)" "200"
+contains "$(printf '%s' "$R" | sed '$d')" '"expected_profit"' "planner returns profit"
+R="$(bodycode -b "$JAR" "$BASE/index.php?module=Traceability&action=public&token=invalid-token")"
+check "invalid public trace token -> 200" "$(printf '%s' "$R" | tail -1)" "200"
+R="$(bodycode -b "$JAR" "$BASE/index.php?module=Insights&action=translate&language=bem&phrase=Save")"
+check "translation endpoint -> 200" "$(printf '%s' "$R" | tail -1)" "200"
+contains "$(printf '%s' "$R" | sed '$d')" '"translation"' "translation returns a value"
+
+# ---------------------------------------------------------------------------
 # 6. Optional: no new PHP warnings (when PHP_LOG points at the server log)
 # ---------------------------------------------------------------------------
 if [ -n "$PHP_LOG" ] && [ -f "$PHP_LOG" ]; then

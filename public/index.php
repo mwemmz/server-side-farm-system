@@ -114,6 +114,14 @@ if ($module === 'Security' && in_array($action, ['login', 'logout'], true)) {
     exit;
 }
 
+if ($module === 'Traceability' && $action === 'public') {
+    require_once __DIR__ . '/../src/Services/TraceabilityService.php';
+    $history = (new TraceabilityService($pdo))->publicHistory(trim((string) ($_GET['token'] ?? '')));
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode(['success' => $history !== null, 'data' => $history]);
+    exit;
+}
+
 // --- Auth gate: every other page requires a logged-in user ---
 if (!isset($_SESSION['user_id'])) {
     require_once __DIR__ . '/../src/Helpers/RoleHelper.php';
@@ -155,7 +163,7 @@ if ($module === 'Security' && $action !== 'login' && $role !== 'admin') {
 }
 
 // Authenticated server-side feature actions.
-if (in_array($action, ['backup', 'profitability', 'qr_resolve', 'qr_label', 'quick_action', 'assistant_sale_draft', 'assistant_sale_confirm', 'sms_digest'], true)) {
+if (in_array($action, ['backup', 'profitability', 'qr_resolve', 'qr_label', 'quick_action', 'assistant_sale_draft', 'assistant_sale_confirm', 'sms_digest', 'trace_create', 'trace_query', 'planner', 'sync_push', 'payment_add', 'receipt', 'translate'], true)) {
     header('Content-Type: application/json; charset=UTF-8');
     $userId = (int) $_SESSION['user_id'];
     if ($action === 'backup') {
@@ -260,6 +268,79 @@ if (in_array($action, ['backup', 'profitability', 'qr_resolve', 'qr_label', 'qui
         $ok = (new NotificationService($pdo))->sendSms((string) ($_POST['recipient'] ?? 'simulator'), $message);
         AuditHelper::log($pdo, 'human', 'sms_digest_simulated', 'notification', null, ['recipient' => $_POST['recipient'] ?? 'simulator'], $userId);
         echo json_encode(['success' => $ok, 'message' => $message]); exit;
+    }
+    if ($action === 'trace_create') {
+        RbacHelper::requirePermission('farm.read');
+        require_once __DIR__ . '/../src/Services/TraceabilityService.php';
+        try {
+            $batch = (new TraceabilityService($pdo))->createBatch($_POST, $userId);
+            echo json_encode(['success' => true, 'batch' => $batch]);
+        } catch (Throwable $e) {
+            http_response_code(422); echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+    if ($action === 'trace_query') {
+        RbacHelper::requirePermission('farm.read');
+        require_once __DIR__ . '/../src/Services/TraceabilityService.php';
+        $history = (new TraceabilityService($pdo))->publicHistory(trim((string) ($_GET['token'] ?? '')));
+        echo json_encode(['success' => $history !== null, 'data' => $history]); exit;
+    }
+    if ($action === 'planner') {
+        RbacHelper::requirePermission('crop.read');
+        require_once __DIR__ . '/../src/Services/PlantingPlannerService.php';
+        try {
+            echo json_encode(['success' => true, 'data' => (new PlantingPlannerService($pdo))->plan($_GET + $_POST)]);
+        } catch (Throwable $e) {
+            http_response_code(422); echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+    if ($action === 'sync_push') {
+        RbacHelper::requirePermission('sales.write');
+        require_once __DIR__ . '/../src/Services/SyncService.php';
+        try {
+            $payload = json_decode((string) ($_POST['payload'] ?? '{}'), true);
+            if (!is_array($payload)) throw new InvalidArgumentException('Payload must be an object.');
+            echo json_encode((new SyncService($pdo))->push(trim((string) ($_POST['idempotency_key'] ?? '')), trim((string) ($_POST['operation_type'] ?? '')), $payload, $userId));
+        } catch (Throwable $e) {
+            http_response_code(422); echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+    if ($action === 'payment_add') {
+        RbacHelper::requirePermission('sales.write');
+        require_once __DIR__ . '/../src/Services/PaymentService.php';
+        try {
+            $id = (new PaymentService($pdo))->record($_POST, $userId);
+            echo json_encode(['success' => true, 'payment_id' => $id]);
+        } catch (Throwable $e) {
+            http_response_code(422); echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+    if ($action === 'receipt') {
+        RbacHelper::requirePermission('sales.read');
+        $saleId = filter_var($_GET['sale_id'] ?? null, FILTER_VALIDATE_INT);
+        if (!$saleId) { http_response_code(422); echo json_encode(['success' => false, 'error' => 'A valid sale_id is required.']); exit; }
+        $stmt = $pdo->prepare("SELECT s.id, s.customer_name, s.amount, s.sale_date, COALESCE(SUM(p.amount),0) AS paid
+            FROM sales_records s LEFT JOIN payment_records p ON p.sale_id=s.id AND p.status='paid' WHERE s.id=? GROUP BY s.id");
+        $stmt->execute([$saleId]);
+        $receipt = $stmt->fetch();
+        if (!$receipt) { http_response_code(404); echo json_encode(['success' => false, 'error' => 'Sale not found.']); exit; }
+        $receipt['balance'] = max(0, (float) $receipt['amount'] - (float) $receipt['paid']);
+        echo json_encode(['success' => true, 'receipt' => $receipt]); exit;
+    }
+    if ($action === 'translate') {
+        RbacHelper::requirePermission('farm.read');
+        $language = trim((string) ($_GET['language'] ?? ''));
+        $phrase = trim((string) ($_GET['phrase'] ?? ''));
+        if (!preg_match('/^[a-z]{2,10}$/', $language) || $phrase === '' || strlen($phrase) > 160) {
+            http_response_code(422); echo json_encode(['success' => false, 'error' => 'Invalid translation request.']); exit;
+        }
+        $stmt = $pdo->prepare("SELECT translation FROM translation_dictionary WHERE language=? AND phrase=?");
+        $stmt->execute([$language, $phrase]);
+        echo json_encode(['success' => true, 'translation' => $stmt->fetchColumn() ?: $phrase]); exit;
     }
 }
 
@@ -451,6 +532,13 @@ if ($module === 'Insights') {
             require __DIR__ . "/views/layout.php";
             exit;
         }
+
+        if (($_GET['view'] ?? '') === 'planner') {
+            $viewFile = __DIR__ . "/views/planner.php";
+            $content = file_exists($viewFile) ? file_get_contents($viewFile) : '';
+            require __DIR__ . "/views/layout.php";
+            exit;
+        }
     }
 
     // Feed page.
@@ -590,6 +678,23 @@ if ($module === 'Security') {
     if ($action === 'change_password') {
         $data = $secCtrl->changePassword();
         ob_start(); require __DIR__ . '/views/security_password.php'; $content = ob_get_clean();
+        require __DIR__ . '/views/layout.php'; exit;
+    }
+
+    if ($module === 'Traceability') {
+        if ($action === 'create' && $reqMethod === 'POST') {
+            require_once __DIR__ . '/../src/Services/TraceabilityService.php';
+            try {
+                (new TraceabilityService($pdo))->createBatch($_POST, (int) $_SESSION['user_id']);
+                SessionHelper::setFlash('success', 'Harvest batch created.');
+            } catch (Throwable $e) {
+                SessionHelper::setFlash('error', $e->getMessage());
+            }
+            header('Location: index.php?module=Traceability');
+            exit;
+        }
+        $data = ['flash' => SessionHelper::getFlash('success'), 'error' => SessionHelper::getFlash('error')];
+        ob_start(); require __DIR__ . '/views/traceability.php'; $content = ob_get_clean();
         require __DIR__ . '/views/layout.php'; exit;
     }
     if ($action === 'users') {

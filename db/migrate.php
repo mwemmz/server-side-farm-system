@@ -11,6 +11,10 @@ try {
     if ($featureSchema !== false) {
         $pdo->exec($featureSchema);
     }
+    $standoutSchema = file_get_contents(__DIR__ . '/standout_schema.sql');
+    if ($standoutSchema !== false) {
+        $pdo->exec($standoutSchema);
+    }
 
     // Incremental migrations for existing tables
     $pdo->exec("ALTER TABLE farms ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION DEFAULT -15.3875");
