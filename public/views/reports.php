@@ -14,6 +14,7 @@ $records = $data['records'] ?? ($data ?? []);
 $exportSets = ReportsController::exportSets();
 $exportGroups = [
     'Core records'      => ['crops', 'fields', 'livestock', 'harvests', 'inventory', 'finance', 'sales', 'procurement', 'pest', 'suppliers', 'employees', 'leave', 'loans', 'budgets'],
+    'Profitability'     => ['profit_by_field', 'profit_by_animal'],
     'Field & land'      => ['soil', 'field_history', 'land_use'],
     'Crop production'   => ['seed', 'planting', 'fertilizer', 'growth', 'sprays', 'chemicals', 'followups'],
     'Livestock'         => ['weights', 'breeding', 'production', 'mortality', 'feed'],

@@ -223,6 +223,210 @@ if ($segments[0] === 'assistant' && ($segments[1] ?? null) === 'summary') {
     ]);
 }
 
+// ---- Analytics: per-field / per-animal profit (Wave 1A) ----
+if ($segments[0] === 'analytics' && ($segments[1] ?? null) === 'profit' && ($segments[2] ?? null) === 'by-field') {
+    require_once __DIR__ . '/../../../src/Intelligence/AnalyticsService.php';
+    $svc = new AnalyticsService($pdo);
+    return api_ok(['items' => $svc->profitByField(), 'range' => $svc->range()]);
+}
+if ($segments[0] === 'analytics' && ($segments[1] ?? null) === 'profit' && ($segments[2] ?? null) === 'by-animal') {
+    require_once __DIR__ . '/../../../src/Intelligence/AnalyticsService.php';
+    $svc = new AnalyticsService($pdo);
+    return api_ok(['items' => $svc->profitByAnimal(), 'range' => $svc->range()]);
+}
+
+// ---- Wave 1B: Farm connections (mutual-accept graph) ----
+if ($segments[0] === 'extranet' && $segments[1] === 'farms' && ($segments[2] ?? null) === 'search') {
+    require_once __DIR__ . '/../../../src/Services/FarmConnectionService.php';
+    $svc = new FarmConnectionService($pdo);
+    return api_ok(['farms' => $svc->searchFarms($payload['sub'] ?? 0, $_GET['district'] ?? '', $_GET['q'] ?? '')]);
+}
+if ($segments[0] === 'extranet' && $segments[1] === 'connections') {
+    require_once __DIR__ . '/../../../src/Services/FarmConnectionService.php';
+    $svc = new FarmConnectionService($pdo);
+    $role = $payload['role'] ?? 'worker';
+    if ($method === 'get') {
+        return api_ok(['connections' => $svc->listConnections($payload['sub'] ?? 0)]);
+    }
+    if ($method === 'post' && !isset($segments[2])) {
+        $body = api_body();
+        try {
+            $id = $svc->requestConnection($payload['sub'] ?? 0, (int)($body['target_farm_id'] ?? 0), $role);
+            return api_ok(['connection_id' => $id]);
+        } catch (Throwable $e) {
+            api_err($e->getMessage(), 403);
+        }
+    }
+    if ($method === 'post' && isset($segments[2]) && isset($segments[3])) {
+        $connId = (int)$segments[2];
+        $action = $segments[3];
+        if ($action === 'accept') {
+            try { $svc->decide($payload['sub'] ?? 0, $connId, 'accepted', $role); return api_ok(['status'=>'accepted']); }
+            catch (Throwable $e) { api_err($e->getMessage(), 403); }
+        }
+        if ($action === 'decline') {
+            try { $svc->decide($payload['sub'] ?? 0, $connId, 'declined', $role); return api_ok(['status'=>'declined']); }
+            catch (Throwable $e) { api_err($e->getMessage(), 403); }
+        }
+    }
+    api_err('Unknown connections action', 404);
+}
+
+// ---- Wave 1C: Communication Hub - Intranet ----
+if ($segments[0] === 'intranet' && $segments[1] === 'conversations') {
+    require_once __DIR__ . '/../../../src/Services/CommsService.php';
+    $svc = new CommsService($pdo);
+    $uid = (int)($payload['sub'] ?? 0);
+    if ($method === 'get' && !isset($segments[2])) {
+        return api_ok(['conversations' => $svc->listConversations($uid, 'intranet')]);
+    }
+    if ($method === 'post' && !isset($segments[2])) {
+        $body = api_body();
+        $id = $svc->createConversation($uid, 'intranet', (string)($body['title'] ?? ''), $body['members'] ?? [], $body['kind'] ?? 'group');
+        return api_ok(['conversation_id' => $id]);
+    }
+    if (isset($segments[2])) {
+        $cid = (int)$segments[2];
+        if (($segments[3] ?? null) === 'messages') {
+            if ($method === 'get') return api_ok(['messages' => $svc->listMessages($uid, $cid, $_GET['since'] ?? null)]);
+            if ($method === 'post') {
+                $body = api_body();
+                $mid = $svc->postMessage($uid, $cid, (string)($body['body'] ?? ''));
+                return api_ok(['message_id' => $mid]);
+            }
+        }
+        if (($segments[3] ?? null) === 'read' && $method === 'post') {
+            $body = api_body();
+            $svc->markRead($uid, $cid, (int)($body['last_message_id'] ?? 0));
+            return api_ok(['ok' => true]);
+        }
+    }
+    api_err('Unknown intranet action', 404);
+}
+if ($segments[0] === 'intranet' && $segments[1] === 'broadcast' && $method === 'post') {
+    require_once __DIR__ . '/../../../src/Services/CommsService.php';
+    $svc = new CommsService($pdo);
+    $body = api_body();
+    try {
+        $id = $svc->broadcast($payload['sub'] ?? 0, $payload['role'] ?? 'worker', (string)($body['title'] ?? 'Broadcast'), (string)($body['body'] ?? ''));
+        return api_ok(['conversation_id' => $id]);
+    } catch (Throwable $e) { api_err($e->getMessage(), 403); }
+}
+
+// ---- Wave 2A: Extranet comms ----
+if ($segments[0] === 'extranet' && $segments[1] === 'conversations') {
+    require_once __DIR__ . '/../../../src/Services/CommsService.php';
+    $svc = new CommsService($pdo);
+    $uid = (int)($payload['sub'] ?? 0);
+    if ($method === 'get' && !isset($segments[2])) {
+        return api_ok(['conversations' => $svc->listConversations($uid, 'extranet')]);
+    }
+    if ($method === 'post' && !isset($segments[2])) {
+        $body = api_body();
+        try {
+            $id = $svc->createConversation($uid, 'extranet', (string)($body['title'] ?? ''), $body['members'] ?? [], $body['kind'] ?? 'group');
+            return api_ok(['conversation_id' => $id]);
+        } catch (Throwable $e) { api_err($e->getMessage(), 403); }
+    }
+    if (isset($segments[2])) {
+        $cid = (int)$segments[2];
+        if (($segments[3] ?? null) === 'messages') {
+            if ($method === 'get') return api_ok(['messages' => $svc->listMessages($uid, $cid, $_GET['since'] ?? null)]);
+            if ($method === 'post') {
+                $body = api_body();
+                $mid = $svc->postMessage($uid, $cid, (string)($body['body'] ?? ''));
+                return api_ok(['message_id' => $mid]);
+            }
+        }
+    }
+    api_err('Unknown extranet action', 404);
+}
+
+// ---- Wave 2A: message reports / admin remove ----
+if ($segments[0] === 'messages' && isset($segments[1]) && ($segments[2] ?? null) === 'report' && $method === 'post') {
+    require_once __DIR__ . '/../../../src/Services/CommsService.php';
+    $svc = new CommsService($pdo);
+    $body = api_body();
+    $id = $svc->reportMessage($payload['sub'] ?? 0, (int)$segments[1], (string)($body['reason'] ?? ''));
+    return api_ok(['report_id' => $id]);
+}
+if ($segments[0] === 'admin' && $segments[1] === 'messages' && isset($segments[2]) && ($segments[3] ?? null) === 'remove' && $method === 'post') {
+    if (($payload['role'] ?? '') !== 'admin') api_err('Admin only', 403);
+    require_once __DIR__ . '/../../../src/Services/CommsService.php';
+    $svc = new CommsService($pdo);
+    $svc->removeMessage($payload['sub'] ?? 0, (int)$segments[2]);
+    return api_ok(['removed' => true]);
+}
+
+// ---- Wave 2B: Farm Credit Passport ----
+if ($segments[0] === 'credit-passport' && ($segments[1] ?? null) === 'me' && $method === 'get') {
+    require_once __DIR__ . '/../../../src/Services/PracticeScoringService.php';
+    $svc = new PracticeScoringService($pdo);
+    return api_ok($svc->compute($payload['sub'] ?? 0));
+}
+if ($segments[0] === 'credit-passport' && ($segments[1] ?? null) === 'share' && $method === 'post' && !isset($segments[2])) {
+    require_once __DIR__ . '/../../../src/Services/PracticeScoringService.php';
+    $svc = new PracticeScoringService($pdo);
+    $body = api_body();
+    $res = $svc->createShare($payload['sub'] ?? 0, $body['scope'] ?? [], (int)($body['expires_days'] ?? 30));
+    return api_ok($res);
+}
+if ($segments[0] === 'credit-passport' && ($segments[1] ?? null) === 'share' && isset($segments[2]) && ($segments[3] ?? null) === 'revoke' && $method === 'post') {
+    require_once __DIR__ . '/../../../src/Services/PracticeScoringService.php';
+    $svc = new PracticeScoringService($pdo);
+    $svc->revokeShare($payload['sub'] ?? 0, (int)$segments[2]);
+    return api_ok(['revoked' => true]);
+}
+if ($segments[0] === 'credit-passport' && ($segments[1] ?? null) === 'history' && $method === 'get') {
+    require_once __DIR__ . '/../../../src/Services/PracticeScoringService.php';
+    $svc = new PracticeScoringService($pdo);
+    return api_ok(['history' => $svc->history($payload['sub'] ?? 0, (int)($_GET['days'] ?? 90))]);
+}
+
+// ---- Wave 3A: Farm-to-market traceability ----
+if ($segments[0] === 'traceability' && $segments[1] === 'batches') {
+    require_once __DIR__ . '/../../../src/Services/TraceabilityService.php';
+    $svc = new TraceabilityService($pdo);
+    if ($method === 'post' && !isset($segments[2])) {
+        $body = api_body();
+        try {
+            $res = $svc->createBatch($body, $payload['sub'] ?? 0);
+            return api_ok($res);
+        } catch (Throwable $e) { api_err($e->getMessage(), 422); }
+    }
+    if (isset($segments[2]) && ($segments[3] ?? null) === 'events' && $method === 'post') {
+        $body = api_body();
+        try {
+            $id = $svc->addEvent((int)$segments[2], $body, $payload['sub'] ?? 0);
+            return api_ok(['event_id' => $id]);
+        } catch (Throwable $e) { api_err($e->getMessage(), 422); }
+    }
+    if (isset($segments[2]) && !isset($segments[3])) {
+        $b = $svc->getBatch((int)$segments[2]);
+        if (!$b) api_err('Not found', 404);
+        return api_ok($b);
+    }
+    api_err('Unknown traceability action', 404);
+}
+
+// ---- Wave 3B: AI summarise / draft reply ----
+if ($segments[0] === 'assistant' && ($segments[1] ?? null) === 'summarise' && isset($segments[2]) && $method === 'post') {
+    require_once __DIR__ . '/../../../src/Intelligence/Assistant.php';
+    return api_ok((new Assistant($pdo))->summarizeConversation((int)$segments[2], $payload['sub'] ?? 0));
+}
+if ($segments[0] === 'assistant' && ($segments[1] ?? null) === 'draft-reply' && isset($segments[2]) && $method === 'post') {
+    require_once __DIR__ . '/../../../src/Intelligence/Assistant.php';
+    return api_ok((new Assistant($pdo))->draftReply((int)$segments[2], $payload['sub'] ?? 0));
+}
+
+// ---- Wave 4B: planting what-if ----
+if ($segments[0] === 'planner' && ($segments[1] ?? null) === 'planting-what-if' && $method === 'post') {
+    require_once __DIR__ . '/../../../src/Services/PlantingPlannerService.php';
+    try {
+        return api_ok((new PlantingPlannerService($pdo))->plantingWhatIf(api_body()));
+    } catch (Throwable $e) { api_err($e->getMessage(), 422); }
+}
+
 api_err('Route not found', 404);
 
 // The token endpoint is defined as a function for clarity.

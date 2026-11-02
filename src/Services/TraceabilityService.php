@@ -1,12 +1,9 @@
 <?php
-
 require_once __DIR__ . '/../Helpers/AuditHelper.php';
 
 class TraceabilityService
 {
-    public function __construct(private PDO $pdo)
-    {
-    }
+    public function __construct(private PDO $pdo) {}
 
     public function createBatch(array $input, int $userId): array
     {
@@ -15,38 +12,87 @@ class TraceabilityService
         if (!preg_match('/^[A-Za-z0-9._-]{3,80}$/', $code) || $quantity === false || $quantity <= 0) {
             throw new InvalidArgumentException('Batch code and a positive quantity are required.');
         }
-        $token = bin2hex(random_bytes(32));
+        $farmId = $this->farmIdForUser($userId);
         $this->pdo->beginTransaction();
         try {
-            $stmt = $this->pdo->prepare("INSERT INTO harvest_batches (batch_code, field_id, crop_id, harvest_id, quantity, unit, harvest_date, public_token, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id");
-            $stmt->execute([$code, $this->nullableId($input['field_id'] ?? null), $this->nullableId($input['crop_id'] ?? null),
-                $this->nullableId($input['harvest_id'] ?? null), $quantity, trim((string) ($input['unit'] ?? '')),
-                $input['harvest_date'] ?? null, $token, $userId]);
+            $stmt = $this->pdo->prepare("INSERT INTO harvest_batches (farm_id, field_id, harvest_record_id, batch_code, quantity, unit, quality_grade)
+                VALUES (?,?,?,?,?,?,?) RETURNING id");
+            $stmt->execute([
+                $farmId,
+                $this->nullableId($input['field_id'] ?? null),
+                $this->nullableId($input['harvest_record_id'] ?? null),
+                $code,
+                $quantity,
+                trim((string) ($input['unit'] ?? '')),
+                trim((string) ($input['quality_grade'] ?? '')),
+            ]);
             $id = (int) $stmt->fetchColumn();
-            $event = $this->pdo->prepare("INSERT INTO chain_events (batch_id, event_type, location, notes, created_by) VALUES (?, 'harvest', ?, ?, ?)");
-            $event->execute([$id, trim((string) ($input['location'] ?? '')), trim((string) ($input['notes'] ?? '')), $userId]);
+            $event = $this->pdo->prepare("INSERT INTO batch_events (batch_id, event_type, ref_type, ref_id, location, notes, actor_id) VALUES (?,?,?,?,?,?,?)");
+            $event->execute([$id, 'harvest', $input['ref_type'] ?? null, $this->nullableId($input['ref_id'] ?? null), trim((string) ($input['location'] ?? '')), trim((string) ($input['notes'] ?? '')), $userId]);
             $this->pdo->commit();
-            AuditHelper::log($this->pdo, 'human', 'traceability_batch_created', 'harvest_batch', $id, $input, $userId);
-            return ['id' => $id, 'token' => $token, 'public_url' => 'index.php?module=Traceability&action=public&token=' . rawurlencode($token)];
+            AuditHelper::log($this->pdo, 'human', 'traceability_batch_created', 'harvest_batches', $id, $input, $userId);
+            return ['id' => $id, 'batch_code' => $code, 'public_url' => 'index.php?module=Traceability&action=public&code=' . rawurlencode($code)];
         } catch (Throwable $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();
             throw $e;
         }
     }
 
+    public function addEvent(int $batchId, array $input, int $userId): int
+    {
+        $type = trim((string) ($input['event_type'] ?? ''));
+        if (!in_array($type, ['harvest','storage','dispatch','sale'], true)) {
+            throw new InvalidArgumentException('Invalid event type.');
+        }
+        $st = $this->pdo->prepare("INSERT INTO batch_events (batch_id, event_type, ref_type, ref_id, location, notes, actor_id) VALUES (?,?,?,?,?,?,?) RETURNING id");
+        $st->execute([$batchId, $type, $input['ref_type'] ?? null, $this->nullableId($input['ref_id'] ?? null), trim((string) ($input['location'] ?? '')), trim((string) ($input['notes'] ?? '')), $userId]);
+        $id = (int) $st->fetchColumn();
+        AuditHelper::log($this->pdo, 'human', 'traceability_event_added', 'batch_events', $id, ['batch_id'=>$batchId,'type'=>$type], $userId);
+        return $id;
+    }
+
+    public function getBatch(int $id): ?array
+    {
+        $st = $this->pdo->prepare("SELECT * FROM harvest_batches WHERE id = ?");
+        $st->execute([$id]);
+        $b = $st->fetch();
+        if (!$b) return null;
+        $ev = $this->pdo->prepare("SELECT * FROM batch_events WHERE batch_id = ? ORDER BY event_at ASC");
+        $ev->execute([$id]);
+        $b['events'] = $ev->fetchAll() ?: [];
+        return $b;
+    }
+
+    public function publicByCode(string $code): ?array
+    {
+        $st = $this->pdo->prepare("SELECT batch_code, quantity, unit, quality_grade, created_at FROM harvest_batches WHERE batch_code = ?");
+        $st->execute([$code]);
+        $b = $st->fetch();
+        if (!$b) return null;
+        $ev = $this->pdo->prepare("SELECT event_type, location, notes, event_at FROM batch_events be JOIN harvest_batches hb ON hb.id=be.batch_id WHERE hb.batch_code = ? ORDER BY event_at ASC");
+        $ev->execute([$code]);
+        $b['events'] = $ev->fetchAll() ?: [];
+        return $b;
+    }
+
+    // Backward compat: publicHistory by token/code
     public function publicHistory(string $token): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT b.batch_code, b.quantity, b.unit, b.harvest_date, f.name AS field_name, c.name AS crop_name
-            FROM harvest_batches b LEFT JOIN fields f ON f.id=b.field_id LEFT JOIN crops c ON c.id=b.crop_id WHERE b.public_token=?");
-        $stmt->execute([$token]);
-        $batch = $stmt->fetch();
-        if (!$batch) return null;
-        $events = $this->pdo->prepare("SELECT event_type, location, notes, event_time FROM chain_events
-            JOIN harvest_batches b ON b.id=chain_events.batch_id WHERE b.public_token=? ORDER BY event_time");
-        $events->execute([$token]);
-        $batch['events'] = $events->fetchAll();
-        return $batch;
+        // try as batch_code first
+        $r = $this->publicByCode($token);
+        if ($r) return $r;
+        return null;
+    }
+
+    private function farmIdForUser($userId) {
+        $st = $this->pdo->prepare("SELECT farm_id FROM farm_members WHERE user_id = ? LIMIT 1");
+        $st->execute([(int)$userId]);
+        $v = $st->fetchColumn();
+        if ($v !== false && $v !== null) return (int)$v;
+        $st = $this->pdo->prepare("SELECT id FROM farms ORDER BY id LIMIT 1");
+        $st->execute();
+        $v = $st->fetchColumn();
+        return $v === false ? null : (int)$v;
     }
 
     private function nullableId(mixed $value): ?int

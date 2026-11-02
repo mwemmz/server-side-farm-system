@@ -310,6 +310,41 @@ class Assistant {
     }
 
     // ------------------------------------------------------------------
+    /** Summarise a conversation into <=5 bullets. Enforces access. */
+    public function summarizeConversation($convId, $userId) {
+        require_once __DIR__ . '/CommsService.php';
+        $comms = new CommsService($this->pdo);
+        try { $comms->assertMember((int)$userId, (int)$convId); }
+        catch (Throwable $e) { return ['error' => $e->getMessage()]; }
+        $msgs = $comms->listMessages((int)$userId, (int)$convId);
+        $bullets = [];
+        foreach ($msgs as $m) {
+            $b = trim((string)($m['body'] ?? ''));
+            if ($b === '') continue;
+            $bullets[] = mb_substr($b, 0, 120);
+            if (count($bullets) >= 5) break;
+        }
+        if (empty($bullets)) $bullets[] = 'No messages yet.';
+        AuditHelper::log($this->pdo, 'human', 'assistant_summarise_conversation', 'conversations', (int)$convId, [], (int)$userId);
+        return ['bullets' => $bullets];
+    }
+
+    /** Draft a reply (text only; user must confirm before send). */
+    public function draftReply($convId, $userId) {
+        require_once __DIR__ . '/CommsService.php';
+        $comms = new CommsService($this->pdo);
+        try { $comms->assertMember((int)$userId, (int)$convId); }
+        catch (Throwable $e) { return ['error' => $e->getMessage()]; }
+        $msgs = $comms->listMessages((int)$userId, (int)$convId);
+        $last = '';
+        for ($i = count($msgs) - 1; $i >= 0; $i--) {
+            if (trim((string)$msgs[$i]['body']) !== '') { $last = (string)$msgs[$i]['body']; break; }
+        }
+        $draft = $last !== '' ? "Thanks for your message: \"" . mb_substr($last, 0, 80) . "\". We'll follow up shortly." : "Hello, how can I help?";
+        AuditHelper::log($this->pdo, 'human', 'assistant_draft_reply', 'conversations', (int)$convId, [], (int)$userId);
+        return ['draft' => $draft];
+    }
+
     private function reply($type, $text, $cards = []) {
         return ['type' => $type, 'text' => $text, 'cards' => $cards];
     }

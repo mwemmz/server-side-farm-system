@@ -167,6 +167,126 @@ class AnalyticsService
         );
     }
 
+    /** Profitability broken down by field (revenue vs posted cost). */
+    public function profitByField(): array
+    {
+        $revenue = $this->rows(
+            "SELECT field_id, COALESCE(SUM(amount),0) AS revenue
+             FROM sales_records WHERE field_id IS NOT NULL AND sale_date BETWEEN ? AND ?
+             GROUP BY field_id",
+            [$this->from, $this->to]
+        );
+        $cost = $this->rows(
+            "SELECT field_id, COALESCE(SUM(amount),0) AS cost
+             FROM finance_records WHERE type = 'expense' AND field_id IS NOT NULL AND date BETWEEN ? AND ?
+             GROUP BY field_id",
+            [$this->from, $this->to]
+        );
+        $labour = $this->rows(
+            "SELECT field_id, COALESCE(SUM(COALESCE(labour_cost,0)),0) AS labour
+             FROM tasks WHERE field_id IS NOT NULL AND due_date BETWEEN ? AND ?
+             GROUP BY field_id",
+            [$this->from, $this->to]
+        );
+        $harvest = $this->rows(
+            "SELECT fh.field_id, COALESCE(SUM(fh.yield_quantity),0) AS harvested
+             FROM field_history fh WHERE fh.field_id IS NOT NULL
+               AND COALESCE(fh.end_date, fh.start_date) BETWEEN ? AND ?
+             GROUP BY fh.field_id",
+            [$this->from, $this->to]
+        );
+        $revMap = []; foreach ($revenue as $r) $revMap[(int)$r['field_id']] = (float)$r['revenue'];
+        $costMap = []; foreach ($cost as $r) $costMap[(int)$r['field_id']] = (float)$r['cost'];
+        $labMap = []; foreach ($labour as $r) $labMap[(int)$r['field_id']] = (float)$r['labour'];
+        $harvMap = []; foreach ($harvest as $r) $harvMap[(int)$r['field_id']] = (float)$r['harvested'];
+
+        $fields = $this->rows("SELECT id, name FROM fields ORDER BY name ASC");
+        $out = [];
+        foreach ($fields as $f) {
+            $fid = (int) $f['id'];
+            $r = $revMap[$fid] ?? 0.0;
+            $c = ($costMap[$fid] ?? 0.0) + ($labMap[$fid] ?? 0.0);
+            $profit = $r - $c;
+            $out[] = [
+                'field_id'   => $fid,
+                'name'       => $f['name'],
+                'revenue'    => $r,
+                'cost'       => $c,
+                'profit'     => $profit,
+                'margin_pct' => $r > 0 ? ($profit / $r) * 100 : 0.0,
+                'cost_per_kg'=> ($harvMap[$fid] ?? 0) > 0 ? $c / $harvMap[$fid] : null,
+                'harvested'  => $harvMap[$fid] ?? 0.0,
+            ];
+        }
+        return $out;
+    }
+
+    /** Lifetime profitability per animal. */
+    public function profitByAnimal(): array
+    {
+        $animals = $this->rows(
+            "SELECT id, tag_no, type, breed, purchase_price, purchase_date, status, dob
+             FROM livestock ORDER BY id ASC"
+        );
+        $feedCost = $this->rows(
+            "SELECT livestock_id, COALESCE(SUM(COALESCE(cost,0)),0) AS cost
+             FROM feed_records GROUP BY livestock_id"
+        );
+        $treatCost = $this->rows(
+            "SELECT livestock_id, COALESCE(SUM(COALESCE(cost,0)),0) AS cost
+             FROM animal_treatments GROUP BY livestock_id"
+        );
+        $vaccCost = $this->rows(
+            "SELECT livestock_id, COALESCE(SUM(COALESCE(cost,0)),0) AS cost
+             FROM vaccinations GROUP BY livestock_id"
+        );
+        $revenue = $this->rows(
+            "SELECT livestock_id, COALESCE(SUM(amount),0) AS revenue, MIN(sale_date) AS sale_date
+             FROM sales_records WHERE livestock_id IS NOT NULL GROUP BY livestock_id"
+        );
+        $feedMap = []; foreach ($feedCost as $r) $feedMap[(int)$r['livestock_id']] = (float)$r['cost'];
+        $treatMap = []; foreach ($treatCost as $r) $treatMap[(int)$r['livestock_id']] = (float)$r['cost'];
+        $vaccMap = []; foreach ($vaccCost as $r) $vaccMap[(int)$r['livestock_id']] = (float)$r['cost'];
+        $revMap = []; $saleMap = [];
+        foreach ($revenue as $r) { $revMap[(int)$r['livestock_id']] = (float)$r['revenue']; $saleMap[(int)$r['livestock_id']] = $r['sale_date']; }
+
+        $out = [];
+        foreach ($animals as $a) {
+            $aid = (int) $a['id'];
+            $purchase = (float) ($a['purchase_price'] ?? 0);
+            $feed = $feedMap[$aid] ?? 0.0;
+            $treat = $treatMap[$aid] ?? 0.0;
+            $vacc = $vaccMap[$aid] ?? 0.0;
+            $cost = $purchase + $feed + $treat + $vacc;
+            $rev = $revMap[$aid] ?? 0.0;
+            $profit = $rev - $cost;
+            $daysToMarket = null;
+            if (!empty($a['purchase_date']) && !empty($saleMap[$aid])) {
+                $d1 = strtotime((string)$a['purchase_date']);
+                $d2 = strtotime((string)$saleMap[$aid]);
+                if ($d1 && $d2 && $d2 >= $d1) $daysToMarket = (int) round(($d2 - $d1) / 86400);
+            }
+            $out[] = [
+                'livestock_id'  => $aid,
+                'tag_no'        => $a['tag_no'],
+                'type'          => $a['type'],
+                'breed'         => $a['breed'],
+                'status'        => $a['status'],
+                'purchase_cost' => $purchase,
+                'feed_cost'     => $feed,
+                'treatment_cost'=> $treat,
+                'vaccine_cost'  => $vacc,
+                'total_cost'    => $cost,
+                'revenue'       => $rev,
+                'profit'        => $profit,
+                'margin_pct'    => $rev > 0 ? ($profit / $rev) * 100 : 0.0,
+                'sale_date'     => $saleMap[$aid] ?? null,
+                'days_to_market'=> $daysToMarket,
+            ];
+        }
+        return $out;
+    }
+
     /** Products approaching their expiry date. */
     public function expiringInventory(): array
     {

@@ -110,6 +110,8 @@ with no PHP warning output, and an optional PHP log scan (set `PHP_LOG=/path/to/
    module landing and manage page → all 200, none show PHP warnings; the server
    PHP log stays empty.
 
-## Smoke / fuzz test
+## Future work
+
+**Offline-first sync (not implemented — deliberate scope discipline).** A future version could support offline operation on mobile devices using idempotency keys on every mutation, a client-side queue of pending operations, and a conflict strategy of "last-write-wins per record with field-level merge for notes/quantities" reconciled against `updated_at` timestamps on the server. This paragraph documents the intended design; no code is shipped.
 
 `BASE=http://127.0.0.1:8111 python3 tests/smoke_fuzz.py` crawls every page, submits every form with valid and hostile values (decimals, negatives, huge numbers, text in number fields, bad ids, 5000-character strings, array values) and hits every API route. It exits non-zero on any 5xx or PHP error text. Local servers only; it refuses to run against onrender.com.

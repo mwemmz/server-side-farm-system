@@ -122,6 +122,18 @@ if ($module === 'Traceability' && $action === 'public') {
     exit;
 }
 
+// --- Credit Passport public page (no login) ---
+if ($module === 'CreditPassport') {
+    require_once __DIR__ . '/../src/Services/PracticeScoringService.php';
+    $token = trim((string) ($_GET['token'] ?? ''));
+    $data = (new PracticeScoringService($pdo))->viewShared($token);
+    ob_start();
+    require __DIR__ . '/views/credit_passport.php';
+    $content = ob_get_clean();
+    require __DIR__ . '/views/layout.php';
+    exit;
+}
+
 // --- Auth gate: every other page requires a logged-in user ---
 if (!isset($_SESSION['user_id'])) {
     require_once __DIR__ . '/../src/Helpers/RoleHelper.php';
