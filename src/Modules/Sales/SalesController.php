@@ -64,5 +64,29 @@ class SalesController {
         }
         return ['records' => $this->model->getAll()];
     }
-}
+    public function delete() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit('POST required.'); }
+        $id = ValidationHelper::id($_POST['id'] ?? '');
+        if (!$id) { SessionHelper::setFlash('error', 'Invalid sale.'); header('Location: index.php?module=Sales&action=index'); exit; }
+        try {
+            $st = $this->pdo->prepare("SELECT COUNT(*) FROM payment_records WHERE sale_id = ?");
+            $st->execute([$id]);
+            if ((int)$st->fetchColumn() > 0) {
+                SessionHelper::setFlash('error', 'Cannot delete sale: payments are recorded against it.');
+                header('Location: index.php?module=Sales&action=index'); exit;
+            }
+        } catch (PDOException $e) { /* table may not exist */ }
+        try {
+            $this->pdo->beginTransaction();
+            $this->pdo->prepare("DELETE FROM sales_records WHERE id = ?")->execute([$id]);
+            try { (new FinanceService($this->pdo))->removeSource('Sales', $id); } catch (Throwable $e) { }
+            AuditHelper::log($this->pdo, 'human', 'sale_deleted', 'sales_records', $id, [], (int)($_SESSION['user_id'] ?? 0));
+            $this->pdo->commit();
+            SessionHelper::setFlash('success', 'Sale deleted.');
+        } catch (PDOException $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            SessionHelper::setFlash('error', 'Could not delete sale (it may be referenced elsewhere).');
+        }
+        header('Location: index.php?module=Sales&action=index'); exit;
+    }}
 ?>

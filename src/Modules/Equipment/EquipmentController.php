@@ -2,6 +2,7 @@
 require_once __DIR__ . '/EquipmentModel.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
+require_once __DIR__ . '/../../Helpers/AuditHelper.php';
 
 class EquipmentController {
     private $model;
@@ -74,4 +75,29 @@ class EquipmentController {
         header('Location: index.php?module=Equipment&action=manage');
         exit;
     }
-}
+    public function delete() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit('POST required.'); }
+        $id = ValidationHelper::id($_POST['id'] ?? '');
+        if (!$id) { SessionHelper::setFlash('error', 'Invalid equipment.'); header('Location: index.php?module=Equipment&action=manage'); exit; }
+        foreach (['equipment_hours' => 'equipment_id', 'fuel_records' => 'equipment_id', 'equipment_repairs' => 'equipment_id', 'equipment_allocations' => 'equipment_id', 'tasks' => 'equipment_id'] as $table => $col) {
+            try {
+                $st = $this->pdo->prepare("SELECT COUNT(*) FROM {$table} WHERE {$col} = ?");
+                $st->execute([$id]);
+                if ((int)$st->fetchColumn() > 0) {
+                    SessionHelper::setFlash('error', "Cannot delete equipment: it has records in {$table}. Remove those first.");
+                    header('Location: index.php?module=Equipment&action=manage'); exit;
+                }
+            } catch (PDOException $e) { /* table may not exist */ }
+        }
+        try {
+            $this->pdo->beginTransaction();
+            $this->pdo->prepare("DELETE FROM equipment WHERE id = ?")->execute([$id]);
+            AuditHelper::log($this->pdo, 'human', 'equipment_deleted', 'equipment', $id, [], (int)($_SESSION['user_id'] ?? 0));
+            $this->pdo->commit();
+            SessionHelper::setFlash('success', 'Equipment deleted.');
+        } catch (PDOException $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            SessionHelper::setFlash('error', 'Could not delete equipment (it may be referenced elsewhere).');
+        }
+        header('Location: index.php?module=Equipment&action=manage'); exit;
+    }}

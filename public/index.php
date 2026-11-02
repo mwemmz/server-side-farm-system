@@ -176,6 +176,12 @@ if ($module === 'Security' && $action !== 'login' && $role !== 'admin') {
 if ($module === 'Analytics') {
     RbacHelper::requirePermission('analytics.read');
 }
+if ($module === 'Communications') {
+    RbacHelper::requirePermission('communications.read');
+}
+if ($module === 'Connections') {
+    RbacHelper::requirePermission('connections.read');
+}
 if ($module === 'Reports') {
     RbacHelper::requirePermission('reports.read');
 }

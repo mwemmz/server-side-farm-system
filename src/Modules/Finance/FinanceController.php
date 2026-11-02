@@ -3,6 +3,7 @@ require_once __DIR__ . '/FinanceModel.php';
 require_once __DIR__ . '/FinanceService.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
+require_once __DIR__ . '/../../Helpers/AuditHelper.php';
 
 class FinanceController {
     private $model;
@@ -157,5 +158,20 @@ class FinanceController {
         }
         return ['budgets' => $this->model->budgets(), 'total' => $this->model->budgetTotals(), 'errors' => $errors, 'data' => $_POST];
     }
-}
+    public function delete() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit('POST required.'); }
+        $id = ValidationHelper::id($_POST['id'] ?? '');
+        if (!$id) { SessionHelper::setFlash('error', 'Invalid record.'); header('Location: index.php?module=Finance&action=index'); exit; }
+        try {
+            $this->pdo->beginTransaction();
+            $this->pdo->prepare("DELETE FROM finance_records WHERE id = ?")->execute([$id]);
+            AuditHelper::log($this->pdo, 'human', 'finance_deleted', 'finance_records', $id, [], (int)($_SESSION['user_id'] ?? 0));
+            $this->pdo->commit();
+            SessionHelper::setFlash('success', 'Finance record deleted.');
+        } catch (PDOException $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            SessionHelper::setFlash('error', 'Could not delete record (it may be referenced elsewhere).');
+        }
+        header('Location: index.php?module=Finance&action=index'); exit;
+    }}
 ?>

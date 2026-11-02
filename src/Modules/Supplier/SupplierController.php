@@ -2,10 +2,12 @@
 require_once __DIR__ . '/SupplierModel.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
+require_once __DIR__ . '/../../Helpers/AuditHelper.php';
 
 class SupplierController {
     private $model;
-    public function __construct($pdo) { $this->model = new SupplierModel($pdo); }
+    private $pdo;
+    public function __construct($pdo) { $this->pdo = $pdo; $this->model = new SupplierModel($pdo); }
     public function index() { return $this->model->getAll(); }
 
     public function add() {
@@ -31,5 +33,30 @@ class SupplierController {
         }
         return ['records' => $this->model->getAll()];
     }
-}
+    public function delete() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit('POST required.'); }
+        $id = ValidationHelper::id($_POST['id'] ?? '');
+        if (!$id) { SessionHelper::setFlash('error', 'Invalid supplier.'); header('Location: index.php?module=Supplier&action=manage'); exit; }
+        foreach (['procurement_records' => 'supplier_id', 'supplier_quotations' => 'supplier_id', 'supplier_reviews' => 'supplier_id', 'contracts' => 'supplier_id'] as $table => $col) {
+            try {
+                $st = $this->pdo->prepare("SELECT COUNT(*) FROM {$table} WHERE {$col} = ?");
+                $st->execute([$id]);
+                if ((int)$st->fetchColumn() > 0) {
+                    SessionHelper::setFlash('error', "Cannot delete supplier: it has records in {$table}. Remove those first.");
+                    header('Location: index.php?module=Supplier&action=manage'); exit;
+                }
+            } catch (PDOException $e) { /* table may not exist */ }
+        }
+        try {
+            $this->pdo->beginTransaction();
+            $this->pdo->prepare("DELETE FROM suppliers WHERE id = ?")->execute([$id]);
+            AuditHelper::log($this->pdo, 'human', 'supplier_deleted', 'suppliers', $id, [], (int)($_SESSION['user_id'] ?? 0));
+            $this->pdo->commit();
+            SessionHelper::setFlash('success', 'Supplier deleted.');
+        } catch (PDOException $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            SessionHelper::setFlash('error', 'Could not delete supplier (it may be referenced elsewhere).');
+        }
+        header('Location: index.php?module=Supplier&action=manage'); exit;
+    }}
 ?>

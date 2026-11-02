@@ -459,7 +459,32 @@ class LivestockController {
         return $this->viewData();
     }
 
-    /** Mark an animal health incident treated or resolved. */
+    public function delete() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit('POST required.'); }
+        $id = ValidationHelper::id($_POST['id'] ?? '');
+        if (!$id) { SessionHelper::setFlash('error', 'Invalid animal.'); header('Location: index.php?module=Livestock&action=manage'); exit; }
+        foreach (['vaccinations' => 'livestock_id', 'animal_treatments' => 'livestock_id', 'health_incidents' => 'livestock_id', 'animal_weights' => 'livestock_id', 'breeding_records' => 'livestock_id', 'production_records' => 'livestock_id', 'feed_records' => 'livestock_id', 'mortality_records' => 'livestock_id', 'sales_records' => 'livestock_id', 'tasks' => 'livestock_id'] as $table => $col) {
+            try {
+                $st = $this->pdo->prepare("SELECT COUNT(*) FROM {$table} WHERE {$col} = ?");
+                $st->execute([$id]);
+                if ((int)$st->fetchColumn() > 0) {
+                    SessionHelper::setFlash('error', "Cannot delete animal: it has records in {$table}. Remove those first or mark the animal sold/dead instead.");
+                    header('Location: index.php?module=Livestock&action=manage'); exit;
+                }
+            } catch (PDOException $e) { /* table may not exist */ }
+        }
+        try {
+            $this->pdo->beginTransaction();
+            $this->pdo->prepare("DELETE FROM livestock WHERE id = ?")->execute([$id]);
+            AuditHelper::log($this->pdo, 'human', 'livestock_deleted', 'livestock', $id, [], (int)($_SESSION['user_id'] ?? 0));
+            $this->pdo->commit();
+            SessionHelper::setFlash('success', 'Animal deleted.');
+        } catch (PDOException $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            SessionHelper::setFlash('error', 'Could not delete animal (it may be referenced elsewhere).');
+        }
+        header('Location: index.php?module=Livestock&action=manage'); exit;
+    }
     public function incidentStatus() {
         $id = (int) ($_POST['id'] ?? $_GET['id'] ?? 0);
         $status = $_POST['status'] ?? 'resolved';

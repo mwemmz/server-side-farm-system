@@ -2,6 +2,7 @@
 require_once __DIR__ . '/HarvestModel.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
+require_once __DIR__ . '/../../Helpers/AuditHelper.php';
 
 class HarvestController {
     private $model;
@@ -56,4 +57,29 @@ class HarvestController {
         }
         return ['records' => $this->model->getAll(), 'storageRecords' => $this->model->storageRecords()];
     }
-}
+    public function delete() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit('POST required.'); }
+        $id = ValidationHelper::id($_POST['id'] ?? '');
+        if (!$id) { SessionHelper::setFlash('error', 'Invalid harvest.'); header('Location: index.php?module=Harvest&action=manage'); exit; }
+        foreach (['harvest_losses' => 'harvest_id', 'packaging_records' => 'harvest_id', 'quality_grades' => 'harvest_id', 'produce_dispatches' => 'harvest_id', 'stored_produce' => 'harvest_id'] as $table => $col) {
+            try {
+                $st = $this->pdo->prepare("SELECT COUNT(*) FROM {$table} WHERE {$col} = ?");
+                $st->execute([$id]);
+                if ((int)$st->fetchColumn() > 0) {
+                    SessionHelper::setFlash('error', "Cannot delete harvest: it has records in {$table}. Remove those first.");
+                    header('Location: index.php?module=Harvest&action=manage'); exit;
+                }
+            } catch (PDOException $e) { /* table may not exist */ }
+        }
+        try {
+            $this->pdo->beginTransaction();
+            $this->pdo->prepare("DELETE FROM harvest_records WHERE id = ?")->execute([$id]);
+            AuditHelper::log($this->pdo, 'human', 'harvest_deleted', 'harvest_records', $id, [], (int)($_SESSION['user_id'] ?? 0));
+            $this->pdo->commit();
+            SessionHelper::setFlash('success', 'Harvest deleted.');
+        } catch (PDOException $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            SessionHelper::setFlash('error', 'Could not delete harvest (it may be referenced elsewhere).');
+        }
+        header('Location: index.php?module=Harvest&action=manage'); exit;
+    }}

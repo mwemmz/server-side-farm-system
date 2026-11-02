@@ -18,15 +18,19 @@ class RbacHelper
             'labour.read', 'labour.write', 'harvest.read', 'harvest.write',
             'pest.read', 'pest.write', 'procurement.read', 'procurement.write',
             'reports.read', 'analytics.read', 'profit.read', 'qr.use', 'assistant.use', 'alerts.read',
+            'communications.read', 'communications.write', 'connections.read', 'connections.write',
+            'credit.read', 'credit.share',
         ],
         'accountant' => [
             'finance.read', 'sales.read', 'sales.write', 'procurement.read',
             'profit.read', 'reports.read', 'analytics.read', 'alerts.read',
+            'communications.read', 'communications.write',
         ],
         'worker' => [
             'farm.read', 'field.read', 'field.write', 'crop.read', 'livestock.read', 'livestock.write',
             'inventory.read', 'labour.read', 'labour.write', 'harvest.read', 'harvest.write',
             'qr.use', 'assistant.use', 'alerts.read',
+            'communications.read', 'communications.write',
         ],
         'farm-owner' => [
             'farm.read', 'field.read', 'field.write', 'crop.read', 'crop.write',
@@ -35,11 +39,14 @@ class RbacHelper
             'labour.read', 'labour.write', 'harvest.read', 'harvest.write',
             'pest.read', 'pest.write', 'procurement.read', 'procurement.write',
             'profit.read', 'reports.read', 'analytics.read', 'alerts.read', 'qr.use', 'assistant.use',
+            'communications.read', 'communications.write', 'connections.read', 'connections.write',
+            'credit.read', 'credit.share',
         ],
         'agronomist' => [
             'farm.read', 'field.read', 'field.write', 'crop.read', 'crop.write',
             'irrigation.read', 'pest.read', 'pest.write', 'harvest.read', 'harvest.write',
             'insights.read', 'livestock.read', 'analytics.read', 'qr.use', 'assistant.use', 'alerts.read',
+            'communications.read', 'communications.write',
         ],
     ];
 
