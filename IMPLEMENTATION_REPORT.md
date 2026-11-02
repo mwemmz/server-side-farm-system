@@ -73,9 +73,42 @@
 - `Ops` landing/records/add/edit/delete (per-definition permission + CSRF on state changes)
 - `Analytics` (analytics.read), `Reports` (reports.read)
 
-## Validation
+## Wave completion (Waves 1–4)
 
-`git diff --check` clean; `tests/ops_registry_check.php` passes (35 record types, 273
+- **Wave 1 — Foundations: COMPLETE.** 1A per-field/per-animal profit (API + report rows), 1B farm connections (mutual-accept graph + farm_members), 1C intranet Communication Hub (conversations, members, messages, broadcast, task integration).
+- **Wave 2 — Flagship: COMPLETE.** 2A extranet (accepted-connection gating, message reports, admin remove), 2B Farm Credit Passport (practice scoring, share tokens, public scope-filtered page).
+- **Wave 3 — Community: COMPLETE.** 3A farm-to-market traceability (harvest batches + batch events + public chain), 3B AI summarise/draft reply (access-checked, no auto-send).
+- **Wave 4 — Experiments: 4A and 4B COMPLETE** (text-to-record assistant draft/confirm already existed; planting what-if planner added). **4C NOT BUILT** — offline-first sync is documented as future work in README only (deliberate scope discipline).
+
+### Intranet privacy statement
+A user can only access an intranet conversation when their `farm_members.farm_id` equals `conversations.farm_id`. Admins are **not** granted cross-farm intranet read access — this is a multi-tenant security property enforced in `CommsService::assertIntranetScope()`, not a limitation.
+
+### Credit passport statement
+The Farm Credit Passport is farmer-owned, consent-based, explainable and revocable. Scores are computed from the farmer's own records (record-keeping, treatment compliance, crop rotation, yield trend, sales regularity, expense discipline, traceability participation) with a published weight breakdown. Sharing requires an explicit, scoped, expiring token that the farmer can revoke; the public page shows only score, band, factors and an anonymised summary — never personal data. Every share create/revoke/view is audited.
+
+### Deferred
+- Offline-first sync (4C): documented only, no code.
+- WebSockets/SSE/presence: not used; async poll on focus/load only.
+- No new file uploader; objects linked via ref_type/ref_id.
+
+### New endpoints (RBAC)
+- GET /api/v1/analytics/profit/by-field, /by-animal (finance/owner/manager see money)
+- GET/POST /api/v1/extranet/farms/search, /extranet/connections (owner/manager send/decide)
+- GET/POST /api/v1/intranet/conversations, /messages, /read, /broadcast
+- GET/POST /api/v1/extranet/conversations, /messages
+- POST /api/v1/messages/{id}/report, /api/v1/admin/messages/{id}/remove
+- GET /api/v1/credit-passport/me, POST /share, POST /share/{id}/revoke, GET history
+- GET /credit/passport/{token} (public)
+- POST /api/v1/traceability/batches, /batches/{id}/events, GET /batches/{id}, GET /trace/{code} (public)
+- POST /api/v1/assistant/summarise/{id}, /draft-reply/{id}
+- POST /api/v1/planner/planting-what-if
+
+### Tests
+- tests/ops_registry_check.php: pass
+- tests/regression.sh: extended with wave endpoint checks
+- tests/wave_smoke.sh: new end-to-end API smoke test
+- tests/smoke_fuzz.py: unchanged, run against local server
+- PHP lint: all files clean; git diff --check clean
 columns verified against db/*.sql); PHP lint clean across all changed/new files;
 `tests/regression.sh` syntax valid. PostgreSQL/pdo_pgsql are not available in this
 checkout, so DB-backed runtime tests could not be executed; static validation
