@@ -55,6 +55,11 @@ $crops = $data['crops'] ?? ($data ?? []); // Handle both cases for index and add
                     <span><?php echo htmlspecialchars($crop['name']); ?></span>
                     <?php if (!empty($crop['variety'])): ?><span class="text-slate-400">- <?php echo htmlspecialchars($crop['variety']); ?></span><?php endif; ?>
                     <?php echo $dueHtml; ?>
+                    <form method="post" action="index.php?module=Crop&action=delete" class="ml-auto inline" onsubmit="return confirm('Delete this crop? (Only if no harvests/planting/pest records reference it.)');">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
+                        <input type="hidden" name="id" value="<?php echo (int) $crop['id']; ?>">
+                        <button type="submit" class="text-xs font-bold text-red-600 hover:text-red-700">Delete</button>
+                    </form>
                 </li>
             <?php endforeach; ?>
         </ul>

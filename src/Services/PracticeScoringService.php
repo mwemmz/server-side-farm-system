@@ -70,8 +70,9 @@ class PracticeScoringService
         $catN = (int)$this->safeScalar("SELECT COUNT(*) FROM finance_records WHERE category IS NOT NULL AND category <> ''");
         $ed = $finN > 0 ? (int) round(($catN / $finN) * 100) : 100;
 
-        // traceability: 0 until Wave 3 ships
-        $tr = 0;
+        // traceability: participation based on harvest batches created
+        $batchN = (int)$this->safeScalar("SELECT COUNT(*) FROM harvest_batches");
+        $tr = min(100, $batchN * 20);
 
         $factorScores = [
             'record_keeping' => $rk,

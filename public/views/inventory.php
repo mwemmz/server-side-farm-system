@@ -115,7 +115,13 @@ foreach ($items as $it) { $grouped[$it['category'] ?: 'Uncategorised'][] = $it; 
                                         <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">OK</span>
                                     <?php endif; ?>
                                 </td>
-                                <td class="py-2.5"><a href="index.php?module=Inventory&action=history&id=<?php echo (int) $it['id']; ?>" class="text-xs font-semibold text-green-700 hover:text-green-800">View</a></td>
+                                <td class="py-2.5"><a href="index.php?module=Inventory&action=history&id=<?php echo (int) $it['id']; ?>" class="text-xs font-semibold text-green-700 hover:text-green-800">View</a>
+                                    <form method="post" action="index.php?module=Inventory&action=delete" class="inline" onsubmit="return confirm('Delete this item? (Only if no stock movements recorded.)');">
+                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
+                                        <input type="hidden" name="id" value="<?php echo (int) $it['id']; ?>">
+                                        <button type="submit" class="text-xs font-bold text-red-600 hover:text-red-700 ml-2">Delete</button>
+                                    </form>
+                                </td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>

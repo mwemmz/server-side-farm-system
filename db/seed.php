@@ -22,6 +22,21 @@ try {
         $userStmt = $pdo->prepare("INSERT INTO users (username, password_hash, email, role) VALUES (?, ?, ?, ?) ON CONFLICT (username) DO UPDATE SET role = EXCLUDED.role, email = EXCLUDED.email");
         $userStmt->execute([$username, password_hash('demo123', PASSWORD_DEFAULT), $email, $role]);
     }
+
+    // Ensure every demo user is a member of at least the first farm (Wave 1B).
+    try {
+        $pdo->exec("INSERT INTO farm_members (farm_id, user_id, farm_role)
+            SELECT 1, id, role FROM users
+            ON CONFLICT (farm_id, user_id) DO NOTHING");
+        // Also link all farms for admin.
+        $pdo->exec("INSERT INTO farm_members (farm_id, user_id, farm_role)
+            SELECT f.id, u.id, 'admin'
+            FROM farms f CROSS JOIN users u
+            WHERE u.role = 'admin'
+            ON CONFLICT (farm_id, user_id) DO NOTHING");
+    } catch (PDOException $e) {
+        error_log('Seed (farm_members) failed: ' . $e->getMessage());
+    }
 } catch (PDOException $e) {
     error_log("Seed (admin) failed: " . $e->getMessage());
 }

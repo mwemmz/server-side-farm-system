@@ -114,7 +114,32 @@ class CropController {
         return $this->viewData();
     }
 
-    /** Mark a crop health incident treated or resolved. */
+    public function delete() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit('POST required.'); }
+        $id = ValidationHelper::id($_POST['id'] ?? '');
+        if (!$id) { SessionHelper::setFlash('error', 'Invalid crop.'); header('Location: index.php?module=Crop&action=manage'); exit; }
+        foreach (['harvest_records' => 'crop_id', 'planting_records' => 'crop_id', 'field_history' => 'crop_id', 'health_incidents' => 'crop_id', 'spray_schedules' => 'crop_id', 'fertilizer_applications' => 'crop_id', 'chemical_applications' => 'crop_id', 'crop_growth_stages' => 'crop_id', 'seed_records' => 'crop_id'] as $table => $col) {
+            try {
+                $st = $this->pdo->prepare("SELECT COUNT(*) FROM {$table} WHERE {$col} = ?");
+                $st->execute([$id]);
+                if ((int)$st->fetchColumn() > 0) {
+                    SessionHelper::setFlash('error', "Cannot delete crop: it is referenced by {$table}. Remove those records first.");
+                    header('Location: index.php?module=Crop&action=manage'); exit;
+                }
+            } catch (PDOException $e) { /* table may not exist */ }
+        }
+        try {
+            $this->pdo->beginTransaction();
+            $this->pdo->prepare("DELETE FROM crops WHERE id = ?")->execute([$id]);
+            AuditHelper::log($this->pdo, 'human', 'crop_deleted', 'crops', $id, [], (int)($_SESSION['user_id'] ?? 0));
+            $this->pdo->commit();
+            SessionHelper::setFlash('success', 'Crop deleted.');
+        } catch (PDOException $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            SessionHelper::setFlash('error', 'Could not delete crop (it may be referenced elsewhere).');
+        }
+        header('Location: index.php?module=Crop&action=manage'); exit;
+    }
     public function incidentStatus() {
         $id = ValidationHelper::id($_POST['id'] ?? $_GET['id'] ?? '');
         $status = $_POST['status'] ?? 'resolved';

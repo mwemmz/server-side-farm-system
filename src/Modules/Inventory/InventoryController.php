@@ -96,7 +96,29 @@ class InventoryController {
         return $this->index();
     }
 
-    /** Item movement history (JSON-free, rendered by the view via ?action=history&id=). */
+    public function delete() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit('POST required.'); }
+        $id = ValidationHelper::id($_POST['id'] ?? '');
+        if (!$id) { SessionHelper::setFlash('error', 'Invalid item.'); header('Location: index.php?module=Inventory&action=index'); exit; }
+        // Guard: cannot delete an item that has stock movement history.
+        $st = $this->pdo->prepare("SELECT COUNT(*) FROM stock_movements WHERE item_id = ?");
+        $st->execute([$id]);
+        if ((int)$st->fetchColumn() > 0) {
+            SessionHelper::setFlash('error', 'Cannot delete an item with stock movement history. Adjust stock to zero instead.');
+            header('Location: index.php?module=Inventory&action=index'); exit;
+        }
+        try {
+            $this->pdo->beginTransaction();
+            $this->pdo->prepare("DELETE FROM inventory WHERE id = ?")->execute([$id]);
+            AuditHelper::log($this->pdo, 'human', 'inventory_item_deleted', 'inventory', $id, [], (int)($_SESSION['user_id'] ?? 0));
+            $this->pdo->commit();
+            SessionHelper::setFlash('success', 'Inventory item deleted.');
+        } catch (PDOException $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            SessionHelper::setFlash('error', 'Could not delete item (it may be referenced elsewhere).');
+        }
+        header('Location: index.php?module=Inventory&action=index'); exit;
+    }
     public function history() {
         $itemId = ValidationHelper::id($_GET['id'] ?? '');
         return array_merge($this->index(), [
