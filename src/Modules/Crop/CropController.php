@@ -46,10 +46,13 @@ class CropController {
             if ($harvest !== null && !isset($errors['planting_date']) && $harvest < $data['planting_date']) {
                 $errors['expected_harvest_date'] = "Harvest date cannot be earlier than the planting date.";
             }
+            $production = $this->productionFields($data, $errors);
+            $errors = $production['errors'];
 
             if (empty($errors)) {
                 try {
-                    if ($this->model->createCrop((int) $data['farm_id'], trim($data['name']), $variety, $data['planting_date'], $harvest)) {
+                    if ($this->model->createCrop((int) $data['farm_id'], trim($data['name']), $variety, $data['planting_date'], $harvest,
+                        $production['field_id'], $production['area_ha'], $production['expected_yield'], $production['yield_unit'])) {
                         SessionHelper::setFlash('success', 'Crop added successfully!');
                         SessionHelper::flashCreated('Crop', $this->model->lastId(), trim($data['name']), ['Planted' => $data['planting_date']]);
                         header('Location: index.php?module=Crop&action=manage');
@@ -89,12 +92,15 @@ class CropController {
         if ($harvest !== null && !isset($errors['planting_date']) && $harvest < $data['planting_date']) {
             $errors['expected_harvest_date'] = 'Harvest date cannot be earlier than the planting date.';
         }
+        $production = $this->productionFields($data, $errors);
+        $errors = $production['errors'];
         if ($errors) return array_merge($this->viewData(), ['editRecord' => array_merge($crop, $data), 'errors' => $errors]);
         try {
             $this->model->updateCrop(
                 $id, (int)$data['farm_id'], trim($data['name']),
                 trim($data['variety'] ?? '') !== '' ? trim($data['variety']) : null,
-                $data['planting_date'], $harvest
+                $data['planting_date'], $harvest, $production['field_id'], $production['area_ha'],
+                $production['expected_yield'], $production['yield_unit']
             );
             AuditHelper::log($this->pdo, 'human', 'crop_updated', 'crops', $id, $data, $_SESSION['user_id'] ?? null);
             SessionHelper::setFlash('success', 'Crop updated.');
@@ -103,6 +109,36 @@ class CropController {
             SessionHelper::setFlash('error', 'Could not update crop.');
         }
         header('Location: index.php?module=Crop&action=manage'); exit;
+    }
+
+    private function productionFields(array $data, array $errors): array
+    {
+        $fieldId = trim((string) ($data['field_id'] ?? ''));
+        if ($fieldId !== '') {
+            $fieldError = ValidationHelper::exists($this->pdo, 'fields', $fieldId, 'field');
+            if ($fieldError) {
+                $errors['field_id'] = $fieldError;
+            } else {
+                $check = $this->pdo->prepare('SELECT 1 FROM fields WHERE id = ? AND farm_id = ?');
+                $check->execute([(int) $fieldId, (int) ($data['farm_id'] ?? 0)]);
+                if (!$check->fetchColumn()) $errors['field_id'] = 'The field must belong to the selected farm.';
+            }
+        }
+        $area = trim((string) ($data['area_ha'] ?? ''));
+        $expected = trim((string) ($data['expected_yield'] ?? ''));
+        $areaError = ValidationHelper::number($data, 'area_ha', ['label' => 'Planted area', 'positive' => true]);
+        $yieldError = ValidationHelper::number($data, 'expected_yield', ['label' => 'Expected yield per hectare', 'positive' => true]);
+        if ($areaError) $errors['area_ha'] = $areaError;
+        if ($yieldError) $errors['expected_yield'] = $yieldError;
+        $unit = trim((string) ($data['yield_unit'] ?? 'kg')) ?: 'kg';
+        if (!in_array(strtolower($unit), ['kg', 'tonnes', 'litres', 'units'], true)) $errors['yield_unit'] = 'Choose kg, tonnes, litres or units.';
+        return [
+            'errors' => $errors,
+            'field_id' => $fieldId === '' ? null : (int) $fieldId,
+            'area_ha' => $area === '' ? null : (float) $area,
+            'expected_yield' => $expected === '' ? null : (float) $expected,
+            'yield_unit' => strtolower($unit),
+        ];
     }
 
     /** Log a pest/disease against a crop. Folded in from the old standalone Pest module. */

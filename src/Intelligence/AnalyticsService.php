@@ -72,6 +72,82 @@ class AnalyticsService
         ];
     }
 
+    /** At-a-glance production planning figures for the main dashboard. */
+    public function productionSnapshot(): array
+    {
+        $crops = $this->rows(
+            "SELECT c.id, c.name, c.variety,
+                    COALESCE(c.area_ha, NULLIF(f.size, 0), 0) AS area_ha,
+                    c.expected_yield, COALESCE(NULLIF(c.yield_unit, ''), 'kg') AS yield_unit,
+                    c.expected_harvest_date, f.name AS field_name,
+                    COALESCE(h.harvested, 0) AS harvested
+             FROM crops c
+             LEFT JOIN fields f ON f.id = c.field_id
+             LEFT JOIN (
+                 SELECT crop_id, SUM(quantity) AS harvested
+                 FROM harvest_records
+                 GROUP BY crop_id
+             ) h ON h.crop_id = c.id
+             WHERE COALESCE(c.status, 'active') = 'active'
+             ORDER BY c.name ASC, c.id ASC"
+        );
+        $species = $this->rows(
+            "SELECT lower(COALESCE(type, 'Other')) AS species,
+                    SUM(COALESCE(flock_size, 1)) AS quantity
+             FROM livestock
+             WHERE COALESCE(status, 'active') = 'active'
+             GROUP BY lower(COALESCE(type, 'Other'))
+             ORDER BY quantity DESC, species ASC"
+        );
+        $groupedCrops = [];
+        $totalArea = 0.0;
+        $expectedHarvest = 0.0;
+        foreach ($crops as $crop) {
+            $area = (float) ($crop['area_ha'] ?? 0);
+            $totalArea += $area;
+            $key = strtolower(trim((string) ($crop['name'] ?? ''))) ?: 'other';
+            if (!isset($groupedCrops[$key])) {
+                $groupedCrops[$key] = $crop;
+                $groupedCrops[$key]['area_ha'] = 0.0;
+                $groupedCrops[$key]['expected_yield'] = null;
+                $groupedCrops[$key]['harvested'] = 0.0;
+            }
+            $groupedCrops[$key]['area_ha'] += $area;
+            $groupedCrops[$key]['harvested'] += (float) ($crop['harvested'] ?? 0);
+            if ($crop['expected_yield'] !== null && $crop['expected_yield'] !== '') {
+                $expected = $area * (float) $crop['expected_yield'];
+                $expectedHarvest += $expected;
+                $groupedCrops[$key]['expected_yield'] = (float) ($groupedCrops[$key]['expected_yield'] ?? 0) + $expected;
+            }
+        }
+        foreach ($groupedCrops as &$crop) {
+            if ($crop['expected_yield'] !== null && (float) $crop['area_ha'] > 0) {
+                $crop['expected_yield'] = (float) $crop['expected_yield'] / (float) $crop['area_ha'];
+            }
+            $crop['variety'] = '';
+            $crop['field_name'] = '';
+        }
+        unset($crop);
+        $totalAnimals = 0;
+        $cattle = 0;
+        foreach ($species as &$row) {
+            $row['quantity'] = (int) $row['quantity'];
+            $totalAnimals += $row['quantity'];
+            if (in_array($row['species'], ['cattle', 'cow', 'cows', 'bull', 'bulls', 'bovine', 'heifer', 'heifers', 'calf', 'calves'], true)) {
+                $cattle += $row['quantity'];
+            }
+        }
+        unset($row);
+        return [
+            'crops' => array_values($groupedCrops),
+            'species' => $species,
+            'total_area_ha' => $totalArea,
+            'expected_harvest' => $expectedHarvest,
+            'total_animals' => $totalAnimals,
+            'cattle' => $cattle,
+        ];
+    }
+
     /** Revenue vs cost for each crop (dimension columns on the ledger). */
     public function cropEnterprise(): array
     {

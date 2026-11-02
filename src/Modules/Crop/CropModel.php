@@ -19,16 +19,23 @@ class CropModel {
         return $stmt->fetch();
     }
 
-    public function updateCrop($id, $farmId, $name, $variety, $plantingDate, $harvestDate) {
+    public function updateCrop($id, $farmId, $name, $variety, $plantingDate, $harvestDate, $fieldId = null, $areaHa = null, $expectedYield = null, $yieldUnit = 'kg') {
         $stmt = $this->pdo->prepare(
-            "UPDATE crops SET farm_id=?, name=?, variety=?, planting_date=?, expected_harvest_date=? WHERE id=?"
+            "UPDATE crops SET farm_id=?, name=?, variety=?, planting_date=?, expected_harvest_date=?,
+                    field_id=?, area_ha=?, expected_yield=?, yield_unit=? WHERE id=?"
         );
-        return $stmt->execute([$farmId, $name, $variety, $plantingDate, $harvestDate, (int) $id]);
+        return $stmt->execute([$farmId, $name, $variety, $plantingDate, $harvestDate,
+            $fieldId, $areaHa, $expectedYield, $yieldUnit, (int) $id]);
     }
 
-    public function createCrop($farm_id, $name, $variety, $planting_date, $expected_harvest_date) {
-        $stmt = $this->pdo->prepare("INSERT INTO crops (farm_id, name, variety, planting_date, expected_harvest_date) VALUES (?, ?, ?, ?, ?)");
-        return $stmt->execute([$farm_id, $name, $variety, $planting_date, $expected_harvest_date]);
+    public function createCrop($farm_id, $name, $variety, $planting_date, $expected_harvest_date, $fieldId = null, $areaHa = null, $expectedYield = null, $yieldUnit = 'kg') {
+        $stmt = $this->pdo->prepare(
+            "INSERT INTO crops (farm_id, name, variety, planting_date, expected_harvest_date,
+                    field_id, area_ha, expected_yield, yield_unit)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        );
+        return $stmt->execute([$farm_id, $name, $variety, $planting_date, $expected_harvest_date,
+            $fieldId, $areaHa, $expectedYield, $yieldUnit]);
     }
 }
 ?>

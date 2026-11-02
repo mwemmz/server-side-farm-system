@@ -21,6 +21,15 @@ try {
 }
 $totalCost = (float) ($__overview['expenses'] ?? 0);
 $totalSales = (float) ($__overview['revenue'] ?? 0);
+$__production = [
+    'crops' => [], 'species' => [], 'total_area_ha' => 0, 'expected_harvest' => 0,
+    'total_animals' => 0, 'cattle' => 0,
+];
+try {
+    $__production = (new AnalyticsService($pdo))->productionSnapshot();
+} catch (\Throwable $e) {
+    error_log('Dashboard production summary failed: ' . $e->getMessage());
+}
 
 // Weather: use first farm's GPS coords if set, else env default
 $lat = getEnvVar('DEFAULT_LAT', -15.3875);
@@ -203,6 +212,52 @@ function weatherIcon($code) {
             </div>
         </div>
         <?php endif; ?>
+    <div class="glass-card p-4 sm:p-6 animate-fade-in">
+        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-4">
+            <div>
+                <h2 class="text-lg font-bold text-slate-800">Production at a glance</h2>
+                <p class="text-xs text-slate-500 mt-1">Planting area, harvest estimates and active livestock.</p>
+            </div>
+            <div class="flex flex-wrap gap-2 text-xs font-semibold">
+                <span class="rounded-full bg-emerald-100 text-emerald-800 px-3 py-1"><?php echo number_format((float) $__production['total_area_ha'], 2); ?> ha planted</span>
+                <span class="rounded-full bg-amber-100 text-amber-800 px-3 py-1"><?php echo (int) $__production['total_animals']; ?> animals</span>
+                <span class="rounded-full bg-sky-100 text-sky-800 px-3 py-1"><?php echo (int) $__production['cattle']; ?> cows/cattle</span>
+            </div>
+        </div>
+        <?php if (!empty($__production['crops'])): ?>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead><tr class="text-left text-[10px] uppercase tracking-wider text-slate-400 border-b border-slate-200">
+                        <th class="pb-2 pr-3">Produce</th><th class="pb-2 pr-3">Area</th><th class="pb-2 pr-3">Expected harvest</th><th class="pb-2">Harvested</th>
+                    </tr></thead>
+                    <tbody class="divide-y divide-slate-100">
+                    <?php foreach (array_slice($__production['crops'], 0, 8) as $crop):
+                        $area = (float) ($crop['area_ha'] ?? 0);
+                        $yield = ($crop['expected_yield'] !== null && $crop['expected_yield'] !== '') ? $area * (float) $crop['expected_yield'] : null;
+                        $unit = $crop['yield_unit'] ?? 'kg';
+                    ?>
+                        <tr>
+                            <td class="py-2.5 pr-3 font-semibold text-slate-700"><?php echo htmlspecialchars($crop['name']); ?><?php echo !empty($crop['variety']) ? ' <span class="font-normal text-slate-400">(' . htmlspecialchars($crop['variety']) . ')</span>' : ''; ?></td>
+                            <td class="py-2.5 pr-3 tabular-nums"><?php echo number_format($area, 2); ?> ha</td>
+                            <td class="py-2.5 pr-3 tabular-nums"><?php echo $yield === null ? '—' : number_format($yield, 2) . ' ' . htmlspecialchars($unit); ?></td>
+                            <td class="py-2.5 tabular-nums"><?php echo number_format((float) ($crop['harvested'] ?? 0), 2); ?> kg</td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php else: ?>
+            <p class="text-sm text-slate-500">Add a crop with its planted area and expected yield to see harvest estimates here.</p>
+        <?php endif; ?>
+        <?php if (!empty($__production['species'])): ?>
+            <div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100">
+                <?php foreach (array_slice($__production['species'], 0, 8) as $animalGroup): ?>
+                    <span class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs text-slate-700"><?php echo htmlspecialchars(ucfirst($animalGroup['species'])); ?>: <strong><?php echo (int) $animalGroup['quantity']; ?></strong></span>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 stagger">
         <!-- Weather panel -->
         <div class="glass-card p-5 md:p-6 card-glow">

@@ -97,16 +97,20 @@ with no PHP warning output, and an optional PHP log scan (set `PHP_LOG=/path/to/
    kg — it can be edited). Harvest → "Store in" that facility: stock rises by
    the kg, and harvesting more than the capacity (or a deleted facility id)
    is refused without breaking the harvest record.
-4. **Vaccination species rules.** Record a vaccination of Newcastle (NCD) on a
+4. **Production at a glance.** Crop → record the planted field, area in
+   hectares and expected yield per hectare. The Dashboard groups planted
+   hectares by produce, estimates the harvest, and shows active livestock
+   totals including the cow/cattle count.
+5. **Vaccination species rules.** Record a vaccination of Newcastle (NCD) on a
    cow — refused with "is for Poultry, not this Cattle". Goat + PPR vaccine is
    accepted. Batch-vaccinate a cow and a goat together — refused as
    mixed-species. Vaccinate poultry with Marek's: no Next Due date appears
    (single dose at day-old).
-5. **Equipment service clock.** Add a Tractor with a purchase date ~10 months
+6. **Equipment service clock.** Add a Tractor with a purchase date ~10 months
    ago and no interval — it picks up 90 days and shows "Service overdue".
    Record a service: the badge clears to "Service OK" and the next date is set
    purchase-free. Spare-part stock and cost are optional.
-6. **CSRF + no 500s.** POST any form without the token → 403. Browse every
+7. **CSRF + no 500s.** POST any form without the token → 403. Browse every
    module landing and manage page → all 200, none show PHP warnings; the server
    PHP log stays empty.
 

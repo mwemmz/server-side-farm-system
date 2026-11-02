@@ -6,7 +6,7 @@
 // against the hosted database. Gate it behind a version marker stored in the
 // database itself: once the current version has been applied, subsequent
 // requests skip straight through.
-$migrationVersion = '10';
+$migrationVersion = '11';
 
 try {
     $applied = null;
