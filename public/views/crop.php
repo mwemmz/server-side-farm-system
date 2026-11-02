@@ -6,6 +6,7 @@ $successMessage = SessionHelper::getFlash('success');
 $errors = $data['errors'] ?? [];
 $formData = $data['data'] ?? [];
 $crops = $data['crops'] ?? ($data ?? []); // Handle both cases for index and add
+$editRecord = $data['editRecord'] ?? null;
 ?>
 
 <h1 class="text-2xl sm:text-3xl font-bold mb-6 text-green-800">Crop Management</h1>
@@ -17,17 +18,18 @@ $crops = $data['crops'] ?? ($data ?? []); // Handle both cases for index and add
 <?php endif; ?>
 
 <div class="glass-card p-4 sm:p-6 mb-6">
-    <h2 class="text-xl font-semibold mb-4">Add New Crop</h2>
+    <h2 class="text-xl font-semibold mb-4"><?php echo $editRecord ? 'Edit Crop' : 'Add New Crop'; ?></h2>
     <?php
     $fields = [
-        ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'combo', 'options' => FormHelper::farmOptions($pdo), 'allow_custom' => false, 'placeholder' => 'Type to find a farm…', 'value' => $formData['farm_id'] ?? ''],
-        ['name' => 'name', 'label' => 'Crop Name', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'crop_name'), 'allow_custom' => true, 'category' => 'crop_name', 'placeholder' => 'e.g. Maize, or type another crop…', 'value' => $formData['name'] ?? ''],
-        ['name' => 'variety', 'label' => 'Variety', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'crop_variety'), 'allow_custom' => true, 'category' => 'crop_variety', 'placeholder' => 'e.g. SC 403 (optional)', 'value' => $formData['variety'] ?? ''],
-        ['name' => 'planting_date', 'label' => 'Planting Date', 'type' => 'date', 'help' => 'Defaults to today.', 'value' => $formData['planting_date'] ?? date('Y-m-d')],
-        ['name' => 'expected_harvest_date', 'label' => 'Expected Harvest Date', 'type' => 'date', 'required' => false, 'help' => 'Not sure? Leave blank, or enter the crop name to get an estimate.', 'value' => $formData['expected_harvest_date'] ?? '']
+        ['name' => 'farm_id', 'label' => 'Farm', 'type' => 'combo', 'options' => FormHelper::farmOptions($pdo), 'allow_custom' => false, 'placeholder' => 'Type to find a farm…', 'value' => $editRecord['farm_id'] ?? $formData['farm_id'] ?? ''],
+        ['name' => 'name', 'label' => 'Crop Name', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'crop_name'), 'allow_custom' => true, 'category' => 'crop_name', 'placeholder' => 'e.g. Maize, or type another crop…', 'value' => $editRecord['name'] ?? $formData['name'] ?? ''],
+        ['name' => 'variety', 'label' => 'Variety', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'crop_variety'), 'allow_custom' => true, 'category' => 'crop_variety', 'placeholder' => 'e.g. SC 403 (optional)', 'value' => $editRecord['variety'] ?? $formData['variety'] ?? ''],
+        ['name' => 'planting_date', 'label' => 'Planting Date', 'type' => 'date', 'help' => 'Defaults to today.', 'value' => $editRecord['planting_date'] ?? $formData['planting_date'] ?? date('Y-m-d')],
+        ['name' => 'expected_harvest_date', 'label' => 'Expected Harvest Date', 'type' => 'date', 'required' => false, 'help' => 'Not sure? Leave blank, or enter the crop name to get an estimate.', 'value' => $editRecord['expected_harvest_date'] ?? $formData['expected_harvest_date'] ?? '']
     ];
-    echo FormHelper::generateForm($fields, '/index.php?module=Crop&action=add', 'POST', $errors);
+    echo FormHelper::generateForm($fields, '/index.php?module=Crop&action=' . ($editRecord ? 'edit&id=' . (int)$editRecord['id'] : 'add'), 'POST', $errors);
     ?>
+    <?php if ($editRecord): ?><a href="index.php?module=Crop&action=manage" class="inline-block mt-3 text-sm text-slate-600">Cancel editing</a><?php endif; ?>
 </div>
 
 <div class="glass-card p-4 sm:p-6">
@@ -55,6 +57,7 @@ $crops = $data['crops'] ?? ($data ?? []); // Handle both cases for index and add
                     <span><?php echo htmlspecialchars($crop['name']); ?></span>
                     <?php if (!empty($crop['variety'])): ?><span class="text-slate-400">- <?php echo htmlspecialchars($crop['variety']); ?></span><?php endif; ?>
                     <?php echo $dueHtml; ?>
+                    <a href="index.php?module=Crop&action=edit&id=<?php echo (int)$crop['id']; ?>" class="ml-auto text-xs font-bold text-green-700">Edit</a>
                     <form method="post" action="index.php?module=Crop&action=delete" class="ml-auto inline" onsubmit="return confirm('Delete this crop? (Only if no harvests/planting/pest records reference it.)');">
                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
                         <input type="hidden" name="id" value="<?php echo (int) $crop['id']; ?>">

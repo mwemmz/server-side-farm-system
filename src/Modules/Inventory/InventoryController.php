@@ -55,6 +55,39 @@ class InventoryController {
         return $this->index();
     }
 
+    public function edit() {
+        $id = ValidationHelper::id($_GET['id'] ?? $_POST['id'] ?? '');
+        if (!$id) {
+            SessionHelper::setFlash('error', 'Select an inventory item to edit.');
+            header('Location: index.php?module=Inventory&action=manage'); exit;
+        }
+        $item = $this->model->getItem($id);
+        if (!$item) {
+            SessionHelper::setFlash('error', 'That inventory item no longer exists.');
+            header('Location: index.php?module=Inventory&action=manage'); exit;
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            return array_merge($this->index(), ['editItem' => $item]);
+        }
+        $data = $_POST;
+        $errors = ValidationHelper::validateRequired(['name', 'unit'], $data);
+        if ($errors) return array_merge($this->index(), ['editItem' => array_merge($item, $data), 'editErrors' => $errors]);
+        try {
+            $stmt = $this->pdo->prepare('UPDATE inventory SET name = ?, unit = ?, category = ?, used_for = ? WHERE id = ?');
+            $stmt->execute([
+                trim($data['name']), trim($data['unit']),
+                trim($data['category'] ?? '') !== '' ? trim($data['category']) : null,
+                trim($data['used_for'] ?? '') !== '' ? trim($data['used_for']) : null,
+                $id,
+            ]);
+            SessionHelper::setFlash('success', 'Inventory item details updated. Use Stock Movement to change its quantity.');
+        } catch (Throwable $e) {
+            error_log('Inventory edit failed: ' . $e->getMessage());
+            SessionHelper::setFlash('error', 'Could not update inventory item.');
+        }
+        header('Location: index.php?module=Inventory&action=manage'); exit;
+    }
+
     /** Stock in / stock out (shared handler keyed by the 'direction' field). */
     public function move() {
         $errors = [];

@@ -7,6 +7,7 @@ $successMessage = SessionHelper::getFlash('success');
 $errors = $data['errors'] ?? [];
 $formData = $data['data'] ?? [];
 $records = $data['records'] ?? ($data ?? []);
+$editRecord = $data['editRecord'] ?? null;
 ?>
 
 <h1 class="text-2xl sm:text-3xl font-bold mb-6 text-green-800">Market Data</h1>
@@ -18,15 +19,16 @@ $records = $data['records'] ?? ($data ?? []);
 <?php endif; ?>
 
 <div class="glass-card p-4 sm:p-6 mb-6">
-    <h2 class="text-xl font-semibold mb-4">Add New Market Entry</h2>
+    <h2 class="text-xl font-semibold mb-4"><?php echo $editRecord ? 'Edit Market Entry' : 'Add New Market Entry'; ?></h2>
     <?php
     $fields = [
-        ['name' => 'crop_name', 'label' => 'Crop Name', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'crop_name'), 'allow_custom' => true, 'category' => 'crop_name', 'placeholder' => 'e.g. Maize, Soya…', 'value' => $formData['crop_name'] ?? ''],
-        ['name' => 'price', 'label' => 'Price', 'type' => 'number', 'step' => '0.01', 'min' => '0.01', 'value' => $formData['price'] ?? '', 'suffix' => 'K per kg'],
-        ['name' => 'market_date', 'label' => 'Market Date', 'type' => 'date', 'max' => date('Y-m-d'), 'value' => $formData['market_date'] ?? date('Y-m-d')]
+        ['name' => 'crop_name', 'label' => 'Crop Name', 'type' => 'combo', 'options' => FormHelper::lookupOptions($pdo, 'crop_name'), 'allow_custom' => true, 'category' => 'crop_name', 'placeholder' => 'e.g. Maize, Soya…', 'value' => $editRecord['crop_name'] ?? $formData['crop_name'] ?? ''],
+        ['name' => 'price', 'label' => 'Price', 'type' => 'number', 'step' => '0.01', 'min' => '0.01', 'value' => $editRecord['price'] ?? $formData['price'] ?? '', 'suffix' => 'K per kg'],
+        ['name' => 'market_date', 'label' => 'Market Date', 'type' => 'date', 'max' => date('Y-m-d'), 'value' => $editRecord['market_date'] ?? $formData['market_date'] ?? date('Y-m-d')]
     ];
-    echo FormHelper::generateForm($fields, '/index.php?module=Market&action=add', 'POST', $errors);
+    echo FormHelper::generateForm($fields, '/index.php?module=Market&action=' . ($editRecord ? 'edit&id=' . (int)$editRecord['id'] : 'add'), 'POST', $errors);
     ?>
+    <?php if ($editRecord): ?><a href="index.php?module=Market&action=manage" class="inline-block mt-3 text-sm text-slate-600">Cancel editing</a><?php endif; ?>
 </div>
 
 <div class="glass-card p-4 sm:p-6">
@@ -34,7 +36,7 @@ $records = $data['records'] ?? ($data ?? []);
     <?php if (isset($records) && !empty($records)): ?>
         <ul class="space-y-2.5">
             <?php foreach ($records as $record): ?>
-                <li class="bg-white/50 border border-white/60 rounded-xl px-3.5 sm:px-4 py-3 text-sm text-slate-700 shadow-sm"><?php echo htmlspecialchars($record['crop_name']); ?>: <?php echo money($record['price']); ?>/kg on <?php echo htmlspecialchars($record['market_date']); ?></li>
+                <li class="bg-white/50 border border-white/60 rounded-xl px-3.5 sm:px-4 py-3 text-sm text-slate-700 shadow-sm flex items-center gap-3"><span class="flex-1"><?php echo htmlspecialchars($record['crop_name']); ?>: <?php echo money($record['price']); ?>/kg on <?php echo htmlspecialchars($record['market_date']); ?></span><a href="index.php?module=Market&action=edit&id=<?php echo (int)$record['id']; ?>" class="text-xs font-bold text-green-700">Edit</a></li>
             <?php endforeach; ?>
         </ul>
     <?php else: ?>

@@ -65,6 +65,46 @@ class CropController {
         return $this->viewData();
     }
 
+    public function edit() {
+        $id = ValidationHelper::id($_GET['id'] ?? $_POST['id'] ?? '');
+        if (!$id) {
+            SessionHelper::setFlash('error', 'Select a crop to edit.');
+            header('Location: index.php?module=Crop&action=manage'); exit;
+        }
+        $crop = $this->model->getById($id);
+        if (!$crop) {
+            SessionHelper::setFlash('error', 'That crop no longer exists.');
+            header('Location: index.php?module=Crop&action=manage'); exit;
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            return array_merge($this->viewData(), ['editRecord' => $crop]);
+        }
+        $data = $_POST;
+        $errors = ValidationHelper::validateRequired(['farm_id', 'name', 'planting_date'], $data);
+        if (!isset($errors['farm_id'])) {
+            $e = ValidationHelper::exists($this->pdo, 'farms', $data['farm_id'], 'farm');
+            if ($e) $errors['farm_id'] = $e;
+        }
+        $harvest = trim($data['expected_harvest_date'] ?? '') !== '' ? trim($data['expected_harvest_date']) : null;
+        if ($harvest !== null && !isset($errors['planting_date']) && $harvest < $data['planting_date']) {
+            $errors['expected_harvest_date'] = 'Harvest date cannot be earlier than the planting date.';
+        }
+        if ($errors) return array_merge($this->viewData(), ['editRecord' => array_merge($crop, $data), 'errors' => $errors]);
+        try {
+            $this->model->updateCrop(
+                $id, (int)$data['farm_id'], trim($data['name']),
+                trim($data['variety'] ?? '') !== '' ? trim($data['variety']) : null,
+                $data['planting_date'], $harvest
+            );
+            AuditHelper::log($this->pdo, 'human', 'crop_updated', 'crops', $id, $data, $_SESSION['user_id'] ?? null);
+            SessionHelper::setFlash('success', 'Crop updated.');
+        } catch (Throwable $e) {
+            error_log('Crop update failed: ' . $e->getMessage());
+            SessionHelper::setFlash('error', 'Could not update crop.');
+        }
+        header('Location: index.php?module=Crop&action=manage'); exit;
+    }
+
     /** Log a pest/disease against a crop. Folded in from the old standalone Pest module. */
     public function addPest() {
         $data = $_POST;

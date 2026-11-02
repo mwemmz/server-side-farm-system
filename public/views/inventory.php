@@ -10,11 +10,30 @@ $formData = $data['data'] ?? [];
 $moveErrors = $data['moveErrors'] ?? [];
 $moveData = $data['moveData'] ?? [];
 $moveDirection = $data['moveDirection'] ?? 'in';
+$editItem = $data['editItem'] ?? null;
+$editErrors = $data['editErrors'] ?? [];
 ?>
 <h1 class="text-2xl sm:text-3xl font-bold mb-6 text-green-800">Inventory Management</h1>
 
 <?php if ($success): ?>
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4"><?php echo htmlspecialchars($success); ?></div>
+<?php endif; ?>
+
+<?php if ($editItem): ?>
+<div class="glass-card p-4 sm:p-6 mb-6 border border-emerald-200">
+    <h2 class="text-xl font-semibold mb-1">Edit Inventory Item</h2>
+    <p class="text-xs text-slate-500 mb-4">Edit the item description here. Change quantity through Stock Movement so the audit history remains accurate.</p>
+    <?php
+    $editFields = [
+        ['name' => 'name', 'label' => 'Item Name', 'value' => $editItem['name'] ?? ''],
+        ['name' => 'category', 'label' => 'Category', 'required' => false, 'value' => $editItem['category'] ?? ''],
+        ['name' => 'unit', 'label' => 'Unit', 'value' => $editItem['unit'] ?? ''],
+        ['name' => 'used_for', 'label' => 'Purpose', 'required' => false, 'value' => $editItem['used_for'] ?? ''],
+    ];
+    echo FormHelper::generateForm($editFields, 'index.php?module=Inventory&action=edit&id=' . (int)$editItem['id'], 'POST', $editErrors);
+    ?>
+    <a href="index.php?module=Inventory&action=manage" class="inline-block mt-3 text-sm text-slate-600">Cancel editing</a>
+</div>
 <?php endif; ?>
 
 <div class="glass-card p-4 sm:p-6 mb-6">
@@ -99,7 +118,7 @@ foreach ($items as $it) { $grouped[$it['category'] ?: 'Uncategorised'][] = $it; 
                                 <th class="py-2 pr-3">Purpose</th>
                                 <th class="py-2 pr-3 text-right">Balance</th>
                                 <th class="py-2 pr-3">Status</th>
-                                <th class="py-2">History</th>
+                                <th class="py-2">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -115,7 +134,8 @@ foreach ($items as $it) { $grouped[$it['category'] ?: 'Uncategorised'][] = $it; 
                                         <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">OK</span>
                                     <?php endif; ?>
                                 </td>
-                                <td class="py-2.5"><a href="index.php?module=Inventory&action=history&id=<?php echo (int) $it['id']; ?>" class="text-xs font-semibold text-green-700 hover:text-green-800">View</a>
+                                <td class="py-2.5"><a href="index.php?module=Inventory&action=edit&id=<?php echo (int)$it['id']; ?>" class="text-xs font-bold text-green-700">Edit</a>
+                                    <a href="index.php?module=Inventory&action=history&id=<?php echo (int) $it['id']; ?>" class="ml-2 text-xs font-semibold text-slate-600 hover:text-slate-800">History</a>
                                     <form method="post" action="index.php?module=Inventory&action=delete" class="inline" onsubmit="return confirm('Delete this item? (Only if no stock movements recorded.)');">
                                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
                                         <input type="hidden" name="id" value="<?php echo (int) $it['id']; ?>">

@@ -8,10 +8,11 @@ $successMessage = SessionHelper::getFlash('success');
 $errors    = $data['errors'] ?? [];
 $formData  = $data['data'] ?? [];
 $farmRecords = $data['records'] ?? (is_array($data) ? $data : []);
+$editRecord = $data['editRecord'] ?? null;
 
 $fields = [
-    ['name' => 'name', 'label' => 'Farm Name', 'value' => $formData['name'] ?? ''],
-    ['name' => 'location', 'label' => 'Location', 'value' => $formData['location'] ?? ''],
+    ['name' => 'name', 'label' => 'Farm Name', 'value' => $editRecord['name'] ?? $formData['name'] ?? ''],
+    ['name' => 'location', 'label' => 'Location', 'value' => $editRecord['location'] ?? $formData['location'] ?? ''],
 ];
 ?>
 
@@ -20,15 +21,16 @@ $fields = [
 <?php endif; ?>
 
 <div class="glass-card p-4 sm:p-6 mb-6">
-    <h2 class="text-xl font-semibold mb-4">Add New Farm</h2>
-    <?php echo FormHelper::generateForm($fields, '/index.php?module=Farm&action=add', 'POST', $errors); ?>
+    <h2 class="text-xl font-semibold mb-4"><?php echo $editRecord ? 'Edit Farm' : 'Add New Farm'; ?></h2>
+    <?php echo FormHelper::generateForm($fields, '/index.php?module=Farm&action=' . ($editRecord ? 'edit&id=' . (int)$editRecord['id'] : 'add'), 'POST', $errors); ?>
+    <?php if ($editRecord): ?><a href="index.php?module=Farm&action=manage" class="inline-block mt-3 text-sm text-slate-600">Cancel editing</a><?php endif; ?>
 </div>
 
 <div class="glass-card p-4 sm:p-6">
     <?php if (!empty($farmRecords)): ?>
         <ul class="space-y-2.5">
             <?php foreach ($farmRecords as $farm): ?>
-                <li class="bg-white/50 border border-white/60 rounded-xl px-3.5 sm:px-4 py-3 text-sm text-slate-700 shadow-sm"><?php echo htmlspecialchars($farm['name']); ?> <span class="text-gray-500">- <?php echo htmlspecialchars($farm['location'] ?? ''); ?></span></li>
+                <li class="bg-white/50 border border-white/60 rounded-xl px-3.5 sm:px-4 py-3 text-sm text-slate-700 shadow-sm flex items-center gap-3"><span class="flex-1"><?php echo htmlspecialchars($farm['name']); ?> <span class="text-gray-500">- <?php echo htmlspecialchars($farm['location'] ?? ''); ?></span></span><a href="index.php?module=Farm&action=edit&id=<?php echo (int)$farm['id']; ?>" class="text-xs font-bold text-green-700">Edit</a></li>
             <?php endforeach; ?>
         </ul>
     <?php else: ?>

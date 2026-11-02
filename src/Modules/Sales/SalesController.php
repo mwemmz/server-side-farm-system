@@ -65,6 +65,58 @@ class SalesController {
         }
         return ['records' => $this->model->getAll()];
     }
+
+    public function edit() {
+        $id = ValidationHelper::id($_GET['id'] ?? $_POST['id'] ?? '');
+        if (!$id) {
+            SessionHelper::setFlash('error', 'Select a sale to edit.');
+            header('Location: index.php?module=Sales&action=manage'); exit;
+        }
+        $record = $this->model->getById($id);
+        if (!$record) {
+            SessionHelper::setFlash('error', 'That sale no longer exists.');
+            header('Location: index.php?module=Sales&action=manage'); exit;
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            return ['records' => $this->model->getAll(), 'editRecord' => $record];
+        }
+        $data = $_POST;
+        $errors = ValidationHelper::validateRequired(['customer_name', 'amount', 'sale_date'], $data);
+        if (!isset($errors['sale_date'])) {
+            $e = ValidationHelper::dateNotFuture($data, 'sale_date', 'Sale date');
+            if ($e) $errors['sale_date'] = $e;
+        }
+        if (!isset($errors['amount'])) {
+            $e = ValidationHelper::number($data, 'amount', ['label' => 'Amount', 'positive' => true]);
+            if ($e) $errors['amount'] = $e;
+        }
+        if ($errors) return ['records' => $this->model->getAll(), 'editRecord' => array_merge($record, $data), 'errors' => $errors];
+        $row = array_intersect_key($data, array_flip(['customer_name', 'crop_name', 'quantity', 'unit', 'amount', 'payment_method', 'sale_date']));
+        foreach (['inventory_id', 'livestock_id', 'field_id'] as $link) {
+            $row[$link] = !empty($data[$link]) ? (int) $data[$link] : null;
+        }
+        $row['customer_name'] = trim($row['customer_name']);
+        foreach (['crop_name', 'unit', 'payment_method'] as $key) {
+            if (isset($row[$key]) && trim((string)$row[$key]) === '') $row[$key] = null;
+        }
+        if (isset($row['quantity']) && trim((string)$row['quantity']) === '') $row['quantity'] = null;
+        try {
+            $this->model->update($id, $row);
+            $product = strtolower(trim((string)($row['crop_name'] ?? '')));
+            $category = preg_match('/cattle|goat|pig|poultry|livestock|chicken/', $product) ? 'Livestock sales' : 'Crop sales';
+            (new FinanceService($this->pdo))->syncSourceSafe(
+                'Sales', $id, 'income', $category,
+                $row['amount'], 'Sale to ' . $row['customer_name'] . ($row['crop_name'] ? ' — ' . $row['crop_name'] : ''),
+                null, $row['sale_date'], 'paid'
+            );
+            AuditHelper::log($this->pdo, 'human', 'sale_updated', 'sales_records', $id, $row, $_SESSION['user_id'] ?? null);
+            SessionHelper::setFlash('success', 'Sale updated and its finance record synchronised.');
+        } catch (Throwable $e) {
+            error_log('Sale update failed: ' . $e->getMessage());
+            SessionHelper::setFlash('error', 'Could not update sale.');
+        }
+        header('Location: index.php?module=Sales&action=manage'); exit;
+    }
     public function delete() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit('POST required.'); }
         $id = ValidationHelper::id($_POST['id'] ?? '');

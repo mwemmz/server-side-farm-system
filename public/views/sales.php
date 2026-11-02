@@ -7,6 +7,7 @@ $successMessage = SessionHelper::getFlash('success');
 $errors = $data['errors'] ?? [];
 $formData = $data['data'] ?? [];
 $records = $data['records'] ?? ($data ?? []);
+$editRecord = $data['editRecord'] ?? null;
 ?>
 
 <h1 class="text-2xl sm:text-3xl font-bold mb-6 text-green-800">Sales Records</h1>
@@ -18,22 +19,23 @@ $records = $data['records'] ?? ($data ?? []);
 <?php endif; ?>
 
 <div class="glass-card p-4 sm:p-6 mb-6">
-    <h2 class="text-xl font-semibold mb-4">Add New Sale</h2>
+    <h2 class="text-xl font-semibold mb-4"><?php echo $editRecord ? 'Edit Sale' : 'Add New Sale'; ?></h2>
     <?php
     $fields = [
-        ['name' => 'customer_name', 'label' => 'Customer Name', 'value' => $formData['customer_name'] ?? ''],
-        ['name' => 'crop_name', 'label' => 'Product Sold', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'crop_name'), 'allow_custom' => true, 'category' => 'crop_name', 'placeholder' => 'Maize, Livestock…', 'value' => $formData['crop_name'] ?? ''],
-        ['name' => 'quantity', 'label' => 'Quantity', 'type' => 'number', 'step' => '0.01', 'min' => '0', 'required' => false, 'value' => $formData['quantity'] ?? ''],
-        ['name' => 'unit', 'label' => 'Unit', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'unit'), 'allow_custom' => true, 'category' => 'unit', 'placeholder' => 'kg, bag, head…', 'value' => $formData['unit'] ?? ''],
-        ['name' => 'amount', 'label' => 'Total Amount', 'type' => 'number', 'step' => '0.01', 'min' => '0.01', 'value' => $formData['amount'] ?? '', 'suffix' => 'K'],
-        ['name' => 'payment_method', 'label' => 'Payment Method', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'payment_method'), 'allow_custom' => true, 'category' => 'payment_method', 'placeholder' => 'Cash, Mobile money…', 'value' => $formData['payment_method'] ?? ''],
-        ['name' => 'sale_date', 'label' => 'Sale Date', 'type' => 'date', 'max' => date('Y-m-d'), 'value' => $formData['sale_date'] ?? date('Y-m-d')],
-        ['name' => 'inventory_id', 'label' => 'Inventory ID (optional)', 'type' => 'number', 'value' => $formData['inventory_id'] ?? ''],
-        ['name' => 'livestock_id', 'label' => 'Animal ID (optional)', 'type' => 'number', 'value' => $formData['livestock_id'] ?? ''],
-        ['name' => 'field_id', 'label' => 'Field ID (optional)', 'type' => 'number', 'value' => $formData['field_id'] ?? '']
+        ['name' => 'customer_name', 'label' => 'Customer Name', 'value' => $editRecord['customer_name'] ?? $formData['customer_name'] ?? ''],
+        ['name' => 'crop_name', 'label' => 'Product Sold', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'crop_name'), 'allow_custom' => true, 'category' => 'crop_name', 'placeholder' => 'Maize, Livestock…', 'value' => $editRecord['crop_name'] ?? $formData['crop_name'] ?? ''],
+        ['name' => 'quantity', 'label' => 'Quantity', 'type' => 'number', 'step' => '0.01', 'min' => '0', 'required' => false, 'value' => $editRecord['quantity'] ?? $formData['quantity'] ?? ''],
+        ['name' => 'unit', 'label' => 'Unit', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'unit'), 'allow_custom' => true, 'category' => 'unit', 'placeholder' => 'kg, bag, head…', 'value' => $editRecord['unit'] ?? $formData['unit'] ?? ''],
+        ['name' => 'amount', 'label' => 'Total Amount', 'type' => 'number', 'step' => '0.01', 'min' => '0.01', 'value' => $editRecord['amount'] ?? $formData['amount'] ?? '', 'suffix' => 'K'],
+        ['name' => 'payment_method', 'label' => 'Payment Method', 'type' => 'combo', 'required' => false, 'options' => FormHelper::lookupOptions($pdo, 'payment_method'), 'allow_custom' => true, 'category' => 'payment_method', 'placeholder' => 'Cash, Mobile money…', 'value' => $editRecord['payment_method'] ?? $formData['payment_method'] ?? ''],
+        ['name' => 'sale_date', 'label' => 'Sale Date', 'type' => 'date', 'max' => date('Y-m-d'), 'value' => $editRecord['sale_date'] ?? $formData['sale_date'] ?? date('Y-m-d')],
+        ['name' => 'inventory_id', 'label' => 'Inventory ID (optional)', 'type' => 'number', 'value' => $editRecord['inventory_id'] ?? $formData['inventory_id'] ?? ''],
+        ['name' => 'livestock_id', 'label' => 'Animal ID (optional)', 'type' => 'number', 'value' => $editRecord['livestock_id'] ?? $formData['livestock_id'] ?? ''],
+        ['name' => 'field_id', 'label' => 'Field ID (optional)', 'type' => 'number', 'value' => $editRecord['field_id'] ?? $formData['field_id'] ?? '']
     ];
-    echo FormHelper::generateForm($fields, '/index.php?module=Sales&action=add', 'POST', $errors);
+    echo FormHelper::generateForm($fields, '/index.php?module=Sales&action=' . ($editRecord ? 'edit&id=' . (int)$editRecord['id'] : 'add'), 'POST', $errors);
     ?>
+    <?php if ($editRecord): ?><a href="index.php?module=Sales&action=manage" class="inline-block mt-3 text-sm text-slate-600">Cancel editing</a><?php endif; ?>
 </div>
 
 <div class="glass-card p-4 sm:p-6">
@@ -43,6 +45,7 @@ $records = $data['records'] ?? ($data ?? []);
             <?php foreach ($records as $record): ?>
                 <li class="bg-white/50 border border-white/60 rounded-xl px-3.5 sm:px-4 py-3 text-sm text-slate-700 shadow-sm flex items-center justify-between gap-2">
                     <span><?php echo htmlspecialchars($record['customer_name']); ?>: <?php echo money($record['amount']); ?> on <?php echo htmlspecialchars($record['sale_date']); ?></span>
+                    <a href="index.php?module=Sales&action=edit&id=<?php echo (int)$record['id']; ?>" class="text-xs font-bold text-green-700">Edit</a>
                     <form method="post" action="index.php?module=Sales&action=delete" class="inline" onsubmit="return confirm('Delete this sale? (Only if no payments recorded.)');">
                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
                         <input type="hidden" name="id" value="<?php echo (int)$record['id']; ?>">

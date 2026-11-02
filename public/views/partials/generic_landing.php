@@ -2,7 +2,7 @@
 /**
  * Generic module landing — replaces the "starts with a form" CRUD page for the
  * form-first modules. Each module gets a relevant summary strip + the records
- * as glass cards, with CRUD (form) demoted behind an "Add / Manage" button that
+ * as glass cards, with CRUD (form) demoted behind an "Open manager" button that
  * routes to ?module=X&action=manage (renders the original view).
  *
  * Expected: $module (current module name), $data (index() record list), and the
@@ -217,12 +217,12 @@ if (in_array($m, ['Inventory', 'Pest', 'Sales', 'Crop', 'Harvest', 'Market', 'Pr
 <div class="flex items-center justify-between mb-4">
     <a href="<?php echo esc($addLink); ?>" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-bold shadow-lg hover:shadow-emerald-700/40 transition-shadow">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-        Add / Manage <?php echo esc($m); ?>
+        Open <?php echo esc($m); ?> manager
     </a>
 </div>
 
 <?php if ($summaryCards): ?><div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-6"><?php echo $summaryCards; ?></div><?php endif; ?>
 
 <div class="<?php echo ($m === 'Notifications' || $m === 'Security' || $m === 'Analytics') ? 'space-y-2.5' : 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4'; ?>">
-    <?php if ($render): echo $render; else: ?><p class="text-slate-500 glass-card p-4">No records yet — use "Add / Manage" to create the first one.</p><?php endif; ?>
+    <?php if ($render): echo $render; else: ?><p class="text-slate-500 glass-card p-4">No records yet — open the manager to create the first one.</p><?php endif; ?>
 </div>
