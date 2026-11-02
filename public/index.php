@@ -598,6 +598,26 @@ if ($module === 'Insights') {
             exit;
         }
     }
+    if (($_GET['view'] ?? '') === 'operations') {
+        require_once __DIR__ . '/../src/Modules/Insights/InsightsOperationsController.php';
+        $opsController = new InsightsOperationsController($pdo);
+        $opsActionMap = [
+            'approve_harvest' => 'approve',
+            'reject_harvest' => 'reject',
+            'recalculate_yield' => 'recalculateYield',
+            'create_reorder_rule' => 'createRule',
+            'run_reorder_check' => 'runReorderCheck',
+        ];
+        if (isset($opsActionMap[$action])) {
+            CsrfHelper::requireValid();
+            $opsController->{$opsActionMap[$action]}((int) ($_POST['id'] ?? 0));
+        }
+        $data = $opsController->index();
+        $viewFile = __DIR__ . '/views/insights_operations.php';
+        ob_start(); require $viewFile; $content = ob_get_clean();
+        require __DIR__ . '/views/layout.php';
+        exit;
+    }
 
     // Feed page.
     $viewFile = __DIR__ . "/views/insights_landing.php";

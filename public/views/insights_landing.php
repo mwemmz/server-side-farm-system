@@ -45,6 +45,7 @@ usort($recs, function ($a, $b) use ($order) {
         </div>
         <div class="flex items-center gap-3 text-xs text-slate-500">
             <a href="index.php?module=Insights&amp;view=planner" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-bold">Planting planner</a>
+            <a href="index.php?module=Insights&amp;view=operations" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-bold">Operations intelligence</a>
             <a href="index.php?module=Traceability" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-bold">Traceability</a>
             <button onclick="window.FFAssistant && FFAssistant.open()"
                     class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-bold shadow-lg hover:shadow-emerald-700/40 transition-shadow">

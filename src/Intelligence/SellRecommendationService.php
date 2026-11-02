@@ -36,8 +36,12 @@ class SellRecommendationService {
         if (!$produce) {
             api_err('Stored produce not found', 404);
         }
-        $result = $this->buildRecommendation($produce);
-        api_ok($result);
+        api_ok($this->recommendationData($produceId));
+    }
+
+    public function recommendationData($produceId) {
+        $produce = $this->fetchProduce($produceId);
+        return $produce ? $this->buildRecommendation($produce) : null;
     }
 
     /**

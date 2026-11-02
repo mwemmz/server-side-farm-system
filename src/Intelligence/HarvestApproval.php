@@ -42,12 +42,18 @@ class HarvestApproval {
      * Cascades: stored_produce, (optional) income finance record, yield recalc.
      */
     public function approve($harvestId, $auth) {
+        $result = $this->approveData($harvestId, $auth);
+        if ($result === null) api_err('Harvest not found', 404);
+        api_ok($result);
+    }
+
+    public function approveData($harvestId, $auth) {
         $harvest = $this->fetchHarvest($harvestId);
         if (!$harvest) {
-            api_err('Harvest not found', 404);
+            return null;
         }
         if ($harvest['status'] === 'approved') {
-            api_ok(['harvest_id' => (int) $harvestId, 'status' => 'approved', 'duplicate' => true]);
+            return ['harvest_id' => (int) $harvestId, 'status' => 'approved', 'duplicate' => true];
         }
         $userId = (int) ($auth['sub'] ?? null);
 
@@ -78,24 +84,30 @@ class HarvestApproval {
             $userId
         );
 
-        api_ok([
+        return [
             'harvest_id' => (int) $harvestId,
             'status'     => 'approved',
             'cascade'    => $cascade,
-        ]);
+        ];
     }
 
     /**
      * POST /api/v1/harvests/{id}/reject   body: {"reason": "..."}
      */
     public function reject($harvestId, $auth, $body) {
+        $result = $this->rejectData($harvestId, $auth, $body);
+        if ($result === null) api_err('Harvest not found', 404);
+        api_ok($result);
+    }
+
+    public function rejectData($harvestId, $auth, $body) {
         $harvest = $this->fetchHarvest($harvestId);
         if (!$harvest) {
-            api_err('Harvest not found', 404);
+            return null;
         }
         $reason = trim((string) ($body['reason'] ?? ''));
         if ($reason === '') {
-            api_err('rejection_reason is required');
+            throw new InvalidArgumentException('Rejection reason is required.');
         }
         $userId = (int) ($auth['sub'] ?? null);
 
@@ -116,11 +128,11 @@ class HarvestApproval {
             $userId
         );
 
-        api_ok([
+        return [
             'harvest_id'      => (int) $harvestId,
             'status'          => 'rejected',
             'rejection_reason' => $reason,
-        ]);
+        ];
     }
 
     // ---- cascade internals ----

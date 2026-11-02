@@ -80,9 +80,13 @@ class YieldPredictionService {
      * Returns the stored (or freshly computed) prediction + inputs.
      */
     public function get($cropId) {
+        api_ok($this->getData($cropId));
+    }
+
+    public function getData($cropId) {
         $crop = $this->fetchCrop($cropId);
         if (!$crop) {
-            api_err('Planting (crop) not found', 404);
+            return null;
         }
         $row = null;
         $stmt = $this->pdo->prepare("SELECT * FROM yield_predictions WHERE crop_id = ? ORDER BY predicted_at DESC LIMIT 1");
@@ -93,23 +97,23 @@ class YieldPredictionService {
             // No stored prediction: compute on the fly and return without persisting
             $inputs = $this->buildInputs($crop);
             $prediction = $this->compute($inputs);
-            api_ok([
+            return [
                 'prediction_id'   => null,
                 'crop_id'         => (int) $cropId,
                 'crop_name'       => $crop['name'],
                 'predicted_yield' => $prediction['predicted_yield'],
                 'inputs'          => $inputs,
                 'note'            => 'No stored prediction; computed on the fly.',
-            ]);
+            ];
         }
 
-        api_ok([
+        return [
             'prediction_id'   => (int) $row['id'],
             'crop_id'         => (int) $cropId,
             'crop_name'       => $crop['name'],
             'predicted_yield' => (float) $row['predicted_yield'],
             'inputs'          => json_decode($row['inputs_json'], true),
-        ]);
+        ];
     }
 
     // ---- internals ----

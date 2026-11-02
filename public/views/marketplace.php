@@ -6,6 +6,9 @@ $listings = $data['listings'] ?? [];
 $q = $data['q'] ?? '';
 $cat = $data['category'] ?? '';
 $uid = $data['userId'] ?? 0;
+$myListings = $data['myListings'] ?? [];
+$orders = $data['orders'] ?? [];
+$sales = $data['sales'] ?? [];
 ?>
 <h1 class="text-2xl sm:text-3xl font-bold mb-6 text-green-800">Marketplace (Farmer-to-Farmer)</h1>
 <?php if ($success): ?><div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4"><?php echo htmlspecialchars($success); ?></div><?php endif; ?>
@@ -59,5 +62,20 @@ $uid = $data['userId'] ?? 0;
             <?php endforeach; ?>
         </div>
     <?php endif; ?>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+<div class="glass-card p-4 sm:p-6">
+    <h2 class="text-lg font-semibold mb-3">My selling activity</h2>
+    <?php if (!$myListings): ?><p class="text-sm text-slate-400">You have no listings yet.</p><?php endif; ?>
+    <?php foreach ($myListings as $l): ?><div class="border-b border-slate-100 py-3 text-sm"><div class="flex justify-between"><b><?php echo htmlspecialchars($l['item_name']); ?></b><span class="text-xs"><?php echo htmlspecialchars($l['status']); ?></span></div><div class="text-xs text-slate-500"><?php echo htmlspecialchars($l['quantity'].' '.$l['unit']); ?> @ K<?php echo number_format((float)$l['price_per_unit'],2); ?></div><?php if ($l['status'] === 'active'): ?><form method="post" action="index.php?module=Marketplace&action=edit" class="flex gap-2 mt-2"><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>"><input type="hidden" name="listing_id" value="<?php echo (int)$l['id']; ?>"><input type="number" name="quantity" min="0.01" step="0.01" value="<?php echo (float)$l['quantity']; ?>" class="w-24 border rounded px-2 py-1 text-xs"><input type="number" name="price_per_unit" min="0.01" step="0.01" value="<?php echo (float)$l['price_per_unit']; ?>" class="w-24 border rounded px-2 py-1 text-xs"><button class="text-xs font-bold text-green-700">Save</button></form><form method="post" action="index.php?module=Marketplace&action=cancel" class="mt-1"><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>"><input type="hidden" name="listing_id" value="<?php echo (int)$l['id']; ?>"><button class="text-xs text-red-700">Cancel listing</button></form><?php endif; ?></div><?php endforeach; ?>
+</div>
+<div class="glass-card p-4 sm:p-6">
+    <h2 class="text-lg font-semibold mb-3">Buying activity</h2>
+    <?php if (!$orders): ?><p class="text-sm text-slate-400">You have not bought anything yet.</p><?php endif; ?>
+    <?php foreach ($orders as $o): ?><div class="border-b border-slate-100 py-3 text-sm"><b><?php echo htmlspecialchars($o['item_name']); ?></b><div class="text-xs text-slate-500"><?php echo htmlspecialchars($o['quantity'].' '.$o['unit']); ?> · K<?php echo number_format((float)$o['total_amount'],2); ?> · <?php echo htmlspecialchars($o['status']); ?></div></div><?php endforeach; ?>
+    <h3 class="font-semibold mt-5 mb-2">Sales received</h3>
+    <?php if (!$sales): ?><p class="text-sm text-slate-400">No completed sales yet.</p><?php endif; ?>
+    <?php foreach ($sales as $o): ?><div class="border-b border-slate-100 py-2 text-sm"><b><?php echo htmlspecialchars($o['item_name']); ?></b><div class="text-xs text-slate-500"><?php echo htmlspecialchars($o['quantity'].' '.$o['unit']); ?> · K<?php echo number_format((float)$o['total_amount'],2); ?> · <?php echo htmlspecialchars($o['buyer_name'] ?? 'Buyer'); ?></div></div><?php endforeach; ?>
+</div>
 </div>
 <p class="text-xs text-slate-400 mt-4">Buying/selling posts finance records (expense for buyer, income for seller) and reduces listing quantity.</p>

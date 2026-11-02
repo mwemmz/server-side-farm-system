@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/AuditHelper.php';
+require_once __DIR__ . '/../Finance/FinanceService.php';
 
 class MarketplaceController {
     private $pdo;
@@ -28,7 +29,14 @@ class MarketplaceController {
         $sql .= " ORDER BY l.created_at DESC LIMIT 100";
         $st = $this->pdo->prepare($sql);
         $st->execute($params);
-        return ['listings' => $st->fetchAll() ?: [], 'q' => $q, 'category' => $cat, 'userId' => (int)($_SESSION['user_id'] ?? 0)];
+        $uid = (int)($_SESSION['user_id'] ?? 0);
+        $mine = $this->pdo->prepare("SELECT * FROM marketplace_listings WHERE seller_user_id=? ORDER BY created_at DESC");
+        $mine->execute([$uid]);
+        $orders = $this->pdo->prepare("SELECT o.*, l.item_name, l.unit, l.seller_user_id, f.name AS seller_farm FROM marketplace_orders o JOIN marketplace_listings l ON l.id=o.listing_id LEFT JOIN farms f ON f.id=l.seller_farm_id WHERE o.buyer_user_id=? ORDER BY o.created_at DESC");
+        $orders->execute([$uid]);
+        $sales = $this->pdo->prepare("SELECT o.*, l.item_name, l.unit, u.username AS buyer_name FROM marketplace_orders o JOIN marketplace_listings l ON l.id=o.listing_id LEFT JOIN users u ON u.id=o.buyer_user_id WHERE l.seller_user_id=? ORDER BY o.created_at DESC");
+        $sales->execute([$uid]);
+        return ['listings' => $st->fetchAll() ?: [], 'myListings' => $mine->fetchAll() ?: [], 'orders' => $orders->fetchAll() ?: [], 'sales' => $sales->fetchAll() ?: [], 'q' => $q, 'category' => $cat, 'userId' => $uid];
     }
 
     public function add() {
@@ -91,6 +99,28 @@ class MarketplaceController {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();
             SessionHelper::setFlash('error', $e->getMessage());
         }
+        header('Location: index.php?module=Marketplace'); exit;
+    }
+
+    public function cancel() {
+        $uid = (int)($_SESSION['user_id'] ?? 0);
+        $id = ValidationHelper::id($_POST['listing_id'] ?? '');
+        if (!$id) { SessionHelper::setFlash('error', 'Invalid listing.'); header('Location: index.php?module=Marketplace'); exit; }
+        $st = $this->pdo->prepare("UPDATE marketplace_listings SET status='cancelled' WHERE id=? AND seller_user_id=? AND status='active'");
+        $st->execute([$id, $uid]);
+        SessionHelper::setFlash($st->rowCount() ? 'success' : 'error', $st->rowCount() ? 'Listing cancelled.' : 'Listing could not be cancelled.');
+        header('Location: index.php?module=Marketplace'); exit;
+    }
+
+    public function edit() {
+        $uid = (int)($_SESSION['user_id'] ?? 0);
+        $id = ValidationHelper::id($_POST['listing_id'] ?? '');
+        $qty = (float)($_POST['quantity'] ?? 0);
+        $price = (float)($_POST['price_per_unit'] ?? 0);
+        if (!$id || $qty <= 0 || $price <= 0) { SessionHelper::setFlash('error', 'Enter a valid quantity and price.'); header('Location: index.php?module=Marketplace'); exit; }
+        $st = $this->pdo->prepare("UPDATE marketplace_listings SET quantity=?, price_per_unit=? WHERE id=? AND seller_user_id=? AND status='active'");
+        $st->execute([$qty, $price, $id, $uid]);
+        SessionHelper::setFlash($st->rowCount() ? 'success' : 'error', $st->rowCount() ? 'Listing updated.' : 'Listing could not be updated.');
         header('Location: index.php?module=Marketplace'); exit;
     }
 }

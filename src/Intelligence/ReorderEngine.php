@@ -139,6 +139,11 @@ class ReorderEngine {
      * Manual trigger of the hourly cron logic.
      */
     public function runCronLogic() {
+        api_ok($this->runCronData());
+    }
+
+    /** Runs the reorder check without emitting an HTTP response. */
+    public function runCronData() {
         $summary = ['rules_evaluated' => 0, 'below_threshold' => 0, 'pos_created' => 0, 'notifications_sent' => 0, 'checked' => []];
 
         $rules = $this->pdo->query("SELECT * FROM reorder_rules")->fetchAll();
@@ -181,7 +186,7 @@ class ReorderEngine {
         }
 
         IntelligenceUtils::auditSystem($this->pdo, 'reorder_check_run', 'reorder_rules', null, $summary);
-        api_ok($summary);
+        return $summary;
     }
 
     /** Current on-hand balance = the authoritative inventory.quantity value. */
