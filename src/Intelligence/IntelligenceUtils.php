@@ -15,7 +15,14 @@ class IntelligenceUtils {
         try {
             $stmt = $pdo->prepare("INSERT INTO notifications (message) VALUES (?)");
             $stmt->execute([$message]);
-            return (int) $pdo->lastInsertId();
+            $id = (int) $pdo->lastInsertId();
+            try {
+                require_once __DIR__ . '/../Services/NotificationService.php';
+                (new NotificationService($pdo))->notify('Farm Alert: ' . mb_substr($message, 0, 50), $message);
+            } catch (\Throwable $ne) {
+                error_log("IntelligenceUtils SMTP notification error: " . $ne->getMessage());
+            }
+            return $id;
         } catch (PDOException $e) {
             error_log("IntelligenceUtils::notify failed: " . $e->getMessage());
             return null;

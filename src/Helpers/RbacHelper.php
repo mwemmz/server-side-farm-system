@@ -25,6 +25,7 @@ class RbacHelper
             'finance.read', 'sales.read', 'sales.write', 'procurement.read',
             'profit.read', 'reports.read', 'analytics.read', 'alerts.read',
             'communications.read', 'communications.write',
+            'marketplace.read', 'marketplace.write',
         ],
         'worker' => [
             'farm.read', 'field.read', 'field.write', 'crop.read', 'livestock.read', 'livestock.write',

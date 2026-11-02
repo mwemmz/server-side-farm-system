@@ -192,6 +192,12 @@ class InventoryController {
                  VALUES (?, 'Warning', 'Inventory', ?)"
             );
             $ins->execute([$msg, (int) $item['id']]);
+            try {
+                require_once __DIR__ . '/../../Services/NotificationService.php';
+                (new NotificationService($this->pdo))->notify('Low Stock Alert: ' . ($item['name'] ?? 'Item'), $msg);
+            } catch (\Throwable $ne) {
+                error_log('SMTP inventory alert error: ' . $ne->getMessage());
+            }
         } catch (PDOException $e) {
             error_log('Low stock notify failed: ' . $e->getMessage());
         }

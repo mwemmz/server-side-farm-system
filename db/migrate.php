@@ -6,7 +6,7 @@
 // against the hosted database. Gate it behind a version marker stored in the
 // database itself: once the current version has been applied, subsequent
 // requests skip straight through.
-$migrationVersion = '11';
+$migrationVersion = '12';
 
 try {
     $applied = null;
@@ -25,6 +25,7 @@ try {
 
 try {
     $pdo->exec("CREATE TABLE IF NOT EXISTS app_meta (key VARCHAR(64) PRIMARY KEY, value TEXT)");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS app_settings (key VARCHAR(64) PRIMARY KEY, value TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
 
     $schema = file_get_contents(__DIR__ . '/schema.sql');
     if ($schema !== false) {

@@ -17,7 +17,7 @@ class NotificationsController {
 
             if (empty($errors)) {
                 if ($this->model->create($data)) {
-                    SessionHelper::setFlash('success', 'Notification added successfully!');
+                    SessionHelper::setFlash('success', 'Notification added and dispatched successfully!');
                     header('Location: index.php?module=Notifications&action=manage');
                     exit;
                 } else {
@@ -68,7 +68,7 @@ class NotificationsController {
 
     public function runRules() {
         $fired = $this->model->runRules();
-        SessionHelper::setFlash('success', $fired > 0 ? "$fired alert(s) raised." : 'No rules tripped — all clear.');
+        SessionHelper::setFlash('success', $fired > 0 ? "$fired alert(s) raised and sent via SMTP." : 'No rules tripped — all clear.');
         header('Location: index.php?module=Notifications&action=rules');
         exit;
     }
@@ -84,6 +84,61 @@ class NotificationsController {
         SessionHelper::setFlash('success', 'Alert rule deleted.');
         header('Location: index.php?module=Notifications&action=rules');
         exit;
+    }
+
+    // ---- SMTP Settings & Testing --------------------------------------
+    public function smtp() {
+        require_once __DIR__ . '/../../Services/NotificationService.php';
+        $notifService = new NotificationService($this->model->getPdo());
+        $errors = [];
+        $testResult = null;
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $actionType = $_POST['action_type'] ?? 'save';
+
+            if ($actionType === 'test') {
+                $testTo = trim((string) ($_POST['test_recipient'] ?? ''));
+                if ($testTo === '' || !filter_var($testTo, FILTER_VALIDATE_EMAIL)) {
+                    $errors['test_recipient'] = 'Please enter a valid recipient email address.';
+                } else {
+                    $testResult = $notifService->testConnection($testTo);
+                    if ($testResult['success']) {
+                        SessionHelper::setFlash('success', 'Test email sent successfully to ' . htmlspecialchars($testTo) . ' via SMTP!');
+                    } else {
+                        $errors['general'] = 'SMTP Test Failed: ' . ($testResult['error'] ?? 'Connection error');
+                    }
+                }
+            } elseif ($actionType === 'save') {
+                $saveData = [
+                    'SMTP_HOST'           => trim((string) ($_POST['smtp_host'] ?? '')),
+                    'SMTP_PORT'           => trim((string) ($_POST['smtp_port'] ?? '587')),
+                    'SMTP_SECURE'         => trim((string) ($_POST['smtp_secure'] ?? 'tls')),
+                    'SMTP_USER'           => trim((string) ($_POST['smtp_user'] ?? '')),
+                    'SMTP_FROM'           => trim((string) ($_POST['smtp_from'] ?? '')),
+                    'SMTP_FROM_NAME'      => trim((string) ($_POST['smtp_from_name'] ?? 'FFMS Alerts')),
+                    'SMTP_RECIPIENT'      => trim((string) ($_POST['smtp_recipient'] ?? '')),
+                    'SMTP_ENABLED'        => !empty($_POST['smtp_enabled']) ? '1' : '0',
+                    'NOTIFICATION_DRIVER' => !empty($_POST['smtp_enabled']) ? 'smtp' : 'log',
+                ];
+
+                $newPass = (string) ($_POST['smtp_pass'] ?? '');
+                if ($newPass !== '') {
+                    $saveData['SMTP_PASS'] = $newPass;
+                }
+
+                $notifService->saveSettings($saveData);
+                SessionHelper::setFlash('success', 'SMTP notification settings saved successfully.');
+                header('Location: index.php?module=Notifications&action=smtp');
+                exit;
+            }
+        }
+
+        $config = $notifService->getSmtpConfig();
+        return [
+            'config'     => $config,
+            'errors'     => $errors,
+            'testResult' => $testResult,
+        ];
     }
 }
 ?>

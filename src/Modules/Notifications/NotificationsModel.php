@@ -5,6 +5,40 @@ require_once __DIR__ . '/../../Intelligence/AttentionService.php';
 class NotificationsModel extends BaseModuleModel {
     public function __construct($pdo) { parent::__construct($pdo, 'notifications'); }
 
+    /**
+     * Create notification in database and dispatch SMTP email notification.
+     */
+    public function create($data) {
+        $ok = parent::create($data);
+        if ($ok && !empty($data['message'])) {
+            try {
+                require_once __DIR__ . '/../../Services/NotificationService.php';
+                (new NotificationService($this->pdo))->notify('New Farm Notification', (string) $data['message']);
+            } catch (\Throwable $e) {
+                error_log('SMTP notification error: ' . $e->getMessage());
+            }
+        }
+        return $ok;
+    }
+
+    /**
+     * Helper to insert a notification and send SMTP alert.
+     */
+    public function emitNotification($message, $ruleId = null) {
+        $st = $this->pdo->prepare("INSERT INTO notifications (message, rule_id) VALUES (?, ?)");
+        $st->execute([$message, $ruleId ? (int)$ruleId : null]);
+        $id = (int)$this->pdo->lastInsertId();
+
+        try {
+            require_once __DIR__ . '/../../Services/NotificationService.php';
+            (new NotificationService($this->pdo))->notify('Farm Alert: ' . mb_substr($message, 0, 50), $message);
+        } catch (\Throwable $e) {
+            error_log('SMTP notification dispatch error: ' . $e->getMessage());
+        }
+
+        return $id;
+    }
+
     /** Unread first, then newest. */
     public function getAll() {
         return $this->pdo->query(
@@ -87,8 +121,7 @@ class NotificationsModel extends BaseModuleModel {
                 "SELECT 1 FROM notifications WHERE rule_id = ? AND created_at > CURRENT_TIMESTAMP - INTERVAL '1 day' LIMIT 1");
             $dupe->execute([(int) $rule['id']]);
             if ($dupe->fetchColumn()) continue;
-            $st = $this->pdo->prepare("INSERT INTO notifications (message, rule_id) VALUES (?, ?)");
-            $st->execute([$rule['message'] . ' (current: ' . $value . ')', (int) $rule['id']]);
+            $this->emitNotification($rule['message'] . ' (current: ' . $value . ')', (int) $rule['id']);
             $fired++;
         }
         $fired += $this->raiseAttention();
@@ -111,12 +144,11 @@ class NotificationsModel extends BaseModuleModel {
         }
         $dupe = $this->pdo->prepare(
             "SELECT 1 FROM notifications WHERE message = ? AND created_at > CURRENT_TIMESTAMP - INTERVAL '1 day' LIMIT 1");
-        $st = $this->pdo->prepare("INSERT INTO notifications (message) VALUES (?)");
         foreach ($items as $it) {
             $msg = '⚠ ' . $it['title'] . ' — ' . $it['detail'];
             $dupe->execute([$msg]);
             if ($dupe->fetchColumn()) continue;
-            $st->execute([$msg]);
+            $this->emitNotification($msg);
             $fired++;
         }
         return $fired;

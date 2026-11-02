@@ -101,6 +101,12 @@ function reorderBalance($pdo, $itemId, $fallback) {
 
 function insertNotification($pdo, $message) {
     $pdo->prepare("INSERT INTO notifications (message) VALUES (?)")->execute([$message]);
+    try {
+        require_once __DIR__ . '/../../../src/Services/NotificationService.php';
+        (new NotificationService($pdo))->notify('Cron Alert: ' . mb_substr($message, 0, 50), $message);
+    } catch (\Throwable $e) {
+        error_log('SMTP cron notification error: ' . $e->getMessage());
+    }
 }
 
 function runIrrigation($pdo) {

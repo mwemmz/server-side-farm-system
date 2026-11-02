@@ -770,6 +770,14 @@ if ($module === 'Notifications') {
         require __DIR__ . '/views/layout.php';
         exit;
     }
+    if ($action === 'smtp') {
+        $data = $notif->smtp();
+        ob_start();
+        require __DIR__ . '/views/notifications_smtp.php';
+        $content = ob_get_clean();
+        require __DIR__ . '/views/layout.php';
+        exit;
+    }
 }
 
 // --- Traceability: harvest batch creation and provenance page ---

@@ -28,6 +28,11 @@ $summaries = []; // array of [label, value, color?] → stat cards BEFORE the li
 $render = '';    // HTML for the record cards
 
 switch ($m) {
+    case 'Marketplace':
+        // Marketplace uses its dedicated trading UI rather than generic records
+        require __DIR__ . '/../marketplace.php';
+        return;
+
     case 'Crop':
         $title = 'Crop Dashboard'; $subtitle = 'Grow your season — track plantings and harvest windows.';
         $active = 0; $upcoming = 0;
@@ -146,7 +151,8 @@ switch ($m) {
         $csrf = htmlspecialchars(SessionHelper::csrfToken());
         $render .= '<div class="flex flex-wrap items-center gap-3 mb-2">'
             . '<form method="POST" action="index.php?module=Notifications&action=mark_all_read" class="inline"><input type="hidden" name="csrf_token" value="' . $csrf . '"><button class="text-xs font-bold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700">Mark all read</button></form>'
-            . '<a href="index.php?module=Notifications&action=rules" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 text-white">Alert Rules</a></div>';
+            . '<a href="index.php?module=Notifications&action=rules" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 text-white">Alert Rules</a>'
+            . '<a href="index.php?module=Notifications&action=smtp" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50">SMTP Settings</a></div>';
         foreach ($recs as $n) {
             $read = in_array($n['is_read'] ?? false, [true, 1, '1', 't', 'true'], true);
             $dot = $read ? 'bg-slate-300' : 'bg-green-500';

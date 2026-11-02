@@ -8,8 +8,20 @@ $formData = $data['data'] ?? [];
 $flash = SessionHelper::getFlash('success');
 ?>
 
-<h1 class="text-2xl sm:text-3xl font-bold mb-1 text-green-800">Notification Alert Rules</h1>
-<p class="text-sm text-slate-500 mb-5">Raise a notification automatically when a live farm metric crosses a threshold.</p>
+<div class="flex flex-wrap items-center justify-between gap-4 mb-5">
+    <div>
+        <h1 class="text-2xl sm:text-3xl font-bold text-green-800">Notification Alert Rules</h1>
+        <p class="text-sm text-slate-500 mt-1">Raise a notification and send an SMTP email automatically when a farm metric crosses a threshold.</p>
+    </div>
+    <div class="flex items-center gap-2">
+        <a href="index.php?module=Notifications&action=manage" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold shadow-sm hover:bg-slate-50 transition-colors">
+            &larr; Notifications
+        </a>
+        <a href="index.php?module=Notifications&action=smtp" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold shadow-sm hover:bg-slate-50 transition-colors">
+            SMTP Settings
+        </a>
+    </div>
+</div>
 
 <?php if ($flash): ?>
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4"><?php echo htmlspecialchars($flash); ?></div>
