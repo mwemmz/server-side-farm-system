@@ -280,7 +280,13 @@ $register = array_values(array_filter($animals, function ($a) use ($fSpecies, $f
                     <td class="py-2.5 pr-3"><span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full <?php echo $statusCls[$st] ?? 'bg-slate-200 text-slate-700'; ?>"><?php echo $esc($st); ?></span>
                         <?php if ($wUntil): ?><span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-800">Withdrawal until <?php echo $esc($wUntil); ?></span><?php endif; ?></td>
                     <td class="py-2.5 pr-3"><?php echo $nd ? '<span class="' . ($nd < date('Y-m-d') ? 'text-red-700 font-semibold' : '') . '">' . $esc($nd) . '</span>' : '—'; ?></td>
-                    <td class="py-2.5 whitespace-nowrap"><a class="text-xs font-semibold text-green-700 underline" href="index.php?module=Livestock&amp;action=profile&amp;id=<?php echo (int) $item['id']; ?>">History</a> · <a class="text-xs font-semibold text-green-700 underline" href="index.php?module=Livestock&amp;action=edit&amp;id=<?php echo (int) $item['id']; ?>">Edit</a></td>
+                    <td class="py-2.5 whitespace-nowrap"><a class="text-xs font-semibold text-green-700 underline" href="index.php?module=Livestock&amp;action=profile&amp;id=<?php echo (int) $item['id']; ?>">History</a> · <a class="text-xs font-semibold text-green-700 underline" href="index.php?module=Livestock&amp;action=edit&amp;id=<?php echo (int) $item['id']; ?>">Edit</a>
+                        <form method="post" action="index.php?module=Livestock&action=delete" class="inline" onsubmit="return confirm('Delete this animal? (Only if no vaccinations/treatments/health/feed/production/breeding/mortality/sales/tasks reference it.)');">
+                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
+                            <input type="hidden" name="id" value="<?php echo (int) $item['id']; ?>">
+                            <button type="submit" class="text-xs font-bold text-red-600 hover:text-red-700 ml-2">Delete</button>
+                        </form>
+                    </td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

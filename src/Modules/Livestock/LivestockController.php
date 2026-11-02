@@ -3,6 +3,7 @@ require_once __DIR__ . '/LivestockModel.php';
 require_once __DIR__ . '/../Pest/PestModel.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
+require_once __DIR__ . '/../../Helpers/UndoHelper.php';
 require_once __DIR__ . '/../Finance/FinanceService.php';
 require_once __DIR__ . '/../Inventory/InventoryModel.php';
 
@@ -474,10 +475,14 @@ class LivestockController {
             } catch (PDOException $e) { /* table may not exist */ }
         }
         try {
+            $st = $this->pdo->prepare("SELECT * FROM livestock WHERE id = ?");
+            $st->execute([$id]);
+            $rowData = $st->fetch(PDO::FETCH_ASSOC) ?: [];
             $this->pdo->beginTransaction();
             $this->pdo->prepare("DELETE FROM livestock WHERE id = ?")->execute([$id]);
             AuditHelper::log($this->pdo, 'human', 'livestock_deleted', 'livestock', $id, [], (int)($_SESSION['user_id'] ?? 0));
             $this->pdo->commit();
+            UndoHelper::stash($this->pdo, 'livestock', $rowData, 'Livestock', 'index.php?module=Livestock&action=manage');
             SessionHelper::setFlash('success', 'Animal deleted.');
         } catch (PDOException $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();

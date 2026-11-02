@@ -2,6 +2,7 @@
 require_once __DIR__ . '/InventoryModel.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
+require_once __DIR__ . '/../../Helpers/UndoHelper.php';
 
 class InventoryController {
     private $model;
@@ -108,10 +109,14 @@ class InventoryController {
             header('Location: index.php?module=Inventory&action=index'); exit;
         }
         try {
+            $row = $this->pdo->prepare("SELECT * FROM inventory WHERE id = ?");
+            $row->execute([$id]);
+            $rowData = $row->fetch(PDO::FETCH_ASSOC) ?: [];
             $this->pdo->beginTransaction();
             $this->pdo->prepare("DELETE FROM inventory WHERE id = ?")->execute([$id]);
             AuditHelper::log($this->pdo, 'human', 'inventory_item_deleted', 'inventory', $id, [], (int)($_SESSION['user_id'] ?? 0));
             $this->pdo->commit();
+            UndoHelper::stash($this->pdo, 'inventory', $rowData, 'Inventory', 'index.php?module=Inventory&action=index');
             SessionHelper::setFlash('success', 'Inventory item deleted.');
         } catch (PDOException $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();

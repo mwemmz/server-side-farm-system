@@ -3,6 +3,7 @@ require_once __DIR__ . '/EquipmentModel.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
 require_once __DIR__ . '/../../Helpers/AuditHelper.php';
+require_once __DIR__ . '/../../Helpers/UndoHelper.php';
 
 class EquipmentController {
     private $model;
@@ -90,10 +91,14 @@ class EquipmentController {
             } catch (PDOException $e) { /* table may not exist */ }
         }
         try {
+            $st = $this->pdo->prepare("SELECT * FROM equipment WHERE id = ?");
+            $st->execute([$id]);
+            $rowData = $st->fetch(PDO::FETCH_ASSOC) ?: [];
             $this->pdo->beginTransaction();
             $this->pdo->prepare("DELETE FROM equipment WHERE id = ?")->execute([$id]);
             AuditHelper::log($this->pdo, 'human', 'equipment_deleted', 'equipment', $id, [], (int)($_SESSION['user_id'] ?? 0));
             $this->pdo->commit();
+            UndoHelper::stash($this->pdo, 'equipment', $rowData, 'Equipment', 'index.php?module=Equipment&action=manage');
             SessionHelper::setFlash('success', 'Equipment deleted.');
         } catch (PDOException $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();

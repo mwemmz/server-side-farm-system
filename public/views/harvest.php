@@ -58,6 +58,11 @@ foreach ($storageRecords as $s) {
                     <?php if (!empty($record['storage_record_id'])): ?>
                         <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">stored</span>
                     <?php endif; ?>
+                    <form method="post" action="index.php?module=Harvest&action=delete" class="ml-auto inline" onsubmit="return confirm('Delete this harvest record?');">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
+                        <input type="hidden" name="id" value="<?php echo (int)$record['id']; ?>">
+                        <button type="submit" class="text-xs font-bold text-red-600 hover:text-red-700">Delete</button>
+                    </form>
                 </li>
             <?php endforeach; ?>
         </ul>

@@ -3,6 +3,7 @@ require_once __DIR__ . '/ProcurementModel.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
 require_once __DIR__ . '/../../Helpers/AuditHelper.php';
+require_once __DIR__ . '/../../Helpers/UndoHelper.php';
 require_once __DIR__ . '/../Finance/FinanceService.php';
 require_once __DIR__ . '/../Inventory/InventoryModel.php';
 
@@ -91,10 +92,14 @@ class ProcurementController {
         $id = ValidationHelper::id($_POST['id'] ?? '');
         if (!$id) { SessionHelper::setFlash('error', 'Invalid record.'); header('Location: index.php?module=Procurement&action=manage'); exit; }
         try {
+            $st = $this->pdo->prepare("SELECT * FROM procurement_records WHERE id = ?");
+            $st->execute([$id]);
+            $rowData = $st->fetch(PDO::FETCH_ASSOC) ?: [];
             $this->pdo->beginTransaction();
             $this->pdo->prepare("DELETE FROM procurement_records WHERE id = ?")->execute([$id]);
             AuditHelper::log($this->pdo, 'human', 'procurement_deleted', 'procurement_records', $id, [], (int)($_SESSION['user_id'] ?? 0));
             $this->pdo->commit();
+            UndoHelper::stash($this->pdo, 'procurement_records', $rowData, 'Procurement', 'index.php?module=Procurement&action=manage');
             SessionHelper::setFlash('success', 'Procurement record deleted.');
         } catch (PDOException $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();

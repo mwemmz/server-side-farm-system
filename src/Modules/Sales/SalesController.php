@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
 require_once __DIR__ . '/../Finance/FinanceService.php';
 require_once __DIR__ . '/../../Helpers/AuditHelper.php';
+require_once __DIR__ . '/../../Helpers/UndoHelper.php';
 
 class SalesController {
     private $model;
@@ -77,11 +78,15 @@ class SalesController {
             }
         } catch (PDOException $e) { /* table may not exist */ }
         try {
+            $st = $this->pdo->prepare("SELECT * FROM sales_records WHERE id = ?");
+            $st->execute([$id]);
+            $rowData = $st->fetch(PDO::FETCH_ASSOC) ?: [];
             $this->pdo->beginTransaction();
             $this->pdo->prepare("DELETE FROM sales_records WHERE id = ?")->execute([$id]);
             try { (new FinanceService($this->pdo))->removeSource('Sales', $id); } catch (Throwable $e) { }
             AuditHelper::log($this->pdo, 'human', 'sale_deleted', 'sales_records', $id, [], (int)($_SESSION['user_id'] ?? 0));
             $this->pdo->commit();
+            UndoHelper::stash($this->pdo, 'sales_records', $rowData, 'Sales', 'index.php?module=Sales&action=index');
             SessionHelper::setFlash('success', 'Sale deleted.');
         } catch (PDOException $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();

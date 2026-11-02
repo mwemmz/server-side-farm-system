@@ -3,6 +3,7 @@ require_once __DIR__ . '/SupplierModel.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
 require_once __DIR__ . '/../../Helpers/AuditHelper.php';
+require_once __DIR__ . '/../../Helpers/UndoHelper.php';
 
 class SupplierController {
     private $model;
@@ -48,10 +49,14 @@ class SupplierController {
             } catch (PDOException $e) { /* table may not exist */ }
         }
         try {
+            $st = $this->pdo->prepare("SELECT * FROM suppliers WHERE id = ?");
+            $st->execute([$id]);
+            $rowData = $st->fetch(PDO::FETCH_ASSOC) ?: [];
             $this->pdo->beginTransaction();
             $this->pdo->prepare("DELETE FROM suppliers WHERE id = ?")->execute([$id]);
             AuditHelper::log($this->pdo, 'human', 'supplier_deleted', 'suppliers', $id, [], (int)($_SESSION['user_id'] ?? 0));
             $this->pdo->commit();
+            UndoHelper::stash($this->pdo, 'suppliers', $rowData, 'Supplier', 'index.php?module=Supplier&action=manage');
             SessionHelper::setFlash('success', 'Supplier deleted.');
         } catch (PDOException $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();

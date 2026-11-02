@@ -3,6 +3,7 @@ require_once __DIR__ . '/HarvestModel.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
 require_once __DIR__ . '/../../Helpers/AuditHelper.php';
+require_once __DIR__ . '/../../Helpers/UndoHelper.php';
 
 class HarvestController {
     private $model;
@@ -72,10 +73,14 @@ class HarvestController {
             } catch (PDOException $e) { /* table may not exist */ }
         }
         try {
+            $st = $this->pdo->prepare("SELECT * FROM harvest_records WHERE id = ?");
+            $st->execute([$id]);
+            $rowData = $st->fetch(PDO::FETCH_ASSOC) ?: [];
             $this->pdo->beginTransaction();
             $this->pdo->prepare("DELETE FROM harvest_records WHERE id = ?")->execute([$id]);
             AuditHelper::log($this->pdo, 'human', 'harvest_deleted', 'harvest_records', $id, [], (int)($_SESSION['user_id'] ?? 0));
             $this->pdo->commit();
+            UndoHelper::stash($this->pdo, 'harvest_records', $rowData, 'Harvest', 'index.php?module=Harvest&action=manage');
             SessionHelper::setFlash('success', 'Harvest deleted.');
         } catch (PDOException $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();

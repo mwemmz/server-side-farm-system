@@ -3,6 +3,8 @@ require_once __DIR__ . '/CropModel.php';
 require_once __DIR__ . '/../Pest/PestModel.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
+require_once __DIR__ . '/../../Helpers/AuditHelper.php';
+require_once __DIR__ . '/../../Helpers/UndoHelper.php';
 
 class CropController {
     private $model;
@@ -129,10 +131,15 @@ class CropController {
             } catch (PDOException $e) { /* table may not exist */ }
         }
         try {
+            $st = $this->pdo->prepare("SELECT * FROM crops WHERE id = ?");
+            $st->execute([$id]);
+            $rowData = $st->fetch(PDO::FETCH_ASSOC) ?: [];
             $this->pdo->beginTransaction();
             $this->pdo->prepare("DELETE FROM crops WHERE id = ?")->execute([$id]);
             AuditHelper::log($this->pdo, 'human', 'crop_deleted', 'crops', $id, [], (int)($_SESSION['user_id'] ?? 0));
             $this->pdo->commit();
+            require_once __DIR__ . '/../../Helpers/UndoHelper.php';
+            UndoHelper::stash($this->pdo, 'crops', $rowData, 'Crop', 'index.php?module=Crop&action=manage');
             SessionHelper::setFlash('success', 'Crop deleted.');
         } catch (PDOException $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();

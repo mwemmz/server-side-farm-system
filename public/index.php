@@ -213,8 +213,8 @@ if ($module === 'Analytics') {
 if ($module === 'Communications') {
     RbacHelper::requirePermission('communications.read');
 }
-if ($module === 'Connections') {
-    RbacHelper::requirePermission('connections.read');
+if ($module === 'Marketplace') {
+    RbacHelper::requirePermission('marketplace.read');
 }
 if ($module === 'Reports') {
     RbacHelper::requirePermission('reports.read');
@@ -792,6 +792,14 @@ if ($module === 'Security') {
     $data = $secCtrl->index();
     ob_start(); require __DIR__ . '/views/security.php'; $content = ob_get_clean();
     require __DIR__ . '/views/layout.php'; exit;
+}
+
+// --- Undo (generic restore of last deleted record) ---
+if ($module === 'Undo') {
+    require_once __DIR__ . '/../src/Modules/Undo/UndoController.php';
+    $uc = new UndoController($pdo);
+    if ($action === 'restore') { $uc->restore(); exit; }
+    header('Location: index.php'); exit;
 }
 
 if ($module === 'Dashboard') {

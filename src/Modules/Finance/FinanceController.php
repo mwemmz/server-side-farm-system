@@ -4,6 +4,7 @@ require_once __DIR__ . '/FinanceService.php';
 require_once __DIR__ . '/../../Helpers/ValidationHelper.php';
 require_once __DIR__ . '/../../Helpers/SessionHelper.php';
 require_once __DIR__ . '/../../Helpers/AuditHelper.php';
+require_once __DIR__ . '/../../Helpers/UndoHelper.php';
 
 class FinanceController {
     private $model;
@@ -163,10 +164,14 @@ class FinanceController {
         $id = ValidationHelper::id($_POST['id'] ?? '');
         if (!$id) { SessionHelper::setFlash('error', 'Invalid record.'); header('Location: index.php?module=Finance&action=index'); exit; }
         try {
+            $st = $this->pdo->prepare("SELECT * FROM finance_records WHERE id = ?");
+            $st->execute([$id]);
+            $rowData = $st->fetch(PDO::FETCH_ASSOC) ?: [];
             $this->pdo->beginTransaction();
             $this->pdo->prepare("DELETE FROM finance_records WHERE id = ?")->execute([$id]);
             AuditHelper::log($this->pdo, 'human', 'finance_deleted', 'finance_records', $id, [], (int)($_SESSION['user_id'] ?? 0));
             $this->pdo->commit();
+            UndoHelper::stash($this->pdo, 'finance_records', $rowData, 'Finance', 'index.php?module=Finance&action=index');
             SessionHelper::setFlash('success', 'Finance record deleted.');
         } catch (PDOException $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();

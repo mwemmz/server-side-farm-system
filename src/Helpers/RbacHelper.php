@@ -19,7 +19,7 @@ class RbacHelper
             'pest.read', 'pest.write', 'procurement.read', 'procurement.write',
             'reports.read', 'analytics.read', 'profit.read', 'qr.use', 'assistant.use', 'alerts.read',
             'communications.read', 'communications.write', 'connections.read', 'connections.write',
-            'credit.read', 'credit.share',
+            'credit.read', 'credit.share', 'marketplace.read', 'marketplace.write',
         ],
         'accountant' => [
             'finance.read', 'sales.read', 'sales.write', 'procurement.read',
@@ -30,7 +30,7 @@ class RbacHelper
             'farm.read', 'field.read', 'field.write', 'crop.read', 'livestock.read', 'livestock.write',
             'inventory.read', 'labour.read', 'labour.write', 'harvest.read', 'harvest.write',
             'qr.use', 'assistant.use', 'alerts.read',
-            'communications.read', 'communications.write',
+            'communications.read', 'communications.write', 'marketplace.read', 'marketplace.write',
         ],
         'farm-owner' => [
             'farm.read', 'field.read', 'field.write', 'crop.read', 'crop.write',
@@ -40,13 +40,13 @@ class RbacHelper
             'pest.read', 'pest.write', 'procurement.read', 'procurement.write',
             'profit.read', 'reports.read', 'analytics.read', 'alerts.read', 'qr.use', 'assistant.use',
             'communications.read', 'communications.write', 'connections.read', 'connections.write',
-            'credit.read', 'credit.share',
+            'credit.read', 'credit.share', 'marketplace.read', 'marketplace.write',
         ],
         'agronomist' => [
             'farm.read', 'field.read', 'field.write', 'crop.read', 'crop.write',
             'irrigation.read', 'pest.read', 'pest.write', 'harvest.read', 'harvest.write',
             'insights.read', 'livestock.read', 'analytics.read', 'qr.use', 'assistant.use', 'alerts.read',
-            'communications.read', 'communications.write',
+            'communications.read', 'communications.write', 'marketplace.read', 'marketplace.write',
         ],
     ];
 

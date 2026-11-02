@@ -71,4 +71,30 @@ $share = $data['share'] ?? null;
     </ul>
 </div>
 <?php endif; ?>
-<p class="text-xs text-slate-400">Farmer-owned, consent-based, explainable and revocable. No personal data is shown on the public page.</p>
+<div class="glass-card p-4 sm:p-6 mb-6">
+    <h2 class="text-lg font-semibold mb-3">90-day score trend</h2>
+    <?php
+    $pts = [];
+    foreach ($history as $h) { $pts[] = (int)$h['score']; }
+    if (count($pts) < 2) {
+        echo '<p class="text-sm text-slate-400">Not enough history yet.</p>';
+    } else {
+        $w = 400; $h = 120; $min = min($pts); $max = max($pts);
+        $range = max(1, $max - $min);
+        $step = $w / (count($pts) - 1);
+        $d = '';
+        foreach ($pts as $i => $v) {
+            $x = round($i * $step, 1);
+            $y = round($h - (($v - $min) / $range) * ($h - 10), 1);
+            $d .= ($i === 0 ? 'M' : 'L') . $x . ',' . $y . ' ';
+        }
+    ?>
+    <svg viewBox="0 0 <?php echo $w; ?> <?php echo $h; ?>" class="w-full h-32" preserveAspectRatio="none">
+        <path d="<?php echo trim($d); ?>" fill="none" stroke="#4f46e5" stroke-width="2" />
+    </svg>
+    <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+        <span><?php echo htmlspecialchars($history[0]['computed_at'] ?? ''); ?></span>
+        <span><?php echo htmlspecialchars(end($history)['computed_at'] ?? ''); ?></span>
+    </div>
+    <?php } ?>
+</div>

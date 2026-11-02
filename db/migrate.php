@@ -6,7 +6,7 @@
 // against the hosted database. Gate it behind a version marker stored in the
 // database itself: once the current version has been applied, subsequent
 // requests skip straight through.
-$migrationVersion = '7';
+$migrationVersion = '8';
 
 try {
     $applied = null;
@@ -193,6 +193,12 @@ try {
     $trSchema = file_get_contents(__DIR__ . '/traceability_schema.sql');
     if ($trSchema !== false) {
         $pdo->exec($trSchema);
+    }
+
+    // Marketplace (farmer-to-farmer trading)
+    $mpSchema = file_get_contents(__DIR__ . '/marketplace_schema.sql');
+    if ($mpSchema !== false) {
+        $pdo->exec($mpSchema);
     }
 
     // Record that this migration version has been applied so subsequent

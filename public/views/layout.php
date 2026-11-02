@@ -305,6 +305,15 @@
                 })();
                 </script>
                 <?php endif; ?>
+                <?php
+                require_once __DIR__ . '/../../src/Helpers/UndoHelper.php';
+                if (UndoHelper::available()):
+                ?>
+                <form method="post" action="index.php?module=Undo&action=restore" class="mb-4 inline-block" onsubmit="return confirm('Undo the last delete?');">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-bold hover:bg-amber-600 transition">Undo last delete</button>
+                </form>
+                <?php endif; ?>
                 <?php echo $content; ?>
             </div>
         </main>

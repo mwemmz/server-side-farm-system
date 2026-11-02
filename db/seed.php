@@ -41,6 +41,49 @@ try {
     error_log("Seed (admin) failed: " . $e->getMessage());
 }
 
+// --- Zambian demo farmers (idempotent) so comms/marketplace can be exercised ---
+try {
+    $farmers = [
+        ['chanda_banda', 'chanda@farm.zm', 'farm-owner', 'Banda Family Farm', 'Chongwe', -15.3200, 28.6800],
+        ['mwamba_zulu', 'mwamba@farm.zm', 'farm-owner', 'Zulu Homestead Farm', 'Chibombo', -14.6600, 28.0800],
+        ['natasha_phiri', 'natasha@farm.zm', 'farm-owner', 'Phiri Greens', 'Kafue', -15.7700, 28.1800],
+        ['tembo_mulenga', 'tembo@farm.zm', 'farm-owner', 'Mulenga Poultry', 'Mazabuka', -15.8600, 27.7600],
+        ['grace_mwewa', 'grace@farm.zm', 'farm-owner', 'Mwewa Dairy', 'Kabwe', -14.4500, 28.4500],
+    ];
+    foreach ($farmers as [$username, $email, $role, $farmName, $loc, $lat, $lon]) {
+        $hash = password_hash('demo123', PASSWORD_DEFAULT);
+        $st = $pdo->prepare("INSERT INTO users (username, password_hash, email, role) VALUES (?,?,?,?) ON CONFLICT (username) DO UPDATE SET role=EXCLUDED.role, email=EXCLUDED.email");
+        $st->execute([$username, $hash, $email, $role]);
+        $uid = (int)$pdo->query("SELECT id FROM users WHERE username = " . $pdo->quote($username))->fetchColumn();
+        $fst = $pdo->prepare("SELECT id FROM farms WHERE name = ?");
+        $fst->execute([$farmName]);
+        $fid = $fst->fetchColumn();
+        if (!$fid) {
+            $ist = $pdo->prepare("INSERT INTO farms (name, location, latitude, longitude) VALUES (?,?,?,?) RETURNING id");
+            $ist->execute([$farmName, $loc, $lat, $lon]);
+            $fid = (int)$ist->fetchColumn();
+        }
+        $fid = (int)$fid;
+        $pdo->prepare("INSERT INTO farm_members (farm_id, user_id, farm_role) VALUES (?,?,?) ON CONFLICT DO NOTHING")->execute([$fid, $uid, $role]);
+        $cnt = (int)$pdo->query("SELECT COUNT(*) FROM marketplace_listings WHERE seller_user_id = $uid")->fetchColumn();
+        if ($cnt === 0) {
+            $items = [
+                ['Maize grain', 'Grain', 500, 'kg', 4.50],
+                ['Soybeans', 'Grain', 200, 'kg', 8.00],
+                ['Tomatoes', 'Vegetables', 80, 'kg', 12.00],
+                ['Groundnuts', 'Legumes', 150, 'kg', 15.00],
+            ];
+            foreach ($items as [$iname, $cat, $qty, $unit, $price]) {
+                $pdo->prepare("INSERT INTO marketplace_listings (seller_farm_id, seller_user_id, item_name, category, quantity, unit, price_per_unit) VALUES (?,?,?,?,?,?,?)")
+                    ->execute([$fid, $uid, $iname, $cat, $qty, $unit, $price]);
+            }
+        }
+    }
+    error_log("FFMS: Zambian demo farmers + marketplace listings seeded.");
+} catch (PDOException $e) {
+    error_log("Seed (farmers) failed: " . $e->getMessage());
+}
+
 // --- Market Analysis: 2 years of historical price history (idempotent) -----
 // Runs every boot (BEFORE the mock-data early return) but only inserts once:
 // guarded by "is there already a market record older than ~13 months?".
