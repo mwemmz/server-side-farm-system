@@ -10,8 +10,6 @@ $__compact = ($__role === 'worker') || (($_GET['view'] ?? '') === 'today');
 $__money = RoleHelper::seesFinance($__role);
 
 $analyticsModel = new AnalyticsModel($pdo);
-$totalCost = $analyticsModel->getTotalProcurementCost() ?? 0;
-$totalSales = $analyticsModel->getTotalSalesAmount() ?? 0;
 $totalInventory = $analyticsModel->getTotalInventoryCount() ?? 0;
 
 // Enterprise figures for the current calendar year (the single ledger view).
@@ -21,6 +19,8 @@ try {
 } catch (\Throwable $e) {
     error_log('Dashboard analytics failed: ' . $e->getMessage());
 }
+$totalCost = (float) ($__overview['expenses'] ?? 0);
+$totalSales = (float) ($__overview['revenue'] ?? 0);
 
 // Weather: use first farm's GPS coords if set, else env default
 $lat = getEnvVar('DEFAULT_LAT', -15.3875);
@@ -131,7 +131,7 @@ function weatherIcon($code) {
             <div class="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-rose-500 to-pink-500 opacity-70 rounded-t-2xl"></div>
             <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0">
-                    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Costs</div>
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Costs (YTD)</div>
                     <div class="mt-1.5 text-xl md:text-2xl font-extrabold text-slate-900 tabular-nums">K<span class="counter" data-target="<?php echo $totalCost; ?>">0</span></div>
                     <div class="mt-1 text-[11px] text-slate-400">Procurement expenses</div>
                 </div>
@@ -145,7 +145,7 @@ function weatherIcon($code) {
             <div class="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-70 rounded-t-2xl"></div>
             <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0">
-                    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Sales</div>
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Sales (YTD)</div>
                     <div class="mt-1.5 text-xl md:text-2xl font-extrabold text-slate-900 tabular-nums">K<span class="counter" data-target="<?php echo $totalSales; ?>">0</span></div>
                     <div class="mt-1 text-[11px] text-slate-400">Revenue generated</div>
                 </div>
@@ -181,9 +181,9 @@ function weatherIcon($code) {
             <div class="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 to-blue-500 opacity-70 rounded-t-2xl"></div>
             <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0">
-                    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Inventory Items</div>
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Inventory Quantity</div>
                     <div class="mt-1.5 text-xl md:text-2xl font-extrabold text-slate-900 tabular-nums"><span class="counter" data-target="<?php echo $totalInventory; ?>">0</span></div>
-                    <div class="mt-1 text-[11px] text-slate-400">Active stock items</div>
+                    <div class="mt-1 text-[11px] text-slate-400">Units currently in stock</div>
                 </div>
                 <div class="shrink-0 w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
@@ -223,15 +223,21 @@ function weatherIcon($code) {
                 <div class="grid grid-cols-2 gap-3 mt-5">
                     <div class="rounded-xl bg-white/50 px-3 py-2">
                         <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">High / Low</div>
-                        <div class="text-sm font-bold text-slate-700 mt-0.5 tabular-nums"><?php echo round($weather['high_today'] ?? 0); ?>&deg; / <?php echo round($weather['low_today'] ?? 0); ?>&deg;</div>
+                        <div class="text-sm font-bold text-slate-700 mt-0.5 tabular-nums">
+                            <?php if ($weather['high_today'] !== null && $weather['low_today'] !== null): ?>
+                                <?php echo round($weather['high_today']); ?>&deg; / <?php echo round($weather['low_today']); ?>&deg;
+                            <?php else: ?>
+                                Unavailable
+                            <?php endif; ?>
+                        </div>
                     </div>
                     <div class="rounded-xl bg-white/50 px-3 py-2">
                         <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Expected Rain</div>
-                        <div class="text-sm font-bold text-slate-700 mt-0.5 tabular-nums"><?php echo $weather['precip'] ?? 0; ?> mm</div>
+                        <div class="text-sm font-bold text-slate-700 mt-0.5 tabular-nums"><?php echo $weather['precip'] !== null ? htmlspecialchars((string) $weather['precip']) . ' mm' : 'Unavailable'; ?></div>
                     </div>
                     <div class="rounded-xl bg-white/50 px-3 py-2">
                         <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Wind</div>
-                        <div class="text-sm font-bold text-slate-700 mt-0.5 tabular-nums"><?php echo $weather['windspeed'] ?? 0; ?> km/h</div>
+                        <div class="text-sm font-bold text-slate-700 mt-0.5 tabular-nums"><?php echo $weather['windspeed'] !== null ? htmlspecialchars((string) $weather['windspeed']) . ' km/h' : 'Unavailable'; ?></div>
                     </div>
                     <div class="rounded-xl bg-white/50 px-3 py-2">
                         <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Humidity</div>

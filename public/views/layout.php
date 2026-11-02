@@ -74,6 +74,35 @@
                 'Procurement' => '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
                 'Sales' => '<line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/>',
             ];
+            $navGroups = [
+                'Dashboard' => 'Overview',
+                'Farm' => 'Farm operations',
+                'Field' => 'Farm operations',
+                'Crop' => 'Farm operations',
+                'Irrigation' => 'Farm operations',
+                'Livestock' => 'Farm operations',
+                'Inventory' => 'Resources',
+                'Equipment' => 'Resources',
+                'Labour' => 'Resources',
+                'Ops' => 'Resources',
+                'Weather' => 'Resources',
+                'Harvest' => 'Production',
+                'Storage' => 'Production',
+                'Market' => 'Marketing & sales',
+                'Market Analysis' => 'Marketing & sales',
+                'Sales' => 'Marketing & sales',
+                'Finance' => 'Finance',
+                'Procurement' => 'Finance',
+                'Supplier' => 'Finance',
+                'Analytics' => 'Insights',
+                'Insights' => 'Insights',
+                'Traceability' => 'Insights',
+                'Notifications' => 'System',
+                'Reports' => 'System',
+                'Security' => 'System',
+                'Users' => 'System',
+                'Audit Log' => 'System',
+            ];
             // Resolve where each sidebar item links (Market Analysis is hosted
             // under the Insights predictive-analytics view; Users / Audit Log
             // live under the Security module) and whether it's active.
@@ -101,7 +130,13 @@
                     $navActive[$mod] = ($currentModule === $mod);
                 }
             }
+            $lastGroup = null;
             foreach ($modules as $mod => $iconPath) {
+                $group = $navGroups[$mod] ?? 'Other';
+                if ($group !== $lastGroup) {
+                    echo "<div class='px-3 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500'>{$group}</div>";
+                    $lastGroup = $group;
+                }
                 $isActive = $navActive[$mod];
                 $activeClass = $isActive
                     ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg shadow-green-900/40'
@@ -175,7 +210,13 @@
                 <!-- Links -->
                 <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
                     <?php
+                    $lastGroup = null;
                     foreach ($modules as $mod => $iconPath) {
+                        $group = $navGroups[$mod] ?? 'Other';
+                        if ($group !== $lastGroup) {
+                            echo "<div class='px-3 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500'>{$group}</div>";
+                            $lastGroup = $group;
+                        }
                         $isActive = $navActive[$mod];
                         $activeClass = $isActive
                             ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white'

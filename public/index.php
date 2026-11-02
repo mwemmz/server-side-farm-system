@@ -752,6 +752,24 @@ if ($module === 'Notifications') {
     }
 }
 
+// --- Traceability: harvest batch creation and provenance page ---
+if ($module === 'Traceability') {
+    if ($action === 'create' && $reqMethod === 'POST') {
+        require_once __DIR__ . '/../src/Services/TraceabilityService.php';
+        try {
+            (new TraceabilityService($pdo))->createBatch($_POST, (int) $_SESSION['user_id']);
+            SessionHelper::setFlash('success', 'Harvest batch created.');
+        } catch (Throwable $e) {
+            SessionHelper::setFlash('error', $e->getMessage());
+        }
+        header('Location: index.php?module=Traceability');
+        exit;
+    }
+    $data = ['flash' => SessionHelper::getFlash('success'), 'error' => SessionHelper::getFlash('error')];
+    ob_start(); require __DIR__ . '/views/traceability.php'; $content = ob_get_clean();
+    require __DIR__ . '/views/layout.php'; exit;
+}
+
 // --- Security: password change, user management, audit log ---
 if ($module === 'Security') {
     require_once __DIR__ . '/../src/Modules/Security/SecurityController.php';
@@ -762,22 +780,6 @@ if ($module === 'Security') {
         require __DIR__ . '/views/layout.php'; exit;
     }
 
-    if ($module === 'Traceability') {
-        if ($action === 'create' && $reqMethod === 'POST') {
-            require_once __DIR__ . '/../src/Services/TraceabilityService.php';
-            try {
-                (new TraceabilityService($pdo))->createBatch($_POST, (int) $_SESSION['user_id']);
-                SessionHelper::setFlash('success', 'Harvest batch created.');
-            } catch (Throwable $e) {
-                SessionHelper::setFlash('error', $e->getMessage());
-            }
-            header('Location: index.php?module=Traceability');
-            exit;
-        }
-        $data = ['flash' => SessionHelper::getFlash('success'), 'error' => SessionHelper::getFlash('error')];
-        ob_start(); require __DIR__ . '/views/traceability.php'; $content = ob_get_clean();
-        require __DIR__ . '/views/layout.php'; exit;
-    }
     if ($action === 'users') {
         if ($role !== 'admin') { die("Access Denied: User management is restricted to admins."); }
         $data = $secCtrl->users();

@@ -50,7 +50,6 @@ class AttentionService {
 
         $items = [];
         $this->push($items, $this->overdueVaccinations());
-        $this->push($items, $this->overdueVaccinations());
         $this->push($items, $this->dueSoonVaccinations());
         $this->push($items, $this->openHealthIncidents());
         $this->push($items, $this->activeWithdrawals());
@@ -539,7 +538,7 @@ class AttentionService {
             'title' => count($risers) . ' crop' . (count($risers) > 1 ? 's' : '') . ' trading higher',
             'detail' => $top['name'] . ' is up ' . number_format($top['pct'], 1) . '% to '
                 . number_format($top['price'], 2) . ' — consider selling.',
-            'count' => count($risers), 'module' => 'Market', 'link' => 'index.php?module=Market&action=manage',
+            'count' => count($risers), 'module' => 'Market', 'link' => 'index.php?module=Insights&view=market',
         ]];
     }
 }
