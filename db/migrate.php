@@ -6,7 +6,7 @@
 // against the hosted database. Gate it behind a version marker stored in the
 // database itself: once the current version has been applied, subsequent
 // requests skip straight through.
-$migrationVersion = '8';
+$migrationVersion = '10';
 
 try {
     $applied = null;
@@ -165,41 +165,24 @@ try {
     }
 
     // Seed default admin + mock data (idempotent)
-    require_once __DIR__ . '/seed.php';
-
-    // Farm connections + farm_members (Wave 1B)
+    // Run new schemas BEFORE seed so seed.php can populate farm_members etc.
     $connSchema = file_get_contents(__DIR__ . '/connections_schema.sql');
-    if ($connSchema !== false) {
-        $pdo->exec($connSchema);
-    }
-
-
-    // Communication Hub (Wave 1C/2A)
+    if ($connSchema !== false) { $pdo->exec($connSchema); }
     $commsSchema = file_get_contents(__DIR__ . '/comms_schema.sql');
-    if ($commsSchema !== false) {
-        $pdo->exec($commsSchema);
-    }
+    if ($commsSchema !== false) { $pdo->exec($commsSchema); }
+    $cpSchema = file_get_contents(__DIR__ . '/credit_passport_schema.sql');
+    if ($cpSchema !== false) { $pdo->exec($cpSchema); }
+    $trSchema = file_get_contents(__DIR__ . '/traceability_schema.sql');
+    if ($trSchema !== false) { $pdo->exec($trSchema); }
+    $mpSchema = file_get_contents(__DIR__ . '/marketplace_schema.sql');
+    if ($mpSchema !== false) { $pdo->exec($mpSchema); }
+
+    require_once __DIR__ . '/seed.php';
 
     // Seed shared lookup reference data (idempotent)
     require_once __DIR__ . '/seed_lookups.php';
 
-    // Credit Passport (Wave 2B)
-    $cpSchema = file_get_contents(__DIR__ . '/credit_passport_schema.sql');
-    if ($cpSchema !== false) {
-        $pdo->exec($cpSchema);
-    }
-
-    // Traceability (Wave 3A)
-    $trSchema = file_get_contents(__DIR__ . '/traceability_schema.sql');
-    if ($trSchema !== false) {
-        $pdo->exec($trSchema);
-    }
-
-    // Marketplace (farmer-to-farmer trading)
-    $mpSchema = file_get_contents(__DIR__ . '/marketplace_schema.sql');
-    if ($mpSchema !== false) {
-        $pdo->exec($mpSchema);
-    }
+    // (schemas above already applied)
 
     // Record that this migration version has been applied so subsequent
     // requests can skip the (expensive) migration step entirely.

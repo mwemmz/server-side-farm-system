@@ -585,7 +585,6 @@ CREATE INDEX IF NOT EXISTS idx_finance_date_type ON finance_records (date, type)
 -- Performance indexes (idempotent)
 -- ------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS idx_livestock_farm_id ON livestock(farm_id);
-CREATE INDEX IF NOT EXISTS idx_livestock_status ON livestock(status);
 CREATE INDEX IF NOT EXISTS idx_livestock_type ON livestock(type);
 CREATE INDEX IF NOT EXISTS idx_health_incidents_status ON health_incidents(status);
 CREATE INDEX IF NOT EXISTS idx_health_incidents_detected_date ON health_incidents(detected_date);

@@ -11,6 +11,11 @@ CREATE TABLE IF NOT EXISTS harvest_batches (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Backfill columns on databases created by the older traceability schema.
+ALTER TABLE harvest_batches ADD COLUMN IF NOT EXISTS farm_id INT REFERENCES farms(id) ON DELETE CASCADE;
+ALTER TABLE harvest_batches ADD COLUMN IF NOT EXISTS quality_grade VARCHAR(40);
+ALTER TABLE harvest_batches ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
 CREATE TABLE IF NOT EXISTS batch_events (
     id SERIAL PRIMARY KEY,
     batch_id INT NOT NULL REFERENCES harvest_batches(id) ON DELETE CASCADE,

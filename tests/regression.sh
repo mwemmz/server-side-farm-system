@@ -677,6 +677,60 @@ contains "$B" "FFMS Invoices Report" "printable report renders its title"
 contains "$(curl -s -b "$JAR" "$BASE/index.php?module=Dashboard")" "Profit (YTD)" "dashboard shows the profit KPI to finance roles"
 
 # ---------------------------------------------------------------------------
+# 5e. Wave 1-4 endpoints (API smoke)
+# ---------------------------------------------------------------------------
+echo "-- Wave endpoints --"
+JWT="$(curl -s -X POST -H 'Content-Type: application/json' -d "{\"username\":\"$USER_NAME\",\"password\":\"$USER_PASS\"}" "$BASE/api/v1/auth/token" | grep -o '"token":"[^"]*"' | head -1 | sed 's/.*"token":"//; s/"$//')"
+if [ -n "$JWT" ]; then ok "Wave JWT issued"; else bad "Wave JWT missing"; fi
+H="Authorization: Bearer $JWT"
+for ep in "analytics/profit/by-field" "analytics/profit/by-animal" "extranet/connections" "intranet/conversations" "credit-passport/me"; do
+  S="$(curl -s -o /dev/null -w '%{http_code}' -H "$H" "$BASE/api/v1/$ep")"
+  check "GET $ep -> 200" "$S" "200"
+done
+# intranet conversation create + message
+CID="$(curl -s -H "$H" -H 'Content-Type: application/json' -d '{"title":"regression","members":[]}' "$BASE/api/v1/intranet/conversations" | grep -o '"conversation_id":[0-9]*' | grep -o '[0-9]*')"
+if [ -n "$CID" ]; then ok "Wave intranet conversation created"; else bad "Wave intranet conversation create"; fi
+if [ -n "$CID" ]; then
+  S="$(curl -s -o /dev/null -w '%{http_code}' -H "$H" -H 'Content-Type: application/json' -d '{"body":"hi"}' "$BASE/api/v1/intranet/conversations/$CID/messages")"
+  check "Wave intranet message -> 200" "$S" "200"
+  S="$(curl -s -o /dev/null -w '%{http_code}' -H "$H" "$BASE/api/v1/intranet/conversations/$CID/messages")"
+  check "Wave intranet messages list -> 200" "$S" "200"
+fi
+# credit passport share + public page
+SHARE="$(curl -s -H "$H" -H 'Content-Type: application/json' -d '{"scope":["score"],"expires_days":7}' "$BASE/api/v1/credit-passport/share" | grep -o '"token":"[^"]*"' | head -1 | sed 's/.*"token":"//; s/"$//')"
+if [ -n "$SHARE" ]; then ok "Wave credit passport share created"; else bad "Wave credit passport share"; fi
+if [ -n "$SHARE" ]; then
+  S="$(curl -s -o /dev/null -w '%{http_code}' "$BASE/index.php?module=CreditPassport&token=$SHARE")"
+  check "Wave public credit passport page -> 200" "$S" "200"
+fi
+# traceability batch
+BC="REG$(date +%s)"
+S="$(curl -s -o /dev/null -w '%{http_code}' -H "$H" -H 'Content-Type: application/json' -d "{\"batch_code\":\"$BC\",\"quantity\":5,\"unit\":\"kg\"}" "$BASE/api/v1/traceability/batches")"
+check "Wave traceability batch create -> 200" "$S" "200"
+BID="$(curl -s -H "$H" -H 'Content-Type: application/json' -d "{\"batch_code\":\"$BC\",\"quantity\":5,\"unit\":\"kg\"}" "$BASE/api/v1/traceability/batches" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')"
+if [ -n "$BID" ]; then
+  S="$(curl -s -o /dev/null -w '%{http_code}' -H "$H" -H 'Content-Type: application/json' -d '{"event_type":"storage","location":"shed"}' "$BASE/api/v1/traceability/batches/$BID/events")"
+  check "Wave traceability event -> 200" "$S" "200"
+  S="$(curl -s -o /dev/null -w '%{http_code}' -H "$H" "$BASE/api/v1/traceability/batches/$BID")"
+  check "Wave traceability batch get -> 200" "$S" "200"
+fi
+# planting what-if
+S="$(curl -s -o /dev/null -w '%{http_code}' -H "$H" -H 'Content-Type: application/json' -d '{"crop_id":1,"planting_month":3,"area_ha":2,"input_cost_estimate":100}' "$BASE/api/v1/planner/planting-what-if")"
+check "Wave planting-what-if -> 200" "$S" "200"
+# marketplace
+S="$(curl -s -o /dev/null -w '%{http_code}' "$BASE/index.php?module=Marketplace")"
+check "Wave marketplace page -> 200" "$S" "200"
+# communications
+S="$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" "$BASE/index.php?module=Communications")"
+check "Wave communications page -> 200" "$S" "200"
+# connections
+S="$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" "$BASE/index.php?module=Connections")"
+check "Wave connections page -> 200" "$S" "200"
+# credit passport manage
+S="$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" "$BASE/index.php?module=CreditPassport")"
+check "Wave credit passport manage -> 200" "$S" "200"
+
+# ---------------------------------------------------------------------------
 # 6. Optional: no new PHP warnings (when PHP_LOG points at the server log)
 # ---------------------------------------------------------------------------
 if [ -n "$PHP_LOG" ] && [ -f "$PHP_LOG" ]; then

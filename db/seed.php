@@ -167,9 +167,9 @@ try {
 
 // --- Mock data: only seed once, when the farms table is empty ---
 try {
-    $farmCount = (int) $pdo->query("SELECT COUNT(*) FROM farms")->fetchColumn();
+    $farmCount = (int) $pdo->query("SELECT COUNT(*) FROM farms WHERE name = 'Green Valley Farm'")->fetchColumn();
     if ($farmCount > 0) {
-        return; // already seeded
+        return; // mock data already seeded
     }
 
     // Farms
@@ -305,5 +305,14 @@ try {
         error_log("FFMS: Mock data seeded successfully.");
 } catch (PDOException $e) {
     error_log("Seed (mock data) failed: " . $e->getMessage());
+}
+
+// --- Backfill farm_members for all users (idempotent, runs every boot) ---
+try {
+    $pdo->exec("INSERT INTO farm_members (farm_id, user_id, farm_role)
+        SELECT f.id, u.id, u.role FROM farms f CROSS JOIN users u
+        ON CONFLICT (farm_id, user_id) DO NOTHING");
+} catch (PDOException $e) {
+    error_log("Seed (farm_members backfill) failed: " . $e->getMessage());
 }
 ?>

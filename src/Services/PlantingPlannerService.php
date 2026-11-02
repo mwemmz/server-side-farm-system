@@ -49,6 +49,7 @@ class PlantingPlannerService
     }
     public function plan(array $input): array
     {
+        $area = filter_var($input['area'] ?? null, FILTER_VALIDATE_FLOAT);
         $inputCost = filter_var($input['input_cost'] ?? null, FILTER_VALIDATE_FLOAT);
         $forecast = filter_var($input['price_forecast'] ?? null, FILTER_VALIDATE_FLOAT);
         $yield = filter_var($input['expected_yield'] ?? null, FILTER_VALIDATE_FLOAT);

@@ -34,3 +34,5 @@ FROM numbered WHERE l.id = numbered.id;
 
 CREATE UNIQUE INDEX IF NOT EXISTS livestock_farm_tag_uq
     ON livestock (COALESCE(farm_id, 0), lower(tag_no)) WHERE tag_no IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_livestock_status ON livestock(status);

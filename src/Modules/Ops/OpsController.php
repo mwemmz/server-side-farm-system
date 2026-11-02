@@ -119,17 +119,32 @@ class OpsController
     public function add(): array
     {
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
-            $this->redirect($this->requestedKey());
+            $key = $this->requestedKey();
+            $def = $this->definition($key);
+            RbacHelper::requirePermission((string) $def['permission']);
+            return $this->viewData($key, $def, 'add', [], [], null);
         }
         return $this->save(null);
     }
 
     public function edit(): array
     {
+        $id = ValidationHelper::id($_GET['id'] ?? ($_POST['id'] ?? ''));
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
-            $this->redirect($this->requestedKey());
+            if (!$id) {
+                SessionHelper::setFlash('error', 'That record could not be found.');
+                $this->redirect($this->requestedKey());
+            }
+            $key = $this->requestedKey();
+            $def = $this->definition($key);
+            RbacHelper::requirePermission((string) $def['permission']);
+            $row = $this->model->find($def, $id);
+            if ($row === null) {
+                http_response_code(404);
+                exit('Record not found.');
+            }
+            return $this->viewData($key, $def, 'edit', [], $row, $id);
         }
-        $id = ValidationHelper::id($_POST['id'] ?? $_GET['id'] ?? null);
         if (!$id) {
             SessionHelper::setFlash('error', 'That record could not be found.');
             $this->redirect($this->requestedKey());
