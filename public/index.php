@@ -122,13 +122,47 @@ if ($module === 'Traceability' && $action === 'public') {
     exit;
 }
 
-// --- Credit Passport public page (no login) ---
+// --- Credit Passport public page (no login) / logged-in dashboard ---
 if ($module === 'CreditPassport') {
     require_once __DIR__ . '/../src/Services/PracticeScoringService.php';
+    $svc = new PracticeScoringService($pdo);
     $token = trim((string) ($_GET['token'] ?? ''));
-    $data = (new PracticeScoringService($pdo))->viewShared($token);
+    if ($token !== '') {
+        $data = $svc->viewShared($token);
+        ob_start();
+        require __DIR__ . '/views/credit_passport.php';
+        $content = ob_get_clean();
+        require __DIR__ . '/views/layout.php';
+        exit;
+    }
+    // logged-in mode
+    if (!isset($_SESSION['user_id'])) {
+        header('Location: index.php?module=Security&action=login'); exit;
+    }
+    $uid = (int) $_SESSION['user_id'];
+    $score = $svc->compute($uid);
+    $history = $svc->history($uid, 90);
+    $share = null;
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (!empty($_POST['revoke_id'])) {
+            $svc->revokeShare($uid, (int)$_POST['revoke_id']);
+            SessionHelper::setFlash('success', 'Share revoked.');
+            header('Location: index.php?module=CreditPassport'); exit;
+        }
+        $scope = isset($_POST['scope']) && is_array($_POST['scope']) ? $_POST['scope'] : ['score','band','factors'];
+        $days = (int) ($_POST['expires_days'] ?? 30);
+        $share = $svc->createShare($uid, $scope, $days);
+        SessionHelper::setFlash('success', 'Share link created.');
+    }
+    $shares = [];
+    try {
+        $st = $pdo->prepare("SELECT id, token, scope, expires_at, revoked, created_at FROM credit_passport_shares WHERE user_id = ? ORDER BY created_at DESC");
+        $st->execute([$uid]);
+        $shares = $st->fetchAll() ?: [];
+    } catch (PDOException $e) { }
+    $data = ['score' => $score, 'history' => $history, 'share' => $share, 'shares' => $shares, 'role' => $_SESSION['role'] ?? 'worker'];
     ob_start();
-    require __DIR__ . '/views/credit_passport.php';
+    require __DIR__ . '/views/credit_passport_manage.php';
     $content = ob_get_clean();
     require __DIR__ . '/views/layout.php';
     exit;

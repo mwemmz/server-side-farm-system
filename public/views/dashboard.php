@@ -190,9 +190,19 @@ function weatherIcon($code) {
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- Weather + Chart -->
+        <!-- Credit Passport quick link (finance/owner roles) -->
+        <?php if (in_array($__role, ['admin','farm-owner','manager'], true)): ?>
+        <div class="glass-card card-glow p-4 md:p-5 group">
+            <div class="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 to-violet-500 opacity-70 rounded-t-2xl"></div>
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Credit Passport</div>
+                    <div class="mt-1.5 text-sm font-semibold text-slate-700">View score &amp; share</div>
+                    <div class="mt-1 text-[11px] text-slate-400"><a href="index.php?module=CreditPassport" class="text-indigo-700 font-bold hover:underline">Open &rarr;</a></div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 stagger">
         <!-- Weather panel -->
         <div class="glass-card p-5 md:p-6 card-glow">

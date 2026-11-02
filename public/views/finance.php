@@ -162,6 +162,13 @@ $filters = $data['filters'] ?? [];
                                 <?php $ps = $record['payment_status'] ?? 'paid'; ?>
                                 <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full <?php echo $ps === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'; ?>"><?php echo htmlspecialchars($ps); ?></span>
                             </td>
+                            <td class="py-3">
+                                <form method="post" action="index.php?module=Finance&action=delete" class="inline" onsubmit="return confirm('Delete this finance record?');">
+                                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
+                                    <input type="hidden" name="id" value="<?php echo (int)$record['id']; ?>">
+                                    <button type="submit" class="text-xs font-bold text-red-600 hover:text-red-700">Delete</button>
+                                </form>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
