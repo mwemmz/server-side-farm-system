@@ -1,11 +1,24 @@
-# FFMS — Presentation Guideline
+# FFMS — Presentation Guideline (4-Developer Division)
 
-A ready-to-use guide for presenting the **Intelligent Farm Management System (FFMS)**.
-Use it as a script, slide outline, and demo checklist.
+A ready-to-use guide for presenting the **Intelligent Farm Management System (FFMS)**,
+divided among **4 developers** according to the 10 priority requirement areas.
 
 ---
 
-## 1. Elevator pitch (30 seconds)
+## Team division
+
+| Dev | Focus (requirement areas) | Owns |
+|-----|---------------------------|------|
+| **Dev 1** | Farm & Field depth + Crop Agronomy | Field boundary (GeoJSON/Leaflet), soil conditions, rotation/field history, land-use plans, seed, planting, fertilizer, growth stages, spray schedules, chemical applications, treatment follow-ups, AnalyticsService yield/crop enterprise |
+| **Dev 2** | Livestock Production + Pest & Disease | Weights, breeding, production, mortality, feed, vaccination rules, lifecycle record, health incidents, outbreaks, animal treatments, AttentionService animal alerts |
+| **Dev 3** | Equipment Costing + Labour + Harvest/Storage/Market | Equipment allocations, fuel, hours, repairs, depreciation, daily tasks, harvest schedules/losses, packaging, quality, dispatches, customers, markets, orders, invoices, contracts, suppliers, quotations, reviews |
+| **Dev 4** | Financial Analytics + Dashboard/Notifications + Security/Quality + Platform | Analytics landing, profit KPI, AttentionService, RBAC, CSRF, audit, comms hub, farm connections, credit passport, traceability, marketplace, tests, docs, migrations, deploy |
+
+Cross-cutting (shared): Ops engine (`OpsRegistry`/`OpsModel`/`OpsController`), `FinanceService` ledger, `db/migrate.php`, `README`/`IMPLEMENTATION_REPORT`, zip.
+
+---
+
+## 1. Elevator pitch (30 seconds) — Dev 4
 
 > "FFMS is a single web application that runs an entire agribusiness — crops,
 > livestock, inventory, sales, finance, labour, equipment, storage, weather and
@@ -15,122 +28,107 @@ Use it as a script, slide outline, and demo checklist.
 
 ---
 
-## 2. Slide outline (12–15 slides)
+## 2. Slide outline (15 slides) with owner
 
-| # | Slide | Key message |
-|---|-------|-------------|
-| 1 | Title + team | FFMS — Intelligent Farm Management System |
-| 2 | Problem | Farms run on paper/Excel; data is fragmented; no single source of truth |
-| 3 | Solution | One PHP 8 + PostgreSQL app, deployed on Render via Docker |
-| 4 | Architecture | MVC-ish: controllers → models → PDO/PostgreSQL; views + Tailwind; REST API under `/api/v1` |
-| 5 | Core modules | Crops, livestock, inventory, procurement, sales, finance, labour, storage, equipment, weather, market |
-| 6 | Smart layer | Pick-or-type comboboxes, auto tags, vaccine species rules, service clock, reorder, attention alerts |
-| 7 | Single costing ledger | `finance_records` with dimension columns (`field_id`, `crop_id`, `livestock_id`, `equipment_id`, `customer_id`) — no double counting |
-| 8 | Analytics | Profit, margin, ROI, cost/ha, yield/ha, enterprise profitability, market trends |
-| 9 | Communication Hub | Intranet (farm-scoped, admins cannot read other farms) + Extranet (mutual-accept) |
-| 10 | Farm Credit Passport | Farmer-owned, consent-based, explainable, revocable score 0–100 with 7 factors |
-| 11 | Traceability | Harvest batches + chain-of-custody timeline, public QR-friendly page |
-| 12 | Marketplace | Farmer-to-farmer search, list, buy/sell with auto finance posting |
-| 13 | Security & quality | RBAC (6 roles), CSRF, validated IDs/numbers/dates/FKs, transactions, audit logs |
-| 14 | Testing | `regression.sh` (400+ assertions), `smoke_fuzz.py`, `ops_registry_check.php`, PHP lint, `git diff --check` |
-| 15 | Demo + Q&A | Live walkthrough |
+| # | Slide | Owner | Key message |
+|---|-------|-------|-------------|
+| 1 | Title + team | All | FFMS — Intelligent Farm Management System |
+| 2 | Problem | Dev 4 | Farms run on paper/Excel; data fragmented; no single source of truth |
+| 3 | Solution + architecture | Dev 4 | PHP 8 + PostgreSQL, MVC, PDO, REST API `/api/v1`, deployed on Render via Docker |
+| 4 | Farm & Field depth | Dev 1 | GeoJSON boundaries, computed hectares, soil, rotation, land-use plans |
+| 5 | Crop agronomy | Dev 1 | Seed → planting → fertilizer → growth → spray → chemical → follow-up |
+| 6 | Livestock production | Dev 2 | Weights, breeding, production, mortality, feed, vaccination rules, lifecycle record |
+| 7 | Pest & disease | Dev 2 | Health incidents, outbreaks, chemical applications, treatment follow-ups |
+| 8 | Equipment costing | Dev 3 | Allocations, fuel, hours, repairs, depreciation |
+| 9 | Labour & tasks | Dev 3 | Daily tasks with assignee, hours, labour cost, finance posting |
+| 10 | Harvest / storage / market | Dev 3 | Schedules, losses, packaging, quality, dispatches, customers, orders, invoices, contracts, suppliers |
+| 11 | Single costing ledger | Dev 4 | `finance_records` dimension columns — no double counting |
+| 12 | Analytics & dashboard | Dev 4 | Profit, margin, ROI, cost/ha, yield/ha, enterprise profitability, attention alerts, credit passport |
+| 13 | Communication Hub & connections | Dev 4 | Intranet (farm-scoped), extranet (mutual-accept), broadcast |
+| 14 | Security & quality | Dev 4 | RBAC 6 roles, CSRF, validated inputs, transactions, audit logs |
+| 15 | Testing & demo | All | regression.sh (400+), smoke_fuzz.py, ops_registry_check.php, PHP lint |
 
 ---
 
-## 3. Demo script (recommended order, ~8 minutes)
+## 3. Demo script (8 minutes) with owner
 
-### A. Login & dashboard (1 min)
+### A. Login & dashboard — Dev 4 (1 min)
 1. Log in as `admin` / `admin123`.
-2. Show the **"Needs attention today"** card (overdue vaccinations, low stock, unpaid finance, outbreaks, tasks due, weather risk).
+2. Show **"Needs attention today"** card (overdue vaccinations, low stock, unpaid finance, outbreaks, tasks due, weather risk).
 3. Point out the **profit / cost-per-hectare KPI** card (finance roles only).
-4. Show the quick-action buttons and the weather panel.
+4. Show quick actions + weather panel.
 
-### B. Livestock lifecycle (2 min)
-1. **Livestock → Manage** — show the animal register with tags, filters, and the **"Jump to a form"** navigator.
-2. Open an animal's **profile** — walk through Birth → Status → Sold/Death summary, then Weights, Breeding, Production, Feed, Vaccinations, Treatments, Health incidents.
-3. Record a vaccination, a treatment, and a pest report; show the withdrawal-period badge.
-4. Mark an animal **Sold** or **Dead** and show it leaves all pickers but keeps history.
-
-### C. Crops & field depth (1 min)
+### B. Field & crop — Dev 1 (1.5 min)
 1. **Field** — draw a boundary polygon on the Leaflet map; show computed hectares.
 2. **Crop → Pests & Problems** — report a problem; show the "no `>Array<`" dropdowns.
 3. **Ops → Soil Conditions** — add a soil sample; show required/number/date/FK validation.
+4. **Ops → Planting / Fertilizer / Spray schedules** — show the crop agronomy pipeline.
 
-### D. Operations engine (1 min)
-1. **Ops landing** — show the 9 groups and record counts.
-2. Open **Tasks**, **Invoices** (auto-numbering, overpayment guard), **Equipment repairs** (marks serviced).
-3. Delete a record → confirm dialog → **Undo last delete** within 5 minutes.
+### C. Livestock & health — Dev 2 (1.5 min)
+1. **Livestock → Manage** — animal register, filters, **"Jump to a form"** navigator.
+2. Open an animal **profile** — Birth → Status → Sold/Death summary, then Weights, Breeding, Production, Feed, Vaccinations, Treatments, Health incidents.
+3. Record a vaccination, treatment, pest report; show withdrawal-period badge.
+4. Mark an animal **Sold** or **Dead**; show it leaves pickers but keeps history.
 
-### E. Analytics & reports (1 min)
-1. **Analytics** — date-range filter, revenue/cost/profit/margin, crop & livestock enterprise tables, yield/ha, market prices with trend, expiring stock.
+### D. Equipment, labour & harvest — Dev 3 (1.5 min)
+1. **Equipment** — service reminder badges, record a service, spare-part stock.
+2. **Ops → Tasks** — assign a task; show labour cost finance posting.
+3. **Ops → Equipment repairs/fuel/hours/depreciation** — costing pipeline.
+4. **Harvest → store in facility** — stock rises; capacity guard.
+5. **Ops → Invoices** — auto-numbering, overpayment guard, recalc on item changes.
+
+### E. Analytics & reports — Dev 4 (1 min)
+1. **Analytics** — date-range filter, revenue/cost/profit/margin, crop & livestock enterprise, yield/ha, market prices with trend, expiring stock.
 2. **Reports** — grouped export picker; download a CSV and open a printable (PDF) view.
 
-### F. Communication Hub & connections (1 min)
+### F. Communication & connections — Dev 4 (1 min)
 1. **Communications** — create a conversation, post a message, send a broadcast (owner/manager).
 2. **Connections** — search farms, request a connection, accept/decline.
 3. Note the **intranet privacy rule**: admins cannot read another farm's intranet.
 
-### G. Credit Passport & traceability (1 min)
+### G. Credit Passport & traceability & marketplace — Dev 4 (1 min)
 1. **Credit Passport** — compute score + band + factor breakdown + 90-day trend chart; create a share link; revoke it.
-2. Open the **public passport URL** (no login) — show only score, band, factors, anonymised summary.
+2. Open the **public passport URL** (no login).
 3. **Traceability** — create a harvest batch; show the public chain-of-custody timeline.
-
-### H. Marketplace (30 s)
-1. **Marketplace** — search produce, create a listing, buy from another farmer's listing; show the finance records auto-posted.
+4. **Marketplace** — search produce, create a listing, buy from another farmer's listing.
 
 ---
 
-## 4. Talking points per feature
+## 4. Talking points per dev
 
-### Single costing ledger
-- All cost-bearing Ops records post to `finance_records` with `source_module = 'Ops:<key>'` and `source_id`, plus dimension columns (`field_id`, `crop_id`, `livestock_id`, `equipment_id`, `customer_id`).
-- Revenue comes from `sales_records`; analytics sums both — **no double counting**.
+### Dev 1 — Farm & Field + Crop Agronomy
+- GeoJSON boundary polygons with computed hectares; Leaflet click-to-draw editor; fallback to simulated circles.
+- Soil conditions, field history/rotation, land-use plans.
+- Seed → planting → fertilizer → growth stages → spray schedules → chemical applications → treatment follow-ups.
+- Metadata-driven: a new record type = one registry entry + one migration table.
 
-### Metadata-driven Ops engine
-- 35 record definitions in `OpsRegistry`, one generic controller/view/model.
-- Adding a new record type = one registry entry + one migration table — no bespoke CRUD.
+### Dev 2 — Livestock & Pest/Disease
+- Animal lifecycle record: birth → sale/death, weights, breeding, production, feed, vaccinations, treatments, health incidents.
+- Vaccine species rules; batch vaccination (mixed-species refused); withdrawal periods.
+- Health incidents, outbreaks flagged, chemical applications, treatment follow-ups.
+- Attention alerts: overdue vaccinations, open incidents, active withdrawals.
 
-### Farm connections (mutual-accept graph)
-- `farm_connections` with statuses pending/accepted/declined/blocked.
-- Extranet conversations are **rejected unless** an accepted connection exists.
+### Dev 3 — Equipment, Labour & Harvest/Market
+- Equipment costing: allocations, fuel (updates meter), operating hours, repairs (marks serviced), depreciation.
+- Daily tasks: assignee, field/crop/animal/equipment, hours, labour cost, auto finance posting on completion.
+- Harvest: schedules, losses, packaging, quality grades, dispatches.
+- Market: customers, markets, sales orders, invoices (auto-numbered, auto-status, recalc), contracts, suppliers, quotations, reviews (auto rating).
 
-### Communication Hub privacy (multi-tenant)
-- Intranet conversations are scoped to `farm_members.farm_id = conversations.farm_id`.
-- Admins **cannot** read another farm's intranet — stated as a security property, not a limitation.
-
-### Farm Credit Passport
-- 7 weighted factors (record-keeping 20%, treatment compliance 15%, crop rotation 15%, yield trend 15%, sales regularity 15%, expense discipline 10%, traceability 10%).
-- Score 0–100, bands bronze/silver/gold/platinum.
-- Farmer-owned, consent-based, explainable, revocable; public page shows no personal data; every view is audited.
-
-### Traceability
-- `harvest_batches` + `batch_events` (harvest/storage/dispatch/sale).
-- Public page shows the chain of custody timeline only — no personal data.
-
-### Marketplace
-- Search by item name/category; create listings; buy reduces quantity and posts finance (expense for buyer, income for seller).
-
-### Security & quality
-- 6 roles (admin, manager, accountant, worker, farm-owner, agronomist) with granular permissions.
-- CSRF on every state change; validated IDs/numbers/dates/arrays/FKs; transactions for multi-table ops; audit logs.
-- PHPMailer optional; Docker builds without Composer/vendor; no shell DB backups.
+### Dev 4 — Analytics, Security & Platform
+- Single costing ledger: `finance_records` with dimension columns; no double counting.
+- Analytics: profit, margin, ROI, cost/ha, yield/ha, enterprise profitability, market trends.
+- AttentionService: 10+ alert types, 5-min per-user cache.
+- RBAC 6 roles; CSRF on all state changes; validated IDs/numbers/dates/FKs; transactions; audit logs.
+- Communication Hub: farm-scoped intranet (admins can't read other farms), extranet (mutual-accept), broadcast.
+- Farm Credit Passport: farmer-owned, consent-based, explainable, revocable.
+- Traceability: harvest batches + chain-of-custody, public timeline.
+- Marketplace: farmer-to-farmer search/buy/sell with auto finance posting.
+- Tests: regression.sh (400+), smoke_fuzz.py, ops_registry_check.php, wave_smoke.sh, PHP lint.
+- Migrations: version-gated `migrate.php`, DB indexes, no shell backups, PHPMailer optional, Docker without Composer.
 
 ---
 
-## 5. Test & validation summary (for the "quality" slide)
-
-| Suite | Result |
-|-------|--------|
-| `tests/ops_registry_check.php` | Pass — 35 record types, 273 columns vs. `db/*.sql` |
-| `tests/regression.sh` | 402 passed / 13 failed (pre-existing, non-Wave) |
-| `tests/smoke_fuzz.py` | Run against local server |
-| `tests/wave_smoke.sh` | All Wave endpoints 200 |
-| PHP lint (`php -l`) | All files clean |
-| `git diff --check` | Clean |
-
----
-
-## 6. Demo accounts
+## 5. Demo accounts
 
 | Username | Password | Role | Lands on |
 |----------|----------|------|----------|
@@ -143,14 +141,27 @@ Use it as a script, slide outline, and demo checklist.
 
 ---
 
-## 7. Tips for the presenter
+## 6. Test & validation summary
+
+| Suite | Result |
+|-------|--------|
+| `tests/ops_registry_check.php` | Pass — 35 record types, 273 columns |
+| `tests/regression.sh` | 402 passed / 13 failed (pre-existing, non-Wave) |
+| `tests/smoke_fuzz.py` | Run against local server |
+| `tests/wave_smoke.sh` | All Wave endpoints 200 |
+| PHP lint (`php -l`) | All files clean |
+| `git diff --check` | Clean |
+
+---
+
+## 7. Tips for presenters
 
 - **Start with the problem, not the tech.** Farmers lose money because data is scattered.
 - **Show, don't tell.** The "Needs attention today" card and the credit passport score are the wow moments.
 - **Keep the demo to 8 minutes.** Deeper features are in the Q&A.
 - **If asked about scale:** the Ops engine is metadata-driven — a new record type is one registry entry + one migration.
 - **If asked about multi-tenancy:** intranet privacy is a hard rule, not a limitation — state it explicitly.
-- **If asked about offline:** it's documented as future work (4C) — deliberate scope discipline.
+- **If asked about offline:** documented as future work (Wave 4C) — deliberate scope discipline.
 - **If asked about AI:** the assistant only drafts; the user must confirm before any write. No auto-send.
 - **Backup plan if live demo fails:** screenshots in `docs/` and the recorded regression output.
 
@@ -167,7 +178,7 @@ Use it as a script, slide outline, and demo checklist.
 
 ---
 
-## 9. Closing line
+## 9. Closing line (all devs)
 
 > "FFMS turns a farm's daily records into decisions, money, and trust —
 > one ledger, one score, one passport."
