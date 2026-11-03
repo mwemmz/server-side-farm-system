@@ -13,8 +13,13 @@ CREATE TABLE IF NOT EXISTS harvest_batches (
 
 -- Backfill columns on databases created by the older traceability schema.
 ALTER TABLE harvest_batches ADD COLUMN IF NOT EXISTS farm_id INT REFERENCES farms(id) ON DELETE CASCADE;
+ALTER TABLE harvest_batches ADD COLUMN IF NOT EXISTS field_id INT REFERENCES fields(id);
+ALTER TABLE harvest_batches ADD COLUMN IF NOT EXISTS harvest_record_id INT REFERENCES harvest_records(id);
 ALTER TABLE harvest_batches ADD COLUMN IF NOT EXISTS quality_grade VARCHAR(40);
 ALTER TABLE harvest_batches ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+-- Older deployments created public_token NOT NULL; public lookup now keys on
+-- batch_code, so the token is optional and must not block inserts.
+ALTER TABLE harvest_batches ALTER COLUMN public_token DROP NOT NULL;
 
 CREATE TABLE IF NOT EXISTS batch_events (
     id SERIAL PRIMARY KEY,

@@ -31,7 +31,7 @@ class TraceabilityService
             $event->execute([$id, 'harvest', $input['ref_type'] ?? null, $this->nullableId($input['ref_id'] ?? null), trim((string) ($input['location'] ?? '')), trim((string) ($input['notes'] ?? '')), $userId]);
             $this->pdo->commit();
             AuditHelper::log($this->pdo, 'human', 'traceability_batch_created', 'harvest_batches', $id, $input, $userId);
-            return ['id' => $id, 'batch_code' => $code, 'public_url' => 'index.php?module=Traceability&action=public&code=' . rawurlencode($code)];
+            return ['id' => $id, 'batch_code' => $code, 'public_url' => 'index.php?module=Traceability&action=public&token=' . rawurlencode($code)];
         } catch (Throwable $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();
             throw $e;

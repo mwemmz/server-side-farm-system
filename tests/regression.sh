@@ -505,6 +505,27 @@ for url in \
 done
 
 # ---------------------------------------------------------------------------
+# 5a2. Control panels: the client script and live JSON must actually be served
+#      (on Vercel every unknown path falls through to the PHP front controller,
+#       so a missing asset route turns panels.js into an HTML document).
+# ---------------------------------------------------------------------------
+echo "-- Control panels --"
+PJ="$(curl -s -b "$JAR" -o /dev/null -w '%{http_code} %{content_type}' "$BASE/views/js/panels.js")"
+check "panels.js served" "$(printf '%s' "$PJ" | cut -d' ' -f1)" "200"
+case "$PJ" in
+  *javascript*) ok "panels.js has a JavaScript content type" ;;
+  *) bad "panels.js has a JavaScript content type (got: $PJ)" ;;
+esac
+PANEL_JS="$(curl -s -b "$JAR" "$BASE/views/js/panels.js")"
+contains "$PANEL_JS" "ff-panel-config" "panels.js is the script, not an HTML error page"
+IRR_JSON="$(curl -s -b "$JAR" "$BASE/index.php?module=Irrigation&action=panel_json&id=1")"
+contains "$IRR_JSON" '"success":true' "Irrigation panel_json succeeds"
+contains "$IRR_JSON" '"reservoir"' "Irrigation panel_json returns reservoir data"
+IRR_PAGE="$(curl -s -b "$JAR" "$BASE/index.php?module=Irrigation")"
+contains "$IRR_PAGE" 'id="ff-panel-config"' "Irrigation page embeds the panel config"
+contains "$IRR_PAGE" 'views/js/panels.js' "Irrigation page loads panels.js"
+
+# ---------------------------------------------------------------------------
 # 5b. Animal tags + role landing screens
 # ---------------------------------------------------------------------------
 echo "-- Animal tags --"
@@ -713,6 +734,10 @@ if [ -n "$BID" ]; then
   check "Wave traceability event -> 200" "$S" "200"
   S="$(curl -s -o /dev/null -w '%{http_code}' -H "$H" "$BASE/api/v1/traceability/batches/$BID")"
   check "Wave traceability batch get -> 200" "$S" "200"
+  # Public provenance lookup must work with the token the create response hands out.
+  PB="$(curl -s "$BASE/index.php?module=Traceability&action=public&token=$BC")"
+  contains "$PB" '"success":true' "traceability public JSON via token"
+  contains "$PB" "$BC" "traceability public JSON carries the batch code"
 fi
 # planting what-if
 S="$(curl -s -o /dev/null -w '%{http_code}' -H "$H" -H 'Content-Type: application/json' -d '{"crop_id":1,"planting_month":3,"area_ha":2,"input_cost_estimate":100}' "$BASE/api/v1/planner/planting-what-if")"
