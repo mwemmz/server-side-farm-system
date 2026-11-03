@@ -731,6 +731,39 @@ S="$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" "$BASE/index.php?module=Cr
 check "Wave credit passport manage -> 200" "$S" "200"
 
 # ---------------------------------------------------------------------------
+# 5f. Labour leave self-service (worker slice)
+# ---------------------------------------------------------------------------
+echo "-- Labour leave access --"
+WJAR="$(mktemp)"
+WLOGIN_PAGE="$(curl -s -c "$WJAR" "$BASE/index.php?module=Security&action=login")"
+WTOKEN="$(printf '%s' "$WLOGIN_PAGE" | grep -o 'name="csrf_token" value="[^"]*"' | head -1 | sed 's/.*value="//; s/"$//')"
+WLOGIN="$(status -b "$WJAR" -c "$WJAR" \
+  --data-urlencode "csrf_token=$WTOKEN" \
+  --data-urlencode "username=rl_worker" \
+  --data-urlencode "password=abc12345" \
+  "$BASE/index.php?module=Security&action=login")"
+check "worker login redirects" "$WLOGIN" "302"
+
+WLEAVE="$(curl -s -b "$WJAR" -c "$WJAR" "$BASE/index.php?module=Labour&subsection=leave")"
+WTOKEN="$(printf '%s' "$WLEAVE" | grep -o 'name="csrf_token" value="[^"]*"' | head -1 | sed 's/.*value="//; s/"$//')"
+check "worker can open leave page" "$(status -b "$WJAR" "$BASE/index.php?module=Labour&subsection=leave")" "200"
+contains "$WLEAVE" "My Leave" "worker sees the self-service nav"
+contains "$WLEAVE" "Ruth Banda" "worker sees their own employee record"
+notcontains "$WLEAVE" "Oscar Phiri" "worker cannot see another employee"
+notcontains "$WLEAVE" "HR view" "worker does not get the HR panel"
+
+WPAYROLL="$(curl -s -b "$WJAR" "$BASE/index.php?module=Labour&subsection=payroll")"
+contains "$WPAYROLL" "Access Denied" "worker blocked from payroll"
+WEMP="$(curl -s -b "$WJAR" "$BASE/index.php?module=Labour&subsection=employees")"
+contains "$WEMP" "Access Denied" "worker blocked from employee records"
+
+WAPPROVE="$(curl -s -b "$WJAR" --data-urlencode "csrf_token=$WTOKEN" "$BASE/index.php?module=Labour&subsection=leave&action=approve&id=1")"
+contains "$WAPPROVE" "Access Denied" "worker cannot approve leave"
+
+ADMINLEAVE="$(curl -s -b "$JAR" "$BASE/index.php?module=Labour&subsection=leave")"
+contains "$ADMINLEAVE" "HR view" "admin still gets the HR leave panel"
+
+# ---------------------------------------------------------------------------
 # 6. Optional: no new PHP warnings (when PHP_LOG points at the server log)
 # ---------------------------------------------------------------------------
 if [ -n "$PHP_LOG" ] && [ -f "$PHP_LOG" ]; then

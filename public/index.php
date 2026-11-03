@@ -633,15 +633,18 @@ if ($module === 'Insights') {
     }
 }
 
-// --- Phase 8: Labour Management -> full HR module (admin/manager only) ---
+// --- Phase 8: Labour Management -> full HR module (admin/manager only).
+// Workers get a single self-service slice: their own leave requests.
 if ($module === 'Labour') {
     $labourAdminRoles = ['admin', 'manager'];
-    if (!in_array($role, $labourAdminRoles, true)) {
+    $isHrRole = in_array($role, $labourAdminRoles, true);
+    $sub = $_GET['subsection'] ?? null;
+    $workerLeaveAccess = ($sub === 'leave' && in_array($action, ['index', '', 'add'], true));
+    if (!$isHrRole && !$workerLeaveAccess) {
         die("Access Denied: Labour/HR management is restricted to admin and manager roles.");
     }
     require_once __DIR__ . '/../src/Modules/Labour/LabourController.php';
     $labour = new LabourController($pdo);
-    $sub = $_GET['subsection'] ?? null;
 
     // Live JSON: employee list (for the live-add table refresh) and live employee add.
     if ($action === 'emp_json') {

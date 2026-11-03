@@ -1,6 +1,8 @@
 <?php
 // Shared sub-section navigation bar for the Labour/HR module.
 // Expects $sub (current sub-section key).
+require_once __DIR__ . '/../../../src/Helpers/RoleHelper.php';
+$labourIsHr = RoleHelper::seesHr($_SESSION['role'] ?? 'worker');
 $labourNav = [
     'employees'   => 'Employee Records',
     'departments' => 'Departments',
@@ -10,6 +12,10 @@ $labourNav = [
     'shifts'      => 'Shifts & Attendance',
     'grievances'  => 'Cases & Grievances',
 ];
+// Workers only reach their own leave page; hide the HR-only links from them.
+if (!$labourIsHr) {
+    $labourNav = ['leave' => 'My Leave'];
+}
 $labourIcons = [
     'employees'   => 'M21 13.255A23.931 23.931 0 0 1 12 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2m4 6h.01M5 20h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z',
     'departments' => 'M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m-4 0h4',
@@ -22,11 +28,13 @@ $labourIcons = [
 ?>
 <div class="glass-card p-3 sm:p-4 mb-6">
     <div class="flex flex-wrap items-center gap-1.5">
+        <?php if ($labourIsHr): ?>
         <a href="index.php?module=Labour" class="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold text-slate-500 hover:text-green-700">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg>
             HR Dashboard
         </a>
         <span class="hidden sm:inline text-slate-300">|</span>
+        <?php endif; ?>
         <?php foreach ($labourNav as $key => $label): ?>
             <a href="index.php?module=Labour&subsection=<?php echo $key; ?>"
                class="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition-all

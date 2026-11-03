@@ -6,7 +6,7 @@
 // against the hosted database. Gate it behind a version marker stored in the
 // database itself: once the current version has been applied, subsequent
 // requests skip straight through.
-$migrationVersion = '13';
+$migrationVersion = '14';
 
 try {
     $applied = null;
@@ -51,6 +51,11 @@ try {
     if ($intelSchema !== false) {
         $pdo->exec($intelSchema);
     }
+
+    // Employees can be linked to a login so workers get a self-service slice of
+    // the HR module (their own leave requests only). One login per employee.
+    $pdo->exec("ALTER TABLE employees ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL");
+    $pdo->exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_user_id ON employees(user_id) WHERE user_id IS NOT NULL");
 
     // Phase 6 Control-panel schema (idempotent)
     $panelSchema = file_get_contents(__DIR__ . '/panels_schema.sql');

@@ -53,29 +53,54 @@ class LabourController {
         require_once __DIR__ . '/../../Helpers/RoleHelper.php';
         $isHr = RoleHelper::seesHr($role);
 
-        // Workers only see their own employee record's leave data.
-        // Managers/admins see everything.
         $allEmployees = $this->hr->employees();
 
-        // Try to find the employee record linked to the logged-in user by matching
-        // username against employee name (best-effort; falls back to full list for HR).
-        $myEmployeeId = null;
+        // Workers only see their own employee record's leave data. Resolve the
+        // link by employees.user_id first, then fall back to a name match for
+        // older rows that predate the user_id column.
+        $myEmployee = null;
         if (!$isHr) {
-            $username = $_SESSION['username'] ?? '';
-            foreach ($allEmployees as $e) {
-                if (strtolower(trim($e['name'])) === strtolower(trim($username))) {
-                    $myEmployeeId = (int) $e['id'];
-                    break;
+            $userId   = (int) ($_SESSION['user_id'] ?? 0);
+            $username = strtolower(trim((string) ($_SESSION['username'] ?? '')));
+            if ($userId > 0) {
+                foreach ($allEmployees as $e) {
+                    if (isset($e['user_id']) && (int) $e['user_id'] === $userId) {
+                        $myEmployee = $e;
+                        break;
+                    }
+                }
+            }
+            if ($myEmployee === null && $username !== '') {
+                foreach ($allEmployees as $e) {
+                    if (strtolower(trim((string) ($e['name'] ?? ''))) === $username) {
+                        $myEmployee = $e;
+                        break;
+                    }
                 }
             }
         }
+        $myEmployeeId = $myEmployee ? (int) $myEmployee['id'] : null;
+
+        $balances = $this->hr->leaveBalances();
+        $requests = $this->hr->leaveRequests();
+        if (!$isHr) {
+            // Never leak another employee's rows: unmatched logins get an empty view.
+            if ($myEmployeeId === null) {
+                $balances = [];
+                $requests = [];
+            } else {
+                $balances = array_values(array_filter($balances, fn($b) => (int) ($b['employee_id'] ?? 0) === $myEmployeeId));
+                $requests = array_values(array_filter($requests, fn($r) => (int) ($r['employee_id'] ?? 0) === $myEmployeeId));
+            }
+            $allEmployees = $myEmployee ? [$myEmployee] : [];
+        }
 
         return [
-            'balances'     => $this->hr->leaveBalances(),
-            'requests'     => $this->hr->leaveRequests(),
+            'balances'     => $balances,
+            'requests'     => $requests,
             'pending'      => $isHr ? $this->hr->leaveRequests(true) : [],
             'upcoming'     => $isHr ? $this->hr->upcomingLeave(30) : [],
-            'employees'    => $isHr ? $allEmployees : ($myEmployeeId ? array_filter($allEmployees, fn($e) => (int)$e['id'] === $myEmployeeId) : $allEmployees),
+            'employees'    => $allEmployees,
             'isHr'         => $isHr,
             'myEmployeeId' => $myEmployeeId,
         ];

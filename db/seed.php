@@ -41,6 +41,33 @@ try {
     error_log("Seed (admin) failed: " . $e->getMessage());
 }
 
+// --- Link demo worker logins to employee records (self-service leave) ------
+// Workers can only reach their own leave page, keyed on employees.user_id.
+try {
+    $farmId = $pdo->query("SELECT id FROM farms ORDER BY id LIMIT 1")->fetchColumn();
+    $userStmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
+    $empStmt = $pdo->prepare(
+        "INSERT INTO employees (emp_no, name, job_title, employment_status, contract_type, hire_date, pay_type, monthly_salary, farm_id, user_id)
+         VALUES (?, ?, ?, 'active', 'permanent', CURRENT_DATE, 'monthly', ?, ?, ?)
+         ON CONFLICT (emp_no) DO UPDATE
+            SET user_id = EXCLUDED.user_id,
+                farm_id = COALESCE(employees.farm_id, EXCLUDED.farm_id)"
+    );
+    foreach ([
+        ['rl_worker',  'EMP-RLW-001', 'Ruth Banda',   'Farm Hand',              3200],
+        ['ops_worker', 'EMP-OPS-001', 'Oscar Phiri',  'Irrigation Assistant',   3000],
+    ] as [$username, $empNo, $name, $title, $salary]) {
+        $userStmt->execute([$username]);
+        $uid = $userStmt->fetchColumn();
+        if ($uid) {
+            $empStmt->execute([$empNo, $name, $title, $salary, $farmId ?: null, (int) $uid]);
+        }
+    }
+    error_log('FFMS: demo worker employee records linked.');
+} catch (PDOException $e) {
+    error_log('Seed (employees) failed: ' . $e->getMessage());
+}
+
 // --- Zambian demo farmers (idempotent) so comms/marketplace can be exercised ---
 try {
     $farmers = [
