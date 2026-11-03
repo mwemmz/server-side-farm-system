@@ -824,6 +824,97 @@ if ($module === 'Security') {
     require __DIR__ . '/views/layout.php'; exit;
 }
 
+// --- Weather: forecast + manual record entry ---
+if ($module === 'Weather') {
+    require_once __DIR__ . '/../src/Modules/Weather/WeatherController.php';
+    $wx = new WeatherController($pdo);
+    if ($action === 'forecast_json') {
+        $wx->forecastJson(); // exits
+    }
+    if ($action === 'forecast' || $action === 'index' || $action === 'manage') {
+        $data = $wx->forecast();
+        ob_start(); require __DIR__ . '/views/weather.php'; $content = ob_get_clean();
+        require __DIR__ . '/views/layout.php'; exit;
+    }
+    if ($action === 'add') {
+        $data = $wx->add();
+        ob_start(); require __DIR__ . '/views/weather.php'; $content = ob_get_clean();
+        require __DIR__ . '/views/layout.php'; exit;
+    }
+    // Default: forecast view
+    $data = $wx->forecast();
+    ob_start(); require __DIR__ . '/views/weather.php'; $content = ob_get_clean();
+    require __DIR__ . '/views/layout.php'; exit;
+}
+
+// --- Communications: intranet + extranet ---
+if ($module === 'Communications') {
+    require_once __DIR__ . '/../src/Modules/Communications/CommunicationsController.php';
+    $comms = new CommunicationsController($pdo);
+    if ($action === 'unread_json') { $comms->unreadJson(); } // exits
+    if ($action === 'create')        { $comms->create(); }   // redirects
+    if ($action === 'createExtranet'){ $comms->createExtranet(); } // redirects
+    if ($action === 'post')          { $comms->post(); }     // redirects
+    if ($action === 'broadcast')     { $comms->broadcast(); }// redirects
+    if ($action === 'extranet') {
+        $data = $comms->extranet();
+        ob_start(); require __DIR__ . '/views/communications.php'; $content = ob_get_clean();
+        require __DIR__ . '/views/layout.php'; exit;
+    }
+    if ($action === 'view') {
+        $data = $comms->view();
+        ob_start(); require __DIR__ . '/views/communications.php'; $content = ob_get_clean();
+        require __DIR__ . '/views/layout.php'; exit;
+    }
+    $data = $comms->index();
+    ob_start(); require __DIR__ . '/views/communications.php'; $content = ob_get_clean();
+    require __DIR__ . '/views/layout.php'; exit;
+}
+
+// --- Connections: farm-to-farm connection graph ---
+if ($module === 'Connections') {
+    require_once __DIR__ . '/../src/Modules/Connections/ConnectionsController.php';
+    $conn = new ConnectionsController($pdo);
+    if (in_array($action, ['request','decide'], true) && $reqMethod === 'POST') {
+        $conn->$action();
+    }
+    $data = $conn->index();
+    ob_start(); require __DIR__ . '/views/connections.php'; $content = ob_get_clean();
+    require __DIR__ . '/views/layout.php'; exit;
+}
+
+// --- Farm Trust Score ---
+if ($module === 'FarmTrust') {
+    require_once __DIR__ . '/../src/Services/FarmTrustScoreService.php';
+    $trustSvc = new FarmTrustScoreService($pdo);
+    if ($action === 'compute' && $reqMethod === 'POST') {
+        CsrfHelper::requireValid();
+        $fid = (int)($_POST['farm_id'] ?? 0);
+        if ($fid) $trustSvc->compute($fid);
+        SessionHelper::setFlash('success', 'Trust score recomputed.');
+        header('Location: index.php?module=FarmTrust&farm_id=' . $fid); exit;
+    }
+    if ($action === 'json') {
+        header('Content-Type: application/json; charset=UTF-8');
+        $fid = (int)($_GET['farm_id'] ?? 0);
+        echo json_encode(['success' => true, 'data' => $fid ? $trustSvc->getOrCompute($fid) : []]);
+        exit;
+    }
+    $fid = (int)($_GET['farm_id'] ?? 0);
+    if (!$fid) {
+        try { $fid = (int)$pdo->query("SELECT id FROM farms ORDER BY id LIMIT 1")->fetchColumn(); }
+        catch (\Throwable $e) {}
+    }
+    $farms = [];
+    try { $farms = $pdo->query("SELECT id, name FROM farms ORDER BY name")->fetchAll(); } catch (\Throwable $e) {}
+    $trustData = $fid ? $trustSvc->getOrCompute($fid) : null;
+    $leaderboard = $trustSvc->leaderboard(10);
+    $history = $fid ? $trustSvc->history($fid, 30) : [];
+    $data = ['farms' => $farms, 'farmId' => $fid, 'trust' => $trustData, 'leaderboard' => $leaderboard, 'history' => $history];
+    ob_start(); require __DIR__ . '/views/farm_trust.php'; $content = ob_get_clean();
+    require __DIR__ . '/views/layout.php'; exit;
+}
+
 // --- Undo (generic restore of last deleted record) ---
 if ($module === 'Undo') {
     require_once __DIR__ . '/../src/Modules/Undo/UndoController.php';

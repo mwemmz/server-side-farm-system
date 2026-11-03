@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: farm-management-system
+    runtime: docker
+    plan: free
+    envVars:
+      - key: DB_HOST
+        value: ep-super-sound-ax4efetl.c-4.us-east-2.aws.neon.tech
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_NAME
+        value: neondb
+      - key: DB_USER
+        value: neondb_owner
+      # DB_PASS is intentionally omitted for security; 
+      # set it in the Render Dashboard under Environment settings.

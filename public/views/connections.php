@@ -1,10 +1,12 @@
 <?php
 require_once __DIR__ . '/../../src/Helpers/SessionHelper.php';
+require_once __DIR__ . '/../../src/Services/FarmTrustScoreService.php';
 $success = SessionHelper::getFlash('success');
 $error = SessionHelper::getFlash('error');
 $conns = $data['connections'] ?? [];
 $search = $data['search'] ?? [];
 $role = $data['role'] ?? 'worker';
+$trustSvc = new FarmTrustScoreService($pdo);
 ?>
 <h1 class="text-2xl sm:text-3xl font-bold mb-6 text-green-800">Farm Connections (Extranet)</h1>
 <?php if ($success): ?><div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4"><?php echo htmlspecialchars($success); ?></div><?php endif; ?>
@@ -44,12 +46,22 @@ $role = $data['role'] ?? 'worker';
     <?php if (!empty($search)): ?>
     <ul class="space-y-2">
         <?php foreach ($search as $f): ?>
-        <li class="flex items-center justify-between bg-white/50 border border-white/60 rounded-xl px-3.5 py-2.5 text-sm">
-            <span class="font-semibold text-slate-700"><?php echo htmlspecialchars($f['name']); ?> <span class="text-slate-400">(<?php echo htmlspecialchars($f['district'] ?? ''); ?>)</span></span>
+        <?php $ft = $trustSvc->latest((int)$f['id']); ?>
+        <li class="flex items-center justify-between bg-white/50 border border-white/60 rounded-xl px-3.5 py-2.5 text-sm gap-2 flex-wrap">
+            <div>
+                <span class="font-semibold text-slate-700"><?php echo htmlspecialchars($f['name']); ?></span>
+                <span class="text-slate-400 text-xs ml-1">(<?php echo htmlspecialchars($f['district'] ?? ''); ?>)</span>
+                <?php if ($ft): ?>
+                <span class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ring-1
+                    <?php echo $trustSvc->bandColor($ft['band']); ?> ring-current">
+                    <?php echo $trustSvc->bandEmoji($ft['band']); ?> <?php echo (int)$ft['score']; ?> · <?php echo ucfirst($ft['band']); ?>
+                </span>
+                <?php endif; ?>
+            </div>
             <form method="post" action="index.php?module=Connections&action=request">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(SessionHelper::csrfToken()); ?>">
                 <input type="hidden" name="target_farm_id" value="<?php echo (int)$f['id']; ?>">
-                <button type="submit" class="text-xs font-bold px-3 py-1.5 rounded bg-blue-600 text-white">Request connection</button>
+                <button type="submit" class="text-xs font-bold px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 transition">Request connection</button>
             </form>
         </li>
         <?php endforeach; ?>

@@ -24,14 +24,23 @@ class FarmConnectionService
     public function searchFarms($userId, $district, $q) {
         $district = trim((string)$district);
         $q = trim((string)$q);
-        $sql = "SELECT id, name, district, region FROM farms WHERE 1=1";
+        // Use only columns guaranteed to exist on the farms table
+        $sql = "SELECT id, name, location FROM farms WHERE 1=1";
         $params = [];
-        if ($district !== '') { $sql .= " AND LOWER(COALESCE(district,'')) = LOWER(?)"; $params[] = $district; }
-        if ($q !== '') { $sql .= " AND (LOWER(name) LIKE LOWER(?) OR LOWER(COALESCE(region,'')) LIKE LOWER(?))"; $params[] = "%$q%"; $params[] = "%$q%"; }
+        if ($q !== '') {
+            $sql .= " AND (LOWER(name) LIKE LOWER(?) OR LOWER(COALESCE(location,'')) LIKE LOWER(?))";
+            $params[] = "%$q%";
+            $params[] = "%$q%";
+        }
         $sql .= " ORDER BY name ASC LIMIT 50";
         $st = $this->pdo->prepare($sql);
         $st->execute($params);
-        return $st->fetchAll() ?: [];
+        $rows = $st->fetchAll() ?: [];
+        // Add district alias so existing views that render $f['district'] don't break
+        return array_map(function($r) {
+            $r['district'] = $r['location'] ?? '';
+            return $r;
+        }, $rows);
     }
 
     public function requestConnection($userId, $targetFarmId, $role) {

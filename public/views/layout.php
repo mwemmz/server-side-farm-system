@@ -68,6 +68,9 @@
                 'Traceability' => '<path d="M3 7h18"/><path d="M5 7v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7"/><path d="M8 7V5a4 4 0 0 1 8 0v2"/>',
                 'Market Analysis' => '<path d="M3 3v18h18"/><path d="M7 15l3-3 3 2 4-6"/>',
                 'Notifications' => '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+                'Communications' => '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+                'Connections' => '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>',
+                'FarmTrust' => '<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>',
                 'Reports' => '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/>',
                 'Security' => '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
                 'Users' => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
@@ -100,6 +103,9 @@
                 'Insights' => 'Insights',
                 'Traceability' => 'Insights',
                 'Notifications' => 'System',
+                'Communications' => 'Network',
+                'Connections' => 'Network',
+                'FarmTrust' => 'Network',
                 'Reports' => 'System',
                 'Security' => 'System',
                 'Users' => 'System',
@@ -116,6 +122,10 @@
             }
             $specialHref = [
                 'Market Analysis' => 'index.php?module=Insights&amp;view=market',
+                'Weather'         => 'index.php?module=Weather&amp;action=forecast',
+                'Communications'  => 'index.php?module=Communications&amp;action=index',
+                'Connections'     => 'index.php?module=Connections',
+                'FarmTrust'       => 'index.php?module=FarmTrust',
                 'Users'           => 'index.php?module=Security&amp;action=users',
                 'Audit Log'       => 'index.php?module=Security&amp;action=audit',
             ];
@@ -128,6 +138,14 @@
                     $navActive[$mod] = ($currentModule === 'Security' && $currentAction === 'users');
                 } elseif ($mod === 'Audit Log') {
                     $navActive[$mod] = ($currentModule === 'Security' && $currentAction === 'audit');
+                } elseif ($mod === 'Weather') {
+                    $navActive[$mod] = ($currentModule === 'Weather');
+                } elseif ($mod === 'Communications') {
+                    $navActive[$mod] = ($currentModule === 'Communications' && !in_array($currentAction, ['extranet'], true));
+                } elseif ($mod === 'Connections') {
+                    $navActive[$mod] = ($currentModule === 'Connections');
+                } elseif ($mod === 'FarmTrust') {
+                    $navActive[$mod] = ($currentModule === 'FarmTrust');
                 } else {
                     $navActive[$mod] = ($currentModule === $mod);
                 }

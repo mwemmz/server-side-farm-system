@@ -6,7 +6,7 @@
 // against the hosted database. Gate it behind a version marker stored in the
 // database itself: once the current version has been applied, subsequent
 // requests skip straight through.
-$migrationVersion = '12';
+$migrationVersion = '13';
 
 try {
     $applied = null;
@@ -177,6 +177,13 @@ try {
     if ($trSchema !== false) { $pdo->exec($trSchema); }
     $mpSchema = file_get_contents(__DIR__ . '/marketplace_schema.sql');
     if ($mpSchema !== false) { $pdo->exec($mpSchema); }
+
+    // Trust scores + (re-ensure) app_settings
+    $trustSchema = file_get_contents(__DIR__ . '/trust_schema.sql');
+    if ($trustSchema !== false) { $pdo->exec($trustSchema); }
+
+    // Widen app_settings key column to 80 chars (was 64)
+    try { $pdo->exec("ALTER TABLE app_settings ALTER COLUMN key TYPE VARCHAR(80)"); } catch (\Throwable $e) {}
 
     require_once __DIR__ . '/seed.php';
 

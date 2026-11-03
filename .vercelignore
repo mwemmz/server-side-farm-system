@@ -1,0 +1,8 @@
+.env
+tmp/
+tests/
+docs/
+*.zip
+*.docx
+.git/
+render.yaml

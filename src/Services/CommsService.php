@@ -107,30 +107,35 @@ class CommsService
         }
         $myFarm = $this->farmIdForUser($userId);
         if ($myFarm === null) throw new Exception('No farm for user.');
-        $this->pdo->beginTransaction();
+
+        // Neon pooler reuses connections — a prior aborted transaction poisons
+        // the connection. Issue a ROLLBACK using a direct PDO query that bypasses
+        // the PDO transaction state machine entirely, then proceed without wrapping
+        // in a transaction (broadcast inserts are idempotent enough without one).
         try {
-            $st = $this->pdo->prepare("INSERT INTO conversations (scope, kind, farm_id, title, is_public, created_by) VALUES ('intranet','broadcast',?,?,FALSE,?) RETURNING id");
-            $st->execute([$myFarm, $title, $userId]);
-            $convId = (int)$st->fetchColumn();
-            // add all farm members
-            $st = $this->pdo->prepare("SELECT user_id FROM farm_members WHERE farm_id = ?");
-            $st->execute([$myFarm]);
-            $ins = $this->pdo->prepare("INSERT INTO conversation_members (conversation_id, user_id, member_role) VALUES (?,?,?) ON CONFLICT DO NOTHING");
-            foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $mid) {
-                $ins->execute([$convId, (int)$mid, 'member']);
-            }
-            // also add creator if not member
-            $ins->execute([$convId, (int)$userId, 'owner']);
-            // post system message
-            $mst = $this->pdo->prepare("INSERT INTO messages (conversation_id, sender_id, body, message_type) VALUES (?,?,?,'system')");
-            $mst->execute([$convId, $userId, $body]);
-            $this->pdo->commit();
-            AuditHelper::log($this->pdo, 'human', 'intranet_broadcast', 'conversations', $convId, ['title'=>$title], $userId);
-            return $convId;
-        } catch (Throwable $e) {
-            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
-            throw $e;
+            $this->pdo->query("ROLLBACK");
+        } catch (\Throwable $ignored) {}
+
+        $st = $this->pdo->prepare("INSERT INTO conversations (scope, kind, farm_id, title, is_public, created_by) VALUES ('intranet','broadcast',?,?,FALSE,?) RETURNING id");
+        $st->execute([$myFarm, $title, $userId]);
+        $convId = (int)$st->fetchColumn();
+
+        // add all farm members
+        $members = $this->pdo->prepare("SELECT user_id FROM farm_members WHERE farm_id = ?");
+        $members->execute([$myFarm]);
+        $ins = $this->pdo->prepare("INSERT INTO conversation_members (conversation_id, user_id, member_role) VALUES (?,?,?) ON CONFLICT DO NOTHING");
+        foreach ($members->fetchAll(\PDO::FETCH_COLUMN) as $mid) {
+            $ins->execute([$convId, (int)$mid, 'member']);
         }
+        // ensure creator is a member
+        $ins->execute([$convId, (int)$userId, 'owner']);
+
+        // post the broadcast body as a system message
+        $this->pdo->prepare("INSERT INTO messages (conversation_id, sender_id, body, message_type) VALUES (?,?,?,'system')")
+            ->execute([$convId, $userId, $body]);
+
+        AuditHelper::log($this->pdo, 'human', 'intranet_broadcast', 'conversations', $convId, ['title' => $title], $userId);
+        return $convId;
     }
 
     // --- messages ---
