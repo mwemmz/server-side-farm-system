@@ -49,12 +49,35 @@ class LabourController {
         ];
     }
     public function leaveView() {
+        $role = $_SESSION['role'] ?? 'worker';
+        require_once __DIR__ . '/../../Helpers/RoleHelper.php';
+        $isHr = RoleHelper::seesHr($role);
+
+        // Workers only see their own employee record's leave data.
+        // Managers/admins see everything.
+        $allEmployees = $this->hr->employees();
+
+        // Try to find the employee record linked to the logged-in user by matching
+        // username against employee name (best-effort; falls back to full list for HR).
+        $myEmployeeId = null;
+        if (!$isHr) {
+            $username = $_SESSION['username'] ?? '';
+            foreach ($allEmployees as $e) {
+                if (strtolower(trim($e['name'])) === strtolower(trim($username))) {
+                    $myEmployeeId = (int) $e['id'];
+                    break;
+                }
+            }
+        }
+
         return [
-            'balances' => $this->hr->leaveBalances(),
-            'requests' => $this->hr->leaveRequests(),
-            'pending' => $this->hr->leaveRequests(true),
-            'upcoming' => $this->hr->upcomingLeave(30),
-            'employees' => $this->hr->employees(),
+            'balances'     => $this->hr->leaveBalances(),
+            'requests'     => $this->hr->leaveRequests(),
+            'pending'      => $isHr ? $this->hr->leaveRequests(true) : [],
+            'upcoming'     => $isHr ? $this->hr->upcomingLeave(30) : [],
+            'employees'    => $isHr ? $allEmployees : ($myEmployeeId ? array_filter($allEmployees, fn($e) => (int)$e['id'] === $myEmployeeId) : $allEmployees),
+            'isHr'         => $isHr,
+            'myEmployeeId' => $myEmployeeId,
         ];
     }
     public function shiftsView() {
@@ -129,8 +152,19 @@ class LabourController {
     // ---- Sub-action handlers (approve/reject resolve, mark paid) -----
     public function handleAction($sub, $action) {
         $officerId = (int) ($_SESSION['user_id'] ?? 0);
+        $role      = $_SESSION['role'] ?? 'worker';
         $id = ValidationHelper::id($_GET['id'] ?? '');
-        if ($id === null) return null; // missing/hostile id: nothing to act on
+        if ($id === null) return null;
+
+        // Leave approve/reject is HR-only — manager and admin only.
+        if (in_array($sub . ':' . $action, ['leave:approve', 'leave:reject'], true)) {
+            require_once __DIR__ . '/../../Helpers/RoleHelper.php';
+            if (!RoleHelper::seesHr($role)) {
+                SessionHelper::setFlash('error', 'Only managers and admins can approve or reject leave requests.');
+                header('Location: index.php?module=Labour&subsection=leave');
+                exit;
+            }
+        }
         switch ($sub . ':' . $action) {
             case 'leave:approve':
                 return $this->hr->approveLeave($id, $officerId);
