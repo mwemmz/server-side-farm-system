@@ -270,7 +270,7 @@
         if (act === 'run' || act === 'park') extra += '&running=' + encodeURIComponent(on);
         var csrfMeta = document.querySelector('meta[name="csrf-token"]');
         var csrfHdr = csrfMeta ? csrfMeta.getAttribute('content') : '';
-        fetch(actUrl(act, extra), { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-Token': csrfHdr } })
+        fetch(actUrl(act, extra), { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-Token': csrfHdr, 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'csrf_token=' + encodeURIComponent(csrfHdr) })
           .then(function (r) { return r.json(); })
           .then(function (res) { if (res.success && res.data) { render(res.data); refreshStatus(); } })
           .catch(function () {});
